@@ -1,0 +1,20 @@
+[Unit]
+Description=Huy Libvirt Agent API
+After=network-online.target libvirtd.service
+Wants=libvirtd.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/huy-libvirt-agent/env
+# Install from monorepo: pip install agents/libvirt → huy-libvirt-agent
+ExecStart=/usr/local/bin/huy-libvirt-agent
+Restart=on-failure
+RestartSec=5
+# Requires CAP_NET_ADMIN for nftables, WireGuard, bridges
+AmbientCapabilities=CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_DAC_OVERRIDE
+User=root
+Group=libvirt
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+# Agent-local overrides (repo root .gitignore covers shared Python/IDE patterns)
+
+# Generated API schema
+openapi/openapi.json
+
+# Local dev state (when HUY_DATA_DIR points inside the repo)
+data/
+
+# Editable-install artifact
+*.pth

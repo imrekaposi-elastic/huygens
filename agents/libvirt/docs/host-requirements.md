@@ -1,0 +1,77 @@
+# Host package requirements
+
+The agent requires the following OS packages on the KVM hypervisor. Install for your distribution before deploying the agent.
+
+## Capability matrix
+
+| Capability | Commands | Debian 12 / Ubuntu 22.04+ | RHEL 9 / Rocky 9 / Alma 9 | Fedora 40+ | openSUSE Leap 15.6+ |
+|------------|----------|---------------------------|---------------------------|------------|---------------------|
+| KVM / libvirt | virsh, libvirt API | libvirt-daemon-system, libvirt-clients, qemu-system-x86, qemu-utils | libvirt-daemon-kvm, libvirt-client, qemu-kvm, qemu-img | same as RHEL | libvirt-daemon-qemu, libvirt-client, qemu-kvm, qemu-tools |
+| DHCP (vnet) | dnsmasq | dnsmasq (libvirt dep) | dnsmasq | dnsmasq | dnsmasq |
+| Disk images | qemu-img | qemu-utils | qemu-img | qemu-img | qemu-tools |
+| Cloud-init ISO | cloud-localds | cloud-image-utils | genisoimage (fallback) | cloud-image-utils | cloud-image-utils or genisoimage |
+| Cloud-init fallback | genisoimage | genisoimage | genisoimage | genisoimage | genisoimage |
+| WireGuard breakout | wg, wg-quick | wireguard, wireguard-tools | wireguard-tools | wireguard-tools | wireguard-tools |
+| Flat L2 breakout | ip, bridge | iproute2, bridge-utils | iproute, bridge-utils | iproute, bridge-utils | iproute2, bridge-utils |
+| Firewall / NAT | nft, iptables | nftables, iptables | nftables, iptables-nft | nftables, iptables-nft | nftables, iptables |
+
+## Install one-liners
+
+### Debian / Ubuntu
+
+```bash
+sudo apt update && sudo apt install -y \
+  libvirt-daemon-system libvirt-clients qemu-system-x86 qemu-utils \
+  cloud-image-utils genisoimage wireguard wireguard-tools \
+  nftables iptables iproute2 bridge-utils dnsmasq
+sudo usermod -aG libvirt "$USER"
+```
+
+### RHEL / Rocky / Alma
+
+```bash
+sudo dnf install -y \
+  libvirt-daemon-kvm libvirt-client qemu-kvm qemu-img \
+  genisoimage wireguard-tools nftables iptables-nft \
+  iproute bridge-utils dnsmasq
+sudo systemctl enable --now libvirtd
+```
+
+### Fedora
+
+```bash
+sudo dnf install -y \
+  libvirt-daemon-kvm libvirt-client qemu-kvm qemu-img cloud-image-utils \
+  genisoimage wireguard-tools nftables iptables-nft iproute bridge-utils dnsmasq
+```
+
+### openSUSE Leap
+
+```bash
+sudo zypper install -y \
+  libvirt-daemon-qemu libvirt-client qemu-kvm qemu-tools \
+  genisoimage wireguard-tools nftables iptables iproute2 bridge-utils dnsmasq
+```
+
+### Arch Linux
+
+```bash
+sudo pacman -S libvirt qemu-full iptables-nft nftables wireguard-tools cdrtools iproute2 bridge-utils dnsmasq
+```
+
+## Non-package requirements
+
+| Requirement | Detail |
+|-------------|--------|
+| CPU | Intel VT-x or AMD-V; KVM module loaded |
+| Permissions | `libvirt` group; `CAP_NET_ADMIN` for networking (agent typically runs as root) |
+| Sysctl | `net.ipv4.ip_forward=1` when SNAT/DNAT is used |
+| libvirt URI | `qemu:///system` |
+| Python | 3.11+ for the agent (installed via pip, not distro meta-package) |
+
+## Sysctl
+
+```bash
+echo 'net.ipv4.ip_forward=1' | sudo tee /etc/sysctl.d/99-huy-libvirt-agent.conf
+sudo sysctl --system
+```

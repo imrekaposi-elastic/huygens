@@ -1,0 +1,11 @@
+# /etc/huy-libvirt-agent/config.yaml
+
+agent:
+  country: NL
+  city: Amsterdam
+  company: Huygens
+
+data_dir: /var/lib/huy-libvirt-agent
+libvirt_uri: qemu:///system
+event_bus: file
+log_level: INFO
