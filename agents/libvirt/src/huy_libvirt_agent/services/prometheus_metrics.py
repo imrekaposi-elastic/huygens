@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(__name__)
 
 _COLLECTOR_REGISTERED = False
+_metrics_state: AppState | None = None
 
 
 def _mountpoint_label(path: str) -> str:
@@ -143,8 +144,29 @@ def _collect_libvirt(state: AppState) -> list[GaugeMetricFamily]:
         "huy_libvirt_up",
         "Whether the agent is connected to libvirt (1=up)",
     )
-    up.add_metric([], 1.0 if state.libvirt.connected else 0.0)
+    if state.libvirt is not None:
+        up.add_metric([], 1.0 if state.libvirt.connected else 0.0)
+    else:
+        up.add_metric([], 0.0)
     families.append(up)
+
+    if state.libvirt_queue is not None:
+        q_pending = GaugeMetricFamily(
+            "huy_libvirt_queue_pending",
+            "Libvirt API calls currently queued or running",
+        )
+        q_max = GaugeMetricFamily(
+            "huy_libvirt_queue_max_pending",
+            "Configured maximum libvirt queue depth",
+        )
+        q_workers = GaugeMetricFamily(
+            "huy_libvirt_queue_workers",
+            "Libvirt worker threads processing the queue",
+        )
+        q_pending.add_metric([], float(state.libvirt_queue.pending))
+        q_max.add_metric([], float(state.libvirt_queue.max_pending))
+        q_workers.add_metric([], float(state.libvirt_queue.workers))
+        families.extend([q_pending, q_max, q_workers])
 
     vm_count = GaugeMetricFamily(
         "huy_vms",
@@ -188,6 +210,8 @@ def _collect_libvirt(state: AppState) -> list[GaugeMetricFamily]:
     )
 
     state_counts: dict[str, int] = {}
+    if state.libvirt is None:
+        return families
     for name in state.libvirt.list_domains():
         try:
             _code, lv_state = state.libvirt.domain_state(name)
@@ -259,29 +283,35 @@ def _block_devices_from_xml(xml: str) -> list[str]:
     return devices or ["vda"]
 
 
+def bind_metrics_state(state: AppState) -> None:
+    """Point the metrics collector at the current application state."""
+    global _metrics_state
+    _metrics_state = state
+
+
 class HuyMetricsCollector:
     """Dynamic Prometheus collector for hypervisor and VM metrics."""
 
-    def __init__(self, state: AppState) -> None:
-        self._state = state
-
     def collect(self):
-        data_dir = str(self._state.settings.data_dir)
+        state = _metrics_state
+        if state is None:
+            return
+        data_dir = str(state.settings.data_dir)
         yield from _collect_host(data_dir)
-        yield from _collect_libvirt(self._state)
+        yield from _collect_libvirt(state)
 
         agent = GaugeMetricFamily(
             "huy_agent_info",
             "Agent build and identity (value is always 1)",
             labels=["version", "hostname", "country", "city", "company"],
         )
-        labels = self._state.settings.agent_labels
+        labels = state.settings.agent_labels
         from huy_libvirt_agent import __version__
 
         agent.add_metric(
             [
                 __version__,
-                self._state.hostname,
+                state.hostname,
                 labels["country"],
                 labels["city"],
                 labels["company"],
@@ -291,9 +321,9 @@ class HuyMetricsCollector:
         yield agent
 
 
-def register_metrics_collector(state: AppState) -> None:
+def register_metrics_collector() -> None:
     global _COLLECTOR_REGISTERED
     if _COLLECTOR_REGISTERED:
         return
-    REGISTRY.register(HuyMetricsCollector(state))
+    REGISTRY.register(HuyMetricsCollector())
     _COLLECTOR_REGISTERED = True

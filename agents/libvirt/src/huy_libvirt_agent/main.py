@@ -19,7 +19,10 @@ from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.config import get_settings
 from huy_libvirt_agent.openapi_servers import openapi_servers
 from huy_libvirt_agent.logging_setup import configure_logging
-from huy_libvirt_agent.services.prometheus_metrics import register_metrics_collector
+from huy_libvirt_agent.services.prometheus_metrics import (
+    bind_metrics_state,
+    register_metrics_collector,
+)
 from huy_libvirt_agent.services.cloudinit_requirements import (
     assert_cloud_init_available,
     cloud_init_schema_available,
@@ -53,7 +56,13 @@ def create_app(state: AppState | None = None) -> FastAPI:
                 logger.error("cloud_init_not_installed")
                 assert_cloud_init_available()
         try:
-            app_state.libvirt.connect()
+            if app_state.libvirt is not None:
+                app_state.libvirt.connect()
+                logger.info(
+                    "libvirt_queue_started",
+                    workers=settings.libvirt_queue_workers,
+                    max_pending=settings.libvirt_queue_max_pending,
+                )
         except Exception as e:
             logger.warning("libvirt_connect_failed", error=str(e))
         await app_state.monitor.start()
@@ -64,7 +73,10 @@ def create_app(state: AppState | None = None) -> FastAPI:
         )
         yield
         await app_state.monitor.stop()
-        app_state.libvirt.close()
+        if app_state.libvirt is not None:
+            app_state.libvirt.close()
+        if app_state.libvirt_queue is not None:
+            app_state.libvirt_queue.shutdown()
         app_state.event_bus.publish(
             "huy.agent.stopped",
             f"/hypervisors/{app_state.hostname}",
@@ -85,8 +97,9 @@ def create_app(state: AppState | None = None) -> FastAPI:
     if state is None:
         state = AppState.from_settings(settings)
     app.state.app_state = state
+    bind_metrics_state(state)
     if settings.metrics_enabled:
-        register_metrics_collector(state)
+        register_metrics_collector()
 
     configure_logging(settings.log_level, settings.log_format)
     setup_telemetry(settings)

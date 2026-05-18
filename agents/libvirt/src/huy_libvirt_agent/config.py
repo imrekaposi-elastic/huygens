@@ -30,6 +30,22 @@ class Settings(BaseSettings):
     )
     data_dir: Path = Path("/var/lib/huy-libvirt-agent")
     libvirt_uri: str = Field(default="qemu:///system", validation_alias="LIBVIRT_URI")
+    libvirt_queue_workers: int = Field(
+        default=1,
+        ge=1,
+        le=4,
+        description="Concurrent libvirt worker threads (keep at 1 unless you know libvirt is thread-safe)",
+    )
+    libvirt_queue_max_pending: int = Field(
+        default=64,
+        ge=1,
+        description="Max libvirt calls waiting in queue before rejecting with 503",
+    )
+    libvirt_queue_timeout_seconds: float = Field(
+        default=300.0,
+        ge=1.0,
+        description="Max seconds a libvirt call may wait in queue plus execution",
+    )
     status_poll_seconds: int = 10
     ssh_probe_timeout_seconds: float = 2.0
     image_download_timeout_seconds: int = 600

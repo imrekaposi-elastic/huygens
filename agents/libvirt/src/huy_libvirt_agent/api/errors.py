@@ -17,6 +17,8 @@ def register_exception_handlers(app) -> None:
             "IMAGE_NOT_READY": 409,
             "CONNECTION_FAILED": 503,
             "NOT_CONNECTED": 503,
+            "LIBVIRT_QUEUE_FULL": 503,
+            "LIBVIRT_QUEUE_TIMEOUT": 503,
         }
         status = code_map.get(exc.code, 409)
         if "not found" in str(exc).lower():

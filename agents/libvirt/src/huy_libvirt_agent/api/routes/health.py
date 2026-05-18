@@ -16,7 +16,7 @@ async def healthz() -> dict:
 @router.get("/readyz", summary="Readiness probe")
 async def readyz(request: Request) -> dict:
     state = request.app.state.app_state
-    libvirt_ok = state.libvirt.connected
+    libvirt_ok = state.libvirt is not None and state.libvirt.connected
     return {"status": "ok" if libvirt_ok else "degraded", "libvirt": libvirt_ok}
 
 

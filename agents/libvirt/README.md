@@ -38,6 +38,9 @@ Environment variables (or `/etc/huy-libvirt-agent/config.yaml`):
 | `HUY_CLOUD_INIT_VALIDATION` | `off`, `basic`, or `schema` (default; requires `cloud-init` OS package) |
 | `HUY_PUBLIC_BASE_URL` | Optional public URL for Swagger (default: same host as `/docs`) |
 | `HUY_CORS_ORIGINS` | Comma-separated origins if calling the API from another web app |
+| `HUY_LIBVIRT_QUEUE_WORKERS` | Libvirt worker threads (default `1` — serializes hypervisor calls) |
+| `HUY_LIBVIRT_QUEUE_MAX_PENDING` | Max queued libvirt calls before HTTP 503 |
+| `HUY_LIBVIRT_QUEUE_TIMEOUT_SECONDS` | Per-call queue + execution timeout |
 | `HUY_AGENT_COUNTRY` | Inherited label (required) |
 | `HUY_AGENT_CITY` | Inherited label (required) |
 | `HUY_AGENT_COMPANY` | Inherited label (required) |
