@@ -73,13 +73,15 @@ API documentation: `http://127.0.0.1:8765/docs` (or `https://...` when TLS is en
 
 ## systemd
 
+From the hypervisor (repo at `/opt/huygens`):
+
 ```bash
-sudo cp systemd/huy-libvirt-agent.service /etc/systemd/system/
-sudo mkdir -p /etc/huy-libvirt-agent
-sudo cp config.example.yaml /etc/huy-libvirt-agent/config.yaml
-# create /etc/huy-libvirt-agent/env with secrets
-sudo systemctl enable --now huy-libvirt-agent
+sudo bash /opt/huygens/agents/libvirt/scripts/install-systemd.sh
 ```
+
+Or manually: copy `systemd/huy-libvirt-agent.service`, ensure `/etc/huy-libvirt-agent/env` exists, then `systemctl enable --now huy-libvirt-agent`.
+
+Logs: `journalctl -u huy-libvirt-agent -f`
 
 ## Development
 

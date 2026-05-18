@@ -49,7 +49,7 @@ ENV
   echo "Edit /etc/huy-libvirt-agent/env (set HUY_AGENT_TOKEN)."
 fi
 
-echo "==> Done. Start with:"
-echo "  set -a; source /etc/huy-libvirt-agent/env; set +a"
-echo "  python3 -m huy_libvirt_agent.main"
-echo "API docs: http://<host>:8765/docs"
+echo "==> Install systemd service"
+bash "$REPO_DIR/agents/libvirt/scripts/install-systemd.sh"
+
+echo "==> Done. API: https://<host>:8765/docs (when HUY_TLS_ENABLED=true)"
