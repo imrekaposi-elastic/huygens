@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
@@ -16,6 +17,7 @@ from huy_libvirt_agent.api.middleware.request_context import RequestContextMiddl
 from huy_libvirt_agent.api.routes import agent, cloud_init, dnat, health, images, networks, vms
 from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.config import get_settings
+from huy_libvirt_agent.openapi_servers import openapi_servers
 from huy_libvirt_agent.logging_setup import configure_logging
 from huy_libvirt_agent.services.cloudinit_requirements import (
     assert_cloud_init_available,
@@ -89,6 +91,16 @@ def create_app(state: AppState | None = None) -> FastAPI:
         **{f"agent.{k}": v for k, v in settings.agent_labels.items()}
     )
 
+    cors_origins = settings.cors_origin_list
+    if cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
     app.add_middleware(AuditMiddleware)
     app.add_middleware(RequestContextMiddleware)
     register_exception_handlers(app)
@@ -125,13 +137,8 @@ def create_app(state: AppState | None = None) -> FastAPI:
                 for method in methods.values():
                     if isinstance(method, dict):
                         method.setdefault("security", [{"BearerAuth": []}])
-        if settings.tls_enabled and not settings.bind_uds:
-            schema["servers"] = [
-                {
-                    "url": f"https://{settings.bind_host}:{settings.bind_port}",
-                    "description": "TLS (auto-generated or configured certificate)",
-                }
-            ]
+        if not settings.bind_uds:
+            schema["servers"] = openapi_servers(settings)
         app.openapi_schema = schema
         return app.openapi_schema
 

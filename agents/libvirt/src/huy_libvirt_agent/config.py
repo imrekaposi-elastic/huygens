@@ -49,6 +49,14 @@ class Settings(BaseSettings):
     bind_host: str = "127.0.0.1"
     bind_port: int = 8765
     bind_uds: str | None = None
+    public_base_url: str | None = Field(
+        default=None,
+        description="Public URL for OpenAPI/Swagger (e.g. https://dommel.example.com:8765)",
+    )
+    cors_origins: str = Field(
+        default="",
+        description="Comma-separated CORS origins; empty = same-origin only",
+    )
     tls_enabled: bool = False
     tls_auto_generate: bool = True
     tls_regenerate: bool = False
@@ -71,6 +79,12 @@ class Settings(BaseSettings):
     @classmethod
     def path_from_str(cls, v: str | Path) -> Path:
         return Path(v) if isinstance(v, str) else v
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        if not self.cors_origins.strip():
+            return []
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property
     def agent_labels(self) -> dict[str, str]:

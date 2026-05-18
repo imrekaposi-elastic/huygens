@@ -46,7 +46,9 @@ HUY_AGENT_COMPANY=Huygens
 HUY_DATA_DIR=/var/lib/huy-libvirt-agent
 HUY_BIND_HOST=0.0.0.0
 HUY_BIND_PORT=8765
+HUY_TLS_ENABLED=true
 HUY_CLOUD_INIT_VALIDATION=schema
+# HUY_PUBLIC_BASE_URL=https://your-hostname:8765
 ENV
   echo "Edit /etc/huy-libvirt-agent/env (set HUY_AGENT_TOKEN)."
 fi
