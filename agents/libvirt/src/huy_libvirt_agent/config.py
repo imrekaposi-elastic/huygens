@@ -19,7 +19,15 @@ class Settings(BaseSettings):
         populate_by_name=True,
     )
 
-    agent_token: str = Field(validation_alias="HUY_AGENT_TOKEN")
+    agent_token: str = Field(
+        validation_alias="HUY_AGENT_TOKEN",
+        description="Primary API bearer token (comma-separated list also accepted)",
+    )
+    agent_tokens_extra: str = Field(
+        default="",
+        validation_alias="HUY_AGENT_TOKENS",
+        description="Additional bearer tokens, comma- or newline-separated",
+    )
     data_dir: Path = Path("/var/lib/huy-libvirt-agent")
     libvirt_uri: str = Field(default="qemu:///system", validation_alias="LIBVIRT_URI")
     status_poll_seconds: int = 10
@@ -79,6 +87,22 @@ class Settings(BaseSettings):
     @classmethod
     def path_from_str(cls, v: str | Path) -> Path:
         return Path(v) if isinstance(v, str) else v
+
+    @staticmethod
+    def _parse_token_blob(blob: str) -> set[str]:
+        tokens: set[str] = set()
+        for part in blob.replace("\n", ",").split(","):
+            token = part.strip()
+            if token:
+                tokens.add(token)
+        return tokens
+
+    @property
+    def valid_agent_tokens(self) -> frozenset[str]:
+        """All bearer tokens that authenticate API requests."""
+        tokens = self._parse_token_blob(self.agent_token)
+        tokens |= self._parse_token_blob(self.agent_tokens_extra)
+        return frozenset(tokens)
 
     @property
     def cors_origin_list(self) -> list[str]:

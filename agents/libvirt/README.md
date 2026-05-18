@@ -33,7 +33,8 @@ Environment variables (or `/etc/huy-libvirt-agent/config.yaml`):
 
 | Variable | Description |
 |----------|-------------|
-| `HUY_AGENT_TOKEN` | API bearer token (required) |
+| `HUY_AGENT_TOKEN` | API bearer token(s); comma-separated list allowed |
+| `HUY_AGENT_TOKENS` | Additional bearer tokens (comma- or newline-separated) |
 | `HUY_CLOUD_INIT_VALIDATION` | `off`, `basic`, or `schema` (default; requires `cloud-init` OS package) |
 | `HUY_PUBLIC_BASE_URL` | Optional public URL for Swagger (default: same host as `/docs`) |
 | `HUY_CORS_ORIGINS` | Comma-separated origins if calling the API from another web app |
