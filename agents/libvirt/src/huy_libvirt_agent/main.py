@@ -13,7 +13,7 @@ from huy_libvirt_agent import __version__
 from huy_libvirt_agent.api.errors import register_exception_handlers
 from huy_libvirt_agent.api.middleware.audit import AuditMiddleware
 from huy_libvirt_agent.api.middleware.request_context import RequestContextMiddleware
-from huy_libvirt_agent.api.routes import agent, dnat, health, networks, vms
+from huy_libvirt_agent.api.routes import agent, cloud_init, dnat, health, images, networks, vms
 from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.config import get_settings
 from huy_libvirt_agent.logging_setup import configure_logging
@@ -24,6 +24,8 @@ logger = structlog.get_logger(__name__)
 
 OPENAPI_TAGS = [
     {"name": "agent", "description": "Agent identity and settings"},
+    {"name": "images", "description": "Managed base images (qcow2 registry)"},
+    {"name": "cloud-init", "description": "Reusable cloud-init profiles"},
     {"name": "vms", "description": "Virtual machine lifecycle"},
     {"name": "networks", "description": "Virtual networks and breakout"},
     {"name": "dnat", "description": "Inbound port forwarding"},
@@ -59,7 +61,7 @@ def create_app(state: AppState | None = None) -> FastAPI:
     app = FastAPI(
         title="Huy Libvirt Agent API",
         version=__version__,
-        description="KVM hypervisor agent: VMs, vnets, breakout, DNAT.",
+        description="KVM hypervisor agent: images, cloud-init, VMs, vnets, breakout, DNAT.",
         openapi_tags=OPENAPI_TAGS,
         docs_url="/docs" if settings.docs_enabled else None,
         redoc_url="/redoc" if settings.docs_enabled else None,
@@ -83,6 +85,8 @@ def create_app(state: AppState | None = None) -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(agent.router)
+    app.include_router(images.router)
+    app.include_router(cloud_init.router)
     app.include_router(vms.router)
     app.include_router(networks.router)
     app.include_router(dnat.router)

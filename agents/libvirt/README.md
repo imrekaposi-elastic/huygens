@@ -97,6 +97,10 @@ make lint
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/v1/agent` | Agent settings |
+| GET/POST | `/api/v1/images` | List / register managed base images |
+| GET/PATCH/DELETE | `/api/v1/images/{name}` | Image operations |
+| GET/POST | `/api/v1/cloud-init` | List / create cloud-init profiles |
+| GET/PATCH/DELETE | `/api/v1/cloud-init/{name}` | Cloud-init profile operations |
 | GET/POST | `/api/v1/vms` | List / create VMs |
 | GET/PATCH/DELETE | `/api/v1/vms/{name}` | VM operations |
 | GET/POST | `/api/v1/networks` | List / create vnets |

@@ -11,8 +11,14 @@ from huy_libvirt_agent.services.libvirt_client import LibvirtError
 def register_exception_handlers(app) -> None:
     @app.exception_handler(LibvirtError)
     async def libvirt_error_handler(_request: Request, exc: LibvirtError) -> JSONResponse:
-        status = 503 if exc.code in ("CONNECTION_FAILED", "NOT_CONNECTED") else 409
-        if "not found" in str(exc).lower() or exc.code == "NOT_FOUND":
+        code_map = {
+            "NOT_FOUND": 404,
+            "IMAGE_NOT_READY": 409,
+            "CONNECTION_FAILED": 503,
+            "NOT_CONNECTED": 503,
+        }
+        status = code_map.get(exc.code, 409)
+        if "not found" in str(exc).lower():
             status = 404
         return JSONResponse(
             status_code=status,

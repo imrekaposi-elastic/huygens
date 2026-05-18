@@ -10,7 +10,9 @@ from huy_libvirt_agent.api.schemas.agent import AgentLabels
 from huy_libvirt_agent.api.schemas.vm import VMCreateRequest, VMPatchRequest, VMResponse
 from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.services.cloudinit import CloudInitBuilder
+from huy_libvirt_agent.services.cloudinit_profile_service import CloudInitProfileService
 from huy_libvirt_agent.services.domain_xml import render_domain_xml
+from huy_libvirt_agent.services.image_service import ImageService
 from huy_libvirt_agent.services.image_store import ImageStore
 from huy_libvirt_agent.services.libvirt_client import LibvirtError
 from huy_libvirt_agent.services.metadata import read_metadata, write_metadata
@@ -19,11 +21,12 @@ from huy_libvirt_agent.services.metadata import read_metadata, write_metadata
 class VMService:
     def __init__(self, state: AppState) -> None:
         self._state = state
+        self._image_registry = ImageService(state)
         self._images = ImageStore(
-            state.settings.data_dir / "images",
+            state.settings.data_dir / "images" / "cache",
             state.settings.image_download_timeout_seconds,
         )
-        self._cloudinit = CloudInitBuilder()
+        self._cloudinit_profiles = CloudInitProfileService(state)
 
     def _instance_dir(self, name: str) -> Path:
         return self._state.settings.data_dir / "instances" / name
@@ -63,15 +66,28 @@ class VMService:
         if inst.exists():
             raise LibvirtError(f"VM {body.name} already exists", "DOMAIN_EXISTS")
         labels = self._state.settings.agent_labels
-        base = self._images.resolve_base_image(body.image)
+        if body.image_name:
+            base = self._image_registry.resolve_disk_path(body.image_name)
+        else:
+            base = self._images.resolve_base_image(body.image)  # type: ignore[arg-type]
         disk = self._images.create_overlay(base, inst / "disk.qcow2")
-        iso = self._cloudinit.build(
-            inst / "cidata.iso",
-            body.cloud_init.user_data,
-            body.cloud_init.meta_data,
-            body.cloud_init.network_config,
-            body.ssh_keys,
-        )
+        iso_path = inst / "cidata.iso"
+        if body.cloud_init_profile:
+            iso = self._cloudinit_profiles.build_iso(
+                body.cloud_init_profile,
+                iso_path,
+                instance_id=body.name,
+                extra_ssh_keys=body.ssh_keys or None,
+            )
+        else:
+            ci = body.cloud_init
+            iso = CloudInitBuilder().build(
+                iso_path,
+                ci.user_data,  # type: ignore[union-attr]
+                ci.meta_data,  # type: ignore[union-attr]
+                ci.network_config,  # type: ignore[union-attr]
+                body.ssh_keys,
+            )
         xml = render_domain_xml(
             body.name,
             labels,
@@ -90,6 +106,8 @@ class VMService:
                 "memory_mib": body.memory_mib,
                 "network": body.network,
                 "guest_ip": body.guest_ip,
+                "image_name": body.image_name,
+                "cloud_init_profile": body.cloud_init_profile,
                 "created_at": datetime.now(UTC).isoformat(),
             },
         )

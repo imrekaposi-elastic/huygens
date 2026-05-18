@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from huy_libvirt_agent.api.schemas.agent import AgentLabels
 
@@ -17,14 +17,40 @@ class CloudInitSpec(BaseModel):
 
 class VMCreateRequest(BaseModel):
     name: str = Field(..., pattern=r"^[a-zA-Z0-9._-]+$", examples=["web-01"])
-    image: str = Field(..., description="HTTP(S) URL or local path to qcow2 image")
+    image: str | None = Field(
+        default=None,
+        description="HTTP(S) URL or local path (omit if image_name is set)",
+    )
+    image_name: str | None = Field(
+        default=None,
+        description="Registered managed image name from GET /api/v1/images",
+    )
     vcpu: int = Field(default=2, ge=1, le=128)
     memory_mib: int = Field(default=2048, ge=256)
     network: str = Field(default="default", description="libvirt network name")
-    cloud_init: CloudInitSpec
-    ssh_keys: list[str] = Field(default_factory=list)
+    cloud_init: CloudInitSpec | None = None
+    cloud_init_profile: str | None = Field(
+        default=None,
+        description="Registered cloud-init profile from GET /api/v1/cloud-init",
+    )
+    ssh_keys: list[str] = Field(
+        default_factory=list,
+        description="Extra SSH keys when using cloud_init_profile",
+    )
     guest_ip: str | None = None
     start: bool = True
+
+    @model_validator(mode="after")
+    def require_image_and_cloud_init(self) -> VMCreateRequest:
+        if not self.image and not self.image_name:
+            raise ValueError("Either image or image_name is required")
+        if self.image and self.image_name:
+            raise ValueError("Specify only one of image or image_name")
+        if not self.cloud_init and not self.cloud_init_profile:
+            raise ValueError("Either cloud_init or cloud_init_profile is required")
+        if self.cloud_init and self.cloud_init_profile:
+            raise ValueError("Specify only one of cloud_init or cloud_init_profile")
+        return self
 
 
 class VMPatchRequest(BaseModel):

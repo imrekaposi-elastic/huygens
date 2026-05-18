@@ -77,7 +77,15 @@ class Settings(BaseSettings):
         }
 
     def ensure_data_dirs(self) -> None:
-        for sub in ("images", "instances", "vnets", "audit", "events"):
+        for sub in (
+            "images/registry",
+            "images/cache",
+            "cloud-init",
+            "instances",
+            "vnets",
+            "audit",
+            "events",
+        ):
             (self.data_dir / sub).mkdir(parents=True, exist_ok=True)
         if self.tls_enabled:
             self.effective_tls_cert_dir.mkdir(parents=True, exist_ok=True)
