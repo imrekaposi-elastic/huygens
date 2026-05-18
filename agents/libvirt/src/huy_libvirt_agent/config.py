@@ -45,6 +45,23 @@ class Settings(BaseSettings):
     bind_host: str = "127.0.0.1"
     bind_port: int = 8765
     bind_uds: str | None = None
+    tls_enabled: bool = False
+    tls_auto_generate: bool = True
+    tls_regenerate: bool = False
+    tls_cert_dir: Path | None = None
+    tls_cert_file: Path | None = None
+    tls_key_file: Path | None = None
+
+    @field_validator("tls_cert_dir", "tls_cert_file", "tls_key_file", mode="before")
+    @classmethod
+    def tls_path_from_str(cls, v: str | Path | None) -> Path | None:
+        if v is None or v == "":
+            return None
+        return Path(v) if isinstance(v, str) else v
+
+    @property
+    def effective_tls_cert_dir(self) -> Path:
+        return self.tls_cert_dir or (self.data_dir / "tls")
 
     @field_validator("data_dir", "wg_config_dir", mode="before")
     @classmethod
@@ -62,6 +79,8 @@ class Settings(BaseSettings):
     def ensure_data_dirs(self) -> None:
         for sub in ("images", "instances", "vnets", "audit", "events"):
             (self.data_dir / sub).mkdir(parents=True, exist_ok=True)
+        if self.tls_enabled:
+            self.effective_tls_cert_dir.mkdir(parents=True, exist_ok=True)
 
 
 def _load_yaml_overlay(path: Path) -> dict:
@@ -81,6 +100,16 @@ def _load_yaml_overlay(path: Path) -> dict:
     for key in ("data_dir", "libvirt_uri", "event_bus", "log_level"):
         if key in data:
             overlay[key] = data[key]
+    tls = data.get("tls", {})
+    if tls:
+        if "enabled" in tls:
+            overlay["tls_enabled"] = tls["enabled"]
+        if "auto_generate" in tls:
+            overlay["tls_auto_generate"] = tls["auto_generate"]
+        if "regenerate" in tls:
+            overlay["tls_regenerate"] = tls["regenerate"]
+        if "cert_dir" in tls:
+            overlay["tls_cert_dir"] = tls["cert_dir"]
     return overlay
 
 

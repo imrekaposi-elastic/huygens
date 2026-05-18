@@ -21,3 +21,5 @@ def test_agent_settings(client: TestClient, auth_headers: dict) -> None:
     assert data["settings"]["country"] == "NL"
     assert data["settings"]["city"] == "Amsterdam"
     assert data["settings"]["company"] == "Huygens Test"
+    assert data["tls"]["enabled"] is False
+    assert data["tls"]["scheme"] == "http"

@@ -37,8 +37,29 @@ Environment variables (or `/etc/huy-libvirt-agent/config.yaml`):
 | `HUY_AGENT_COMPANY` | Inherited label (required) |
 | `HUY_DATA_DIR` | State directory (default `/var/lib/huy-libvirt-agent`) |
 | `LIBVIRT_URI` | libvirt connection (default `qemu:///system`) |
+| `HUY_TLS_ENABLED` | Serve API over HTTPS (default `false`) |
+| `HUY_TLS_AUTO_GENERATE` | Create CA + server cert under `{data_dir}/tls` if missing (default `true`) |
 
 See [config.example.yaml](config.example.yaml) and [.env.example](.env.example).
+
+## TLS (HTTPS)
+
+When `HUY_TLS_ENABLED=true`, the agent generates (or reuses) a private CA and server certificate on startup:
+
+- Files: `{data_dir}/tls/ca.pem`, `server.crt`, `server.key` (keys are mode `0600`)
+- Control plane: trust `ca.pem` once, then call `https://<host>:8765/...`
+- Bootstrap CA via API: `GET /api/v1/agent/tls/ca` (bearer auth required)
+- Fingerprint: `GET /api/v1/agent` → `tls.ca_fingerprint_sha256`
+
+```bash
+# Fetch CA (after first HTTPS start with a token)
+curl -k -H "Authorization: Bearer $TOKEN" https://dommel.kaposi.net:8765/api/v1/agent/tls/ca -o huy-agent-ca.pem
+
+# Subsequent requests
+curl --cacert huy-agent-ca.pem -H "Authorization: Bearer $TOKEN" https://dommel.kaposi.net:8765/api/v1/agent
+```
+
+Set `HUY_TLS_REGENERATE=true` once to rotate CA and server certificate.
 
 ## Run
 
@@ -48,7 +69,7 @@ huy-libvirt-agent
 # or: uvicorn huy_libvirt_agent.main:app --host 127.0.0.1 --port 8765
 ```
 
-API documentation: http://127.0.0.1:8765/docs
+API documentation: `http://127.0.0.1:8765/docs` (or `https://...` when TLS is enabled)
 
 ## systemd
 

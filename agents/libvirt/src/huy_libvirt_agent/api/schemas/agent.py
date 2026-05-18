@@ -11,9 +11,17 @@ class AgentLabels(BaseModel):
     company: str
 
 
+class AgentTlsInfo(BaseModel):
+    enabled: bool
+    scheme: str = Field(description="http or https")
+    ca_fingerprint_sha256: str | None = None
+    cert_dir: str | None = None
+
+
 class AgentSettingsResponse(BaseModel):
     hostname: str
     version: str
     settings: AgentLabels
     libvirt_uri: str
     data_dir: str
+    tls: AgentTlsInfo

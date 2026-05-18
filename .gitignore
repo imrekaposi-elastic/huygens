@@ -60,5 +60,9 @@ Desktop.ini
 # --- Libvirt agent: local dev data dir (when HUY_DATA_DIR=./data) ---
 agents/libvirt/data/
 
+# --- Agent TLS private keys (generated on host) ---
+**/tls/ca-key.pem
+**/tls/server.key
+
 # --- Generated OpenAPI (regenerate with: make -C agents/libvirt openapi) ---
 agents/libvirt/openapi/openapi.json

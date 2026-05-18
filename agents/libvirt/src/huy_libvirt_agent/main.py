@@ -17,6 +17,7 @@ from huy_libvirt_agent.api.routes import agent, dnat, health, networks, vms
 from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.config import get_settings
 from huy_libvirt_agent.logging_setup import configure_logging
+from huy_libvirt_agent.services.tls_manager import ensure_tls_material
 from huy_libvirt_agent.telemetry import setup_telemetry
 
 logger = structlog.get_logger(__name__)
@@ -110,6 +111,13 @@ def create_app(state: AppState | None = None) -> FastAPI:
                 for method in methods.values():
                     if isinstance(method, dict):
                         method.setdefault("security", [{"BearerAuth": []}])
+        if settings.tls_enabled and not settings.bind_uds:
+            schema["servers"] = [
+                {
+                    "url": f"https://{settings.bind_host}:{settings.bind_port}",
+                    "description": "TLS (auto-generated or configured certificate)",
+                }
+            ]
         app.openapi_schema = schema
         return app.openapi_schema
 
@@ -117,19 +125,56 @@ def create_app(state: AppState | None = None) -> FastAPI:
     return app
 
 
+def _uvicorn_ssl_kwargs(settings) -> dict:
+    if not settings.tls_enabled or settings.bind_uds:
+        if settings.tls_enabled and settings.bind_uds:
+            logger.warning("tls_ignored_for_unix_socket", uds=settings.bind_uds)
+        return {}
+    if settings.tls_cert_file and settings.tls_key_file:
+        cert_file = str(settings.tls_cert_file)
+        key_file = str(settings.tls_key_file)
+    else:
+        import socket
+
+        material = ensure_tls_material(
+            settings.effective_tls_cert_dir,
+            socket.gethostname(),
+            auto_generate=settings.tls_auto_generate,
+            regenerate=settings.tls_regenerate,
+        )
+        cert_file = str(material.server_cert)
+        key_file = str(material.server_key)
+        from huy_libvirt_agent.services.tls_manager import ca_fingerprint
+
+        logger.info(
+            "tls_enabled",
+            cert_file=cert_file,
+            ca_fingerprint=ca_fingerprint(material.ca_cert),
+        )
+    return {"ssl_certfile": cert_file, "ssl_keyfile": key_file}
+
+
 def run() -> None:
     import uvicorn
 
     settings = get_settings()
+    settings.ensure_data_dirs()
     app = create_app()
+    ssl_kwargs = _uvicorn_ssl_kwargs(settings)
     if settings.bind_uds:
-        uvicorn.run(app, uds=settings.bind_uds, log_level=settings.log_level.lower())
+        uvicorn.run(
+            app,
+            uds=settings.bind_uds,
+            log_level=settings.log_level.lower(),
+            **ssl_kwargs,
+        )
     else:
         uvicorn.run(
             app,
             host=settings.bind_host,
             port=settings.bind_port,
             log_level=settings.log_level.lower(),
+            **ssl_kwargs,
         )
 
 
