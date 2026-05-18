@@ -9,7 +9,7 @@ Monorepo path: `agents/libvirt/` (from repository root: `make -C agents/libvirt 
 - **VMs**: create (cloud-init + qcow2 overlay), list, update, delete; status `off` / `on` / `degraded` (TCP :22 probe)
 - **Networks**: CRUD, WireGuard and flat L2 breakout, scoped nftables SNAT/DNAT
 - **Agent settings**: `country`, `city`, `company` inherited on all created resources
-- **Observability**: structlog JSON, OpenTelemetry, append-only audit log, CloudEvents file publisher
+- **Observability**: structlog JSON, OpenTelemetry, Prometheus `/metrics` (host CPU/memory/disk + per-VM libvirt stats), append-only audit log, CloudEvents file publisher
 - **API docs**: Swagger UI at `/docs`, ReDoc at `/redoc`, exportable OpenAPI schema
 
 ## Host prerequisites
@@ -114,9 +114,23 @@ make lint
 | PUT | `/api/v1/networks/{name}/breakout/flat` | Flat L2 breakout |
 | GET/POST/DELETE | `/api/v1/networks/{vnet}/dnat` | DNAT rules |
 
+| GET | `/metrics` | Prometheus text (no auth); host + VM resource metrics |
+
 All `/api/v1/*` routes require `Authorization: Bearer <token>`.
 
 Optional headers: `X-Request-Id`, `X-Actor`.
+
+### Prometheus metrics (excerpt)
+
+| Metric | Description |
+|--------|-------------|
+| `huy_host_cpu_usage_percent` | Host CPU utilization |
+| `huy_host_memory_*_bytes` | Total / used / available RAM |
+| `huy_host_disk_bytes{mount,kind}` | Disk total / used / free per mount |
+| `huy_host_disk_*_total` | Cumulative disk I/O bytes and operations |
+| `huy_vm_memory_used_bytes{vm}` | Per-VM memory (libvirt) |
+| `huy_vm_block_*_bytes_total{vm,device}` | Per-VM disk I/O |
+| `huy_vm_cpu_time_seconds_total{vm}` | Per-VM CPU time |
 
 ## License
 

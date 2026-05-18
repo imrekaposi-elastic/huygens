@@ -19,6 +19,7 @@ from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.config import get_settings
 from huy_libvirt_agent.openapi_servers import openapi_servers
 from huy_libvirt_agent.logging_setup import configure_logging
+from huy_libvirt_agent.services.prometheus_metrics import register_metrics_collector
 from huy_libvirt_agent.services.cloudinit_requirements import (
     assert_cloud_init_available,
     cloud_init_schema_available,
@@ -84,6 +85,8 @@ def create_app(state: AppState | None = None) -> FastAPI:
     if state is None:
         state = AppState.from_settings(settings)
     app.state.app_state = state
+    if settings.metrics_enabled:
+        register_metrics_collector(state)
 
     configure_logging(settings.log_level, settings.log_format)
     setup_telemetry(settings)

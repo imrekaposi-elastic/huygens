@@ -84,6 +84,7 @@ Pulls agent dependencies including `jsonschema` (used with the system `cloud-ini
 | Sysctl | `net.ipv4.ip_forward=1` when SNAT/DNAT is used |
 | libvirt URI | `qemu:///system` |
 | Python | 3.11+ for the agent (installed via pip, not distro meta-package) |
+| Metrics | `psutil` (installed via pip with the agent) for host CPU/memory/disk on `/metrics` |
 
 ## Sysctl
 
