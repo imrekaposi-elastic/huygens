@@ -17,6 +17,15 @@ if [[ ! -f "$UNIT_SRC" ]]; then
   exit 1
 fi
 
+echo "==> Check host packages"
+if ! command -v cloud-init >/dev/null 2>&1; then
+  echo "Missing cloud-init (required). Install with:" >&2
+  echo "  dnf install -y cloud-init   # RHEL/Alma/Fedora" >&2
+  echo "  apt install -y cloud-init   # Debian/Ubuntu" >&2
+  echo "See $AGENT_DIR/requirements-host.txt" >&2
+  exit 1
+fi
+
 echo "==> Sync repo and Python package"
 git -C "$REPO_DIR" pull origin main
 python3 -m pip install -e "$AGENT_DIR[libvirt]"

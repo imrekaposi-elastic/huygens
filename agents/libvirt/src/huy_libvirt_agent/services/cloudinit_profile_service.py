@@ -14,6 +14,7 @@ from huy_libvirt_agent.api.schemas.image import (
 )
 from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.services.cloudinit import CloudInitBuilder
+from huy_libvirt_agent.services.cloudinit_validator import CloudInitPayload, CloudInitValidator
 from huy_libvirt_agent.services.libvirt_client import LibvirtError
 from huy_libvirt_agent.services.metadata import read_metadata, write_metadata
 
@@ -24,6 +25,23 @@ class CloudInitProfileService:
         self._profiles_dir = state.settings.data_dir / "cloud-init"
         self._profiles_dir.mkdir(parents=True, exist_ok=True)
         self._builder = CloudInitBuilder()
+        self._validator = CloudInitValidator(state.settings.cloud_init_validation)
+
+    def validate_payload(
+        self,
+        user_data: str,
+        meta_data: str = "instance-id: local\n",
+        network_config: str | None = None,
+        ssh_keys: list[str] | None = None,
+    ) -> None:
+        self._validator.validate(
+            CloudInitPayload(
+                user_data=user_data,
+                meta_data=meta_data,
+                network_config=network_config,
+                ssh_keys=ssh_keys or [],
+            )
+        )
 
     def _profile_dir(self, name: str) -> Path:
         return self._profiles_dir / name
@@ -46,6 +64,12 @@ class CloudInitProfileService:
     ) -> CloudInitProfileResponse:
         if self._profile_dir(body.name).exists():
             raise LibvirtError(f"Cloud-init profile {body.name} already exists", "PROFILE_EXISTS")
+        self.validate_payload(
+            body.user_data,
+            body.meta_data,
+            body.network_config,
+            body.ssh_keys,
+        )
         now = datetime.now(UTC).isoformat()
         labels = self._state.settings.agent_labels
         meta = {
@@ -73,6 +97,12 @@ class CloudInitProfileService:
         meta = read_metadata(self._meta_path(name))
         if not meta:
             raise LibvirtError(f"Cloud-init profile {name} not found", "NOT_FOUND")
+        self.validate_payload(
+            body.user_data if body.user_data is not None else meta["user_data"],
+            body.meta_data if body.meta_data is not None else meta["meta_data"],
+            body.network_config if body.network_config is not None else meta.get("network_config"),
+            body.ssh_keys if body.ssh_keys is not None else meta.get("ssh_keys", []),
+        )
         if body.user_data is not None:
             meta["user_data"] = body.user_data
         if body.meta_data is not None:

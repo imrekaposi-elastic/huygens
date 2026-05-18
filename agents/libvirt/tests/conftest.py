@@ -13,6 +13,8 @@ os.environ.setdefault("HUY_AGENT_TOKEN", "test-token")
 os.environ.setdefault("HUY_AGENT_COUNTRY", "NL")
 os.environ.setdefault("HUY_AGENT_CITY", "Amsterdam")
 os.environ.setdefault("HUY_AGENT_COMPANY", "Huygens Test")
+# Unit tests use structural validation; hypervisors should use schema + cloud-init package.
+os.environ.setdefault("HUY_CLOUD_INIT_VALIDATION", "basic")
 
 
 @pytest.fixture

@@ -73,6 +73,23 @@ class VMService:
         disk = self._images.create_overlay(base, inst / "disk.qcow2")
         iso_path = inst / "cidata.iso"
         if body.cloud_init_profile:
+            profile = self._cloudinit_profiles.get_profile(body.cloud_init_profile)
+            merged_keys = list(profile.ssh_keys) + list(body.ssh_keys)
+            self._cloudinit_profiles.validate_payload(
+                profile.user_data,
+                profile.meta_data,
+                profile.network_config,
+                merged_keys,
+            )
+        elif body.cloud_init:
+            ci = body.cloud_init
+            self._cloudinit_profiles.validate_payload(
+                ci.user_data,
+                ci.meta_data,
+                ci.network_config,
+                body.ssh_keys,
+            )
+        if body.cloud_init_profile:
             iso = self._cloudinit_profiles.build_iso(
                 body.cloud_init_profile,
                 iso_path,

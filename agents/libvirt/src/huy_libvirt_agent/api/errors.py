@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from huy_libvirt_agent.services.cloudinit_validator import CloudInitValidationError
 from huy_libvirt_agent.services.libvirt_client import LibvirtError
 
 
@@ -32,3 +33,16 @@ def register_exception_handlers(app) -> None:
     @app.exception_handler(PermissionError)
     async def permission_handler(_request: Request, exc: PermissionError) -> JSONResponse:
         return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+    @app.exception_handler(CloudInitValidationError)
+    async def cloud_init_validation_handler(
+        _request: Request, exc: CloudInitValidationError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": str(exc),
+                "code": "CLOUD_INIT_INVALID",
+                "issues": [i.as_dict() for i in exc.issues],
+            },
+        )

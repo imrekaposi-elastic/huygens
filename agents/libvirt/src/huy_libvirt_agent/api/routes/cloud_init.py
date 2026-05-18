@@ -6,6 +6,10 @@ from fastapi import APIRouter, Depends, Request, status
 
 from huy_libvirt_agent.api.deps import StateDep, verify_token
 from huy_libvirt_agent.api.schemas.common import ErrorResponse
+from huy_libvirt_agent.api.schemas.cloudinit_validation import (
+    CloudInitValidateRequest,
+    CloudInitValidateResponse,
+)
 from huy_libvirt_agent.api.schemas.image import (
     CloudInitProfileCreateRequest,
     CloudInitProfileResponse,
@@ -22,6 +26,47 @@ router = APIRouter(
 
 def _svc(state: StateDep) -> CloudInitProfileService:
     return CloudInitProfileService(state)
+
+
+@router.post(
+    "/validate",
+    response_model=CloudInitValidateResponse,
+    summary="Validate cloud-init config without saving",
+    responses={
+        422: {
+            "description": "Validation failed",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Cloud-init configuration is invalid",
+                        "code": "CLOUD_INIT_INVALID",
+                        "issues": [
+                            {
+                                "field": "user_data",
+                                "path": "line 3",
+                                "message": "Invalid YAML: ...",
+                                "line": 3,
+                            }
+                        ],
+                    }
+                }
+            },
+        }
+    },
+)
+async def validate_cloud_init(
+    body: CloudInitValidateRequest, state: StateDep
+) -> CloudInitValidateResponse:
+    _svc(state).validate_payload(
+        body.user_data,
+        body.meta_data,
+        body.network_config,
+        body.ssh_keys,
+    )
+    return CloudInitValidateResponse(
+        valid=True,
+        mode=state.settings.cloud_init_validation,
+    )
 
 
 @router.get(

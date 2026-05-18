@@ -16,6 +16,8 @@ Monorepo path: `agents/libvirt/` (from repository root: `make -C agents/libvirt 
 
 See [docs/host-requirements.md](docs/host-requirements.md) for per-distribution package lists.
 
+The **`cloud-init`** OS package is required (schema validation and `cloud-init schema` CLI). Package list: [requirements-host.txt](requirements-host.txt).
+
 ## Install
 
 ```bash
@@ -32,6 +34,7 @@ Environment variables (or `/etc/huy-libvirt-agent/config.yaml`):
 | Variable | Description |
 |----------|-------------|
 | `HUY_AGENT_TOKEN` | API bearer token (required) |
+| `HUY_CLOUD_INIT_VALIDATION` | `off`, `basic`, or `schema` (default; requires `cloud-init` OS package) |
 | `HUY_AGENT_COUNTRY` | Inherited label (required) |
 | `HUY_AGENT_CITY` | Inherited label (required) |
 | `HUY_AGENT_COMPANY` | Inherited label (required) |
@@ -100,6 +103,7 @@ make lint
 | GET/POST | `/api/v1/images` | List / register managed base images |
 | GET/PATCH/DELETE | `/api/v1/images/{name}` | Image operations |
 | GET/POST | `/api/v1/cloud-init` | List / create cloud-init profiles |
+| POST | `/api/v1/cloud-init/validate` | Validate cloud-init without saving (422 + issues on failure) |
 | GET/PATCH/DELETE | `/api/v1/cloud-init/{name}` | Cloud-init profile operations |
 | GET/POST | `/api/v1/vms` | List / create VMs |
 | GET/PATCH/DELETE | `/api/v1/vms/{name}` | VM operations |

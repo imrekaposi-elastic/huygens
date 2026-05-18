@@ -1,0 +1,16 @@
+# Hypervisor OS packages required by huy-libvirt-agent.
+# Install with your distro package manager (not pip).
+#
+# Debian/Ubuntu:
+#   libvirt-daemon-system libvirt-clients qemu-system-x86 qemu-utils
+#   cloud-init cloud-image-utils genisoimage wireguard wireguard-tools
+#   nftables iptables iproute2 bridge-utils dnsmasq
+#
+# RHEL/Rocky/Alma/Fedora:
+#   libvirt-daemon-kvm libvirt-client libvirt-devel qemu-kvm qemu-img
+#   cloud-init wireguard-tools nftables iptables-nft iproute dnsmasq xorriso
+#
+# cloud-init — required for cloud-init schema validation (HUY_CLOUD_INIT_VALIDATION=schema)
+# cloud-image-utils / xorriso+mkisofs — ISO generation (cloud-localds / genisoimage)
+
+cloud-init

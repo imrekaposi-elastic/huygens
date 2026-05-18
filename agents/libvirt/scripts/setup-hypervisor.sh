@@ -11,6 +11,7 @@ echo "==> Installing packages"
 dnf install -y \
   libvirt-daemon-kvm libvirt-client libvirt-devel \
   qemu-kvm qemu-img \
+  cloud-init \
   wireguard-tools nftables iptables-nft \
   iproute dnsmasq \
   python3-pip python3-devel gcc pkgconf-pkg-config git \
@@ -45,6 +46,7 @@ HUY_AGENT_COMPANY=Huygens
 HUY_DATA_DIR=/var/lib/huy-libvirt-agent
 HUY_BIND_HOST=0.0.0.0
 HUY_BIND_PORT=8765
+HUY_CLOUD_INIT_VALIDATION=schema
 ENV
   echo "Edit /etc/huy-libvirt-agent/env (set HUY_AGENT_TOKEN)."
 fi

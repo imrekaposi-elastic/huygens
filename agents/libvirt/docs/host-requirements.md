@@ -9,6 +9,7 @@ The agent requires the following OS packages on the KVM hypervisor. Install for 
 | KVM / libvirt | virsh, libvirt API | libvirt-daemon-system, libvirt-clients, qemu-system-x86, qemu-utils | libvirt-daemon-kvm, libvirt-client, qemu-kvm, qemu-img | same as RHEL | libvirt-daemon-qemu, libvirt-client, qemu-kvm, qemu-tools |
 | DHCP (vnet) | dnsmasq | dnsmasq (libvirt dep) | dnsmasq | dnsmasq | dnsmasq |
 | Disk images | qemu-img | qemu-utils | qemu-img | qemu-img | qemu-tools |
+| Cloud-init validation | cloud-init schema | **cloud-init** | **cloud-init** | **cloud-init** | **cloud-init** |
 | Cloud-init ISO | cloud-localds | cloud-image-utils | genisoimage (fallback) | cloud-image-utils | cloud-image-utils or genisoimage |
 | Cloud-init fallback | genisoimage | genisoimage | genisoimage | genisoimage | genisoimage |
 | Cloud-init (Alma 10+) | — | `xorriso` → `mkisofs` | — | — | — |
@@ -23,7 +24,7 @@ The agent requires the following OS packages on the KVM hypervisor. Install for 
 ```bash
 sudo apt update && sudo apt install -y \
   libvirt-daemon-system libvirt-clients qemu-system-x86 qemu-utils \
-  cloud-image-utils genisoimage wireguard wireguard-tools \
+  cloud-init cloud-image-utils genisoimage wireguard wireguard-tools \
   nftables iptables iproute2 bridge-utils dnsmasq
 sudo usermod -aG libvirt "$USER"
 ```
@@ -33,7 +34,7 @@ sudo usermod -aG libvirt "$USER"
 ```bash
 sudo dnf install -y \
   libvirt-daemon-kvm libvirt-client libvirt-devel qemu-kvm qemu-img \
-  wireguard-tools nftables iptables-nft \
+  cloud-init wireguard-tools nftables iptables-nft \
   iproute dnsmasq python3-pip python3-devel gcc pkgconf-pkg-config git \
   xorriso
 # Alma 10+: genisoimage package absent; agent accepts mkisofs from xorriso
@@ -47,7 +48,7 @@ Or run [`scripts/setup-hypervisor.sh`](../scripts/setup-hypervisor.sh) on the ho
 
 ```bash
 sudo dnf install -y \
-  libvirt-daemon-kvm libvirt-client qemu-kvm qemu-img cloud-image-utils \
+  libvirt-daemon-kvm libvirt-client qemu-kvm qemu-img cloud-init cloud-image-utils \
   genisoimage wireguard-tools nftables iptables-nft iproute bridge-utils dnsmasq
 ```
 
@@ -55,20 +56,29 @@ sudo dnf install -y \
 
 ```bash
 sudo zypper install -y \
-  libvirt-daemon-qemu libvirt-client qemu-kvm qemu-tools \
+  libvirt-daemon-qemu libvirt-client qemu-kvm qemu-tools cloud-init \
   genisoimage wireguard-tools nftables iptables iproute2 bridge-utils dnsmasq
 ```
 
 ### Arch Linux
 
 ```bash
-sudo pacman -S libvirt qemu-full iptables-nft nftables wireguard-tools cdrtools iproute2 bridge-utils dnsmasq
+sudo pacman -S libvirt qemu-full cloud-init iptables-nft nftables wireguard-tools cdrtools iproute2 bridge-utils dnsmasq
 ```
+
+## Python (pip)
+
+```bash
+pip install -e "agents/libvirt[libvirt]"
+```
+
+Pulls agent dependencies including `jsonschema` (used with the system `cloud-init` package for schema validation).
 
 ## Non-package requirements
 
 | Requirement | Detail |
 |-------------|--------|
+| cloud-init | **Required** OS package for profile validation (`requirements-host.txt`) |
 | CPU | Intel VT-x or AMD-V; KVM module loaded |
 | Permissions | `libvirt` group; `CAP_NET_ADMIN` for networking (agent typically runs as root) |
 | Sysctl | `net.ipv4.ip_forward=1` when SNAT/DNAT is used |

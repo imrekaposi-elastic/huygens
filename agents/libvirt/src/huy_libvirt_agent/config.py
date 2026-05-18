@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     status_poll_seconds: int = 10
     ssh_probe_timeout_seconds: float = 2.0
     image_download_timeout_seconds: int = 600
+    cloud_init_validation: Literal["off", "basic", "schema"] = Field(
+        default="schema",
+        description="Validate cloud-init on create: off, basic (YAML/structure), schema (cloud-init)",
+    )
     iptables_backend: Literal["nft", "iptables"] = "nft"
     wg_config_dir: Path = Field(default=Path("/etc/wireguard"), validation_alias="HUY_WG_CONFIG_DIR")
     default_snat_interface: str | None = None

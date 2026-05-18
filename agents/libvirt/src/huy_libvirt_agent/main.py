@@ -17,6 +17,10 @@ from huy_libvirt_agent.api.routes import agent, cloud_init, dnat, health, images
 from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.config import get_settings
 from huy_libvirt_agent.logging_setup import configure_logging
+from huy_libvirt_agent.services.cloudinit_requirements import (
+    assert_cloud_init_available,
+    cloud_init_schema_available,
+)
 from huy_libvirt_agent.services.tls_manager import ensure_tls_material
 from huy_libvirt_agent.telemetry import setup_telemetry
 
@@ -39,6 +43,12 @@ def create_app(state: AppState | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app_state = app.state.app_state
+        if settings.cloud_init_validation == "schema":
+            if cloud_init_schema_available():
+                logger.info("cloud_init_schema_validation_enabled")
+            else:
+                logger.error("cloud_init_not_installed")
+                assert_cloud_init_available()
         try:
             app_state.libvirt.connect()
         except Exception as e:
