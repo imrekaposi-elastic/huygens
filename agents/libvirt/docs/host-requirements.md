@@ -11,6 +11,7 @@ The agent requires the following OS packages on the KVM hypervisor. Install for 
 | Disk images | qemu-img | qemu-utils | qemu-img | qemu-img | qemu-tools |
 | Cloud-init ISO | cloud-localds | cloud-image-utils | genisoimage (fallback) | cloud-image-utils | cloud-image-utils or genisoimage |
 | Cloud-init fallback | genisoimage | genisoimage | genisoimage | genisoimage | genisoimage |
+| Cloud-init (Alma 10+) | — | `xorriso` → `mkisofs` | — | — | — |
 | WireGuard breakout | wg, wg-quick | wireguard, wireguard-tools | wireguard-tools | wireguard-tools | wireguard-tools |
 | Flat L2 breakout | ip, bridge | iproute2, bridge-utils | iproute, bridge-utils | iproute, bridge-utils | iproute2, bridge-utils |
 | Firewall / NAT | nft, iptables | nftables, iptables | nftables, iptables-nft | nftables, iptables-nft | nftables, iptables |
@@ -31,11 +32,16 @@ sudo usermod -aG libvirt "$USER"
 
 ```bash
 sudo dnf install -y \
-  libvirt-daemon-kvm libvirt-client qemu-kvm qemu-img \
-  genisoimage wireguard-tools nftables iptables-nft \
-  iproute bridge-utils dnsmasq
+  libvirt-daemon-kvm libvirt-client libvirt-devel qemu-kvm qemu-img \
+  wireguard-tools nftables iptables-nft \
+  iproute dnsmasq python3-pip python3-devel gcc pkgconf-pkg-config git \
+  xorriso
+# Alma 10+: genisoimage package absent; agent accepts mkisofs from xorriso
+sudo ln -sf "$(command -v mkisofs)" /usr/local/bin/genisoimage 2>/dev/null || true
 sudo systemctl enable --now libvirtd
 ```
+
+Or run [`scripts/setup-hypervisor.sh`](../scripts/setup-hypervisor.sh) on the host.
 
 ### Fedora
 

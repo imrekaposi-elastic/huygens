@@ -12,6 +12,13 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 
+def _iso_tool() -> str | None:
+    for name in ("cloud-localds", "genisoimage", "mkisofs"):
+        if shutil.which(name):
+            return name
+    return None
+
+
 class CloudInitBuilder:
     def build(
         self,
@@ -37,16 +44,17 @@ class CloudInitBuilder:
             if network_config:
                 (tmp_path / "network-config").write_text(network_config)
 
-            if shutil.which("cloud-localds"):
+            tool = _iso_tool()
+            if tool == "cloud-localds":
                 cmd = ["cloud-localds", str(output_iso), str(tmp_path / "user-data")]
                 if network_config:
                     cmd.extend(["--network-config", str(tmp_path / "network-config")])
                 cmd.append(str(tmp_path / "meta-data"))
                 subprocess.run(cmd, check=True, capture_output=True)
-            elif shutil.which("genisoimage"):
+            elif tool in ("genisoimage", "mkisofs"):
                 subprocess.run(
                     [
-                        "genisoimage",
+                        tool,
                         "-output",
                         str(output_iso),
                         "-volid",
@@ -61,7 +69,7 @@ class CloudInitBuilder:
                     capture_output=True,
                 )
             else:
-                raise RuntimeError("Neither cloud-localds nor genisoimage found on PATH")
+                raise RuntimeError("No cloud-localds, genisoimage, or mkisofs found on PATH")
 
         logger.info("cloud_init_iso_created", path=str(output_iso))
         return output_iso
