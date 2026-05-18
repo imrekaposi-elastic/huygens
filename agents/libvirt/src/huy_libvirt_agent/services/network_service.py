@@ -69,14 +69,11 @@ class NetworkService:
         bridge = body.bridge or f"br-{body.name}"
         xml = render_network_xml(body.name, bridge, body.ipv4_cidr, body.dhcp)
         labels = self._state.settings.agent_labels
-        try:
-            self._state.libvirt.define_network_xml(xml)
-            net = self._state.libvirt.network_lookup(body.name)
-            if not net.isActive():
-                net.create()
-            net.setAutostart(1)
-        except LibvirtError:
-            pass
+        self._state.libvirt.define_network_xml(xml)
+        net = self._state.libvirt.network_lookup(body.name)
+        if not net.isActive():
+            net.create()
+        net.setAutostart(1)
         write_metadata(
             self._vnet_dir(body.name) / "metadata.json",
             {

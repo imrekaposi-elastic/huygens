@@ -9,6 +9,12 @@ from typing import Any
 
 import structlog
 
+from huy_libvirt_agent.services.libvirt_errors import (
+    LibvirtError,  # re-exported for existing imports
+    libvirt_wrapped,
+    translate_libvirt_exception,
+)
+
 logger = structlog.get_logger(__name__)
 
 try:
@@ -20,12 +26,6 @@ except ImportError:
     LIBVIRT_AVAILABLE = False
 
 
-class LibvirtError(Exception):
-    def __init__(self, message: str, code: str = "LIBVIRT_ERROR") -> None:
-        self.code = code
-        super().__init__(message)
-
-
 class LibvirtClient:
     def __init__(self, uri: str = "qemu:///system") -> None:
         self.uri = uri
@@ -35,10 +35,14 @@ class LibvirtClient:
         if not LIBVIRT_AVAILABLE:
             logger.warning("libvirt_python_not_installed", uri=self.uri)
             return
-        self._conn = libvirt.open(self.uri)
+        try:
+            self._conn = libvirt.open(self.uri)
+        except Exception as exc:
+            raise translate_libvirt_exception(exc) from exc
         if self._conn is None:
             raise LibvirtError(f"Failed to connect to {self.uri}", "CONNECTION_FAILED")
 
+    @libvirt_wrapped
     def close(self) -> None:
         if self._conn is not None:
             self._conn.close()
@@ -53,6 +57,7 @@ class LibvirtClient:
             raise LibvirtError("Not connected to libvirt", "NOT_CONNECTED")
         return self._conn
 
+    @libvirt_wrapped
     def list_networks(self) -> list[dict]:
         if not self.connected:
             return []
@@ -73,34 +78,41 @@ class LibvirtClient:
             )
         return result
 
+    @libvirt_wrapped
     def define_network_xml(self, xml: str) -> str:
         conn = self._require()
         net = conn.networkDefineXML(xml)
         return net.name()
 
+    @libvirt_wrapped
     def network_lookup(self, name: str) -> Any:
         return self._require().networkLookupByName(name)
 
+    @libvirt_wrapped
     def destroy_network(self, name: str) -> None:
         net = self.network_lookup(name)
         if net.isActive():
             net.destroy()
         net.undefine()
 
+    @libvirt_wrapped
     def list_domains(self) -> list[str]:
         if not self.connected:
             return []
         return [d.name() for d in self._require().listAllDomains(0)]
 
+    @libvirt_wrapped
     def define_domain_xml(self, xml: str) -> str:
         dom = self._require().defineXML(xml)
         if dom is None:
             raise LibvirtError("defineXML failed", "DEFINE_FAILED")
         return dom.name()
 
+    @libvirt_wrapped
     def lookup_domain(self, name: str) -> Any:
         return self._require().lookupByName(name)
 
+    @libvirt_wrapped
     def domain_state(self, name: str) -> tuple[int, str]:
         if not self.connected:
             return (5, "SHUTOFF")
@@ -118,16 +130,19 @@ class LibvirtClient:
         }
         return state, states.get(state, "UNKNOWN")
 
+    @libvirt_wrapped
     def create_domain(self, name: str) -> None:
         dom = self.lookup_domain(name)
         if not dom.isActive():
             dom.create()
 
+    @libvirt_wrapped
     def destroy_domain(self, name: str) -> None:
         dom = self.lookup_domain(name)
         if dom.isActive():
             dom.destroy()
 
+    @libvirt_wrapped
     def undefine_domain(self, name: str) -> None:
         if not self.connected:
             return
@@ -137,9 +152,11 @@ class LibvirtClient:
         flags = getattr(libvirt, "VIR_DOMAIN_UNDEFINE_NVRAM", 0) if LIBVIRT_AVAILABLE else 0
         dom.undefineFlags(flags)
 
+    @libvirt_wrapped
     def domain_xml(self, name: str) -> str:
         return self.lookup_domain(name).XMLDesc(0)
 
+    @libvirt_wrapped
     def set_domain_autostart(self, name: str, enabled: bool) -> None:
         dom = self.lookup_domain(name)
         if enabled:
@@ -147,6 +164,7 @@ class LibvirtClient:
         else:
             dom.setAutostart(0)
 
+    @libvirt_wrapped
     def domain_interface_addresses(self, name: str) -> list[str]:
         if not self.connected:
             return []
