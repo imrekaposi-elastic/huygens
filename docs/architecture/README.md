@@ -25,6 +25,7 @@ Architecture decisions, diagrams, and contracts for the Huygens platform.
 | [0008](adrs/0008-opentelemetry-and-edot.md) | OpenTelemetry and EDOT-friendly export |
 | [0009](adrs/0009-air-gapped-install.md) | Air-gapped installation |
 | [0010](adrs/0010-know-why-and-asset-criticality.md) | Know why: compliance and asset criticality |
+| [0011](adrs/0011-keycloak-group-role-mapping.md) | Keycloak SSO and IdP group → role mapping |
 
 ## Phase map
 

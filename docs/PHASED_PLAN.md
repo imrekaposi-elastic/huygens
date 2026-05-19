@@ -358,9 +358,13 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - Publish inventory snapshots to Kafka (optional in 1.0, required before Phase 5)
 - **Deliverable:** 2+ agents registered per org; dashboard API shows inventory; mutations still via agent Swagger — **done** (`services/registry`, `services/inventory`, `shared/huy_auth`)
 
-### Phase 2 — External authentication (deferred)
-- LDAP, SAML, OIDC adapters behind same RBAC
-- **Deliverable:** Enterprise login; local auth remains for break-glass
+### Phase 2 — External authentication (Keycloak + group mapping)
+- **Keycloak** for LDAP/AD, SAML, and OIDC federation ([ADR 0011](architecture/adrs/0011-keycloak-group-role-mapping.md)); Huygens does not embed SAML/LDAP parsers
+- **OIDC login** (authorization code + PKCE) → IAM issues **same Huygens JWT** as Phase 1a; registry/inventory unchanged
+- **Groups** from token (`groups` claim via Keycloak mapper); **Huygens admin** CRUD **IdP group → role** mappings (org `admin` + `platform_admin`)
+- Default: **union** of mapped roles + manual PG assignments; local login + API keys for break-glass and automation
+- Keycloak in Compose dev profile; `docs/install/keycloak.md`; mapping APIs audited to Kafka when configured
+- **Deliverable:** SSO login; admin-configurable group→role mapping UI/API; local auth remains for break-glass
 
 ### Phase 3 — Project service and agent proxy
 - Project CRUD; proxy operator CRUD to agents
@@ -468,7 +472,7 @@ flowchart LR
 
 | Service | Stack | Notes |
 |---------|-------|--------|
-| `iam` | Python | **Local auth first**; issues JWT; RBAC |
+| `iam` | Python | Local auth (1a); **Keycloak OIDC + group→role mapping** (2); issues JWT; RBAC |
 | `registry` | Python | Agents, token vault, enrollment |
 | `inventory` | Python | Poller + Kafka producer; uses agent **read path** |
 | `audit-ingest` | Python/Logstash | Writes ECS to Elasticsearch |
@@ -494,7 +498,7 @@ flowchart LR
 
 ## Deferred / out of scope for near phases
 
-- LDAP, SAML, OIDC (Phase 2)
+- Keycloak SSO + group→role mapping — see [ADR 0011](architecture/adrs/0011-keycloak-group-role-mapping.md) (Phase 2)
 - Drag-and-drop network graph (Phase 6)
 - SSH gateway (Phase 9)
 - Multi-region control-plane HA (Phase 10)
