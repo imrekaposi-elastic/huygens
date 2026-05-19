@@ -31,6 +31,15 @@ def require_project_manage(user: AuthContext, project: Project) -> None:
     raise HTTPException(status_code=403, detail="Project manage access denied")
 
 
+def require_org_ipam_manage(user: AuthContext, organization_id: str) -> None:
+    """Create IP pools and run wizard (org admin or platform_admin)."""
+    if user.is_platform_admin():
+        return
+    if "admin" in user.org_roles(organization_id):
+        return
+    raise HTTPException(status_code=403, detail="Org admin required for IPAM pool management")
+
+
 def require_project_create(user: AuthContext, organization_id: str) -> None:
     if user.is_platform_admin():
         return

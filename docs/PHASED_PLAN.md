@@ -380,9 +380,12 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - **Diagrams:** `01-system-context` (console → IAM/projects/inventory; ES for audit); `06-phase-roadmap` Phase 3 yellow
 - **Deliverable:** Single control-plane API for operators (no agent Swagger for day-to-day CRUD) — **done** (`services/projects`, registry internal connect, `shared/huy_auth` project permissions)
 
-### Phase 4 — IPAM and subnet wizard
-- RFC1918 pool, wizard, allocation to vnets
-- **Deliverable:** No ad-hoc CIDRs on create
+### Phase 4 — IPAM and subnet wizard ✅
+- **RFC1918 pools** per organization (`POST/GET /api/v1/organizations/{org_id}/ipam/pools`); optional **exceptions** (reserved CIDRs)
+- **Subnet wizard:** `POST .../ipam/wizard/plan` (network count + hosts per network) → suggested CIDRs; `POST .../projects/{id}/wizard/apply` reserves allocations
+- **Network create enforcement** (`IPAM_ENFORCE=true`, default): proxied `POST .../networks` requires `ipam: { pool_id, hosts }` or `allocation_id`; raw `ipv4_cidr` rejected unless `ipam_bypass` + `platform_admin`
+- Allocations tracked in PostgreSQL; bound to vnet name on successful agent create; released on proxied delete
+- **Deliverable:** No ad-hoc CIDRs on create for operators — **done** (in `services/projects` v0.2)
 
 ### Phase 5 — Web console + Kafka live updates
 - SPA: org-scoped views; **console → IAM** (auth), **→ projects** (mutations), **→ inventory** (read); no direct agent URLs in browser
@@ -486,7 +489,7 @@ flowchart LR
 | `registry` | Python | Agents, token vault, enrollment |
 | `inventory` | Python | Poller + Kafka producer; uses agent **read path** |
 | `audit-ingest` | Python/Logstash | Writes ECS to Elasticsearch |
-| `projects` | Python | **Phase 3 ✅** Project CRUD, desired state, libvirt agent proxy (`:8084`); quotas in Phase 4 |
+| `projects` | Python | **Phases 3–4 ✅** Project CRUD, IPAM, agent proxy (`:8084`); quotas TBD |
 | `compliance` | Python | Org catalog, asset criticality, traits, checks; PG + ES views |
 | `breakout-controller` | Go | Central WG |
 | `api-gateway` | Go/Kong | Auth, routing |

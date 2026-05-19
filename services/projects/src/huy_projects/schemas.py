@@ -50,3 +50,64 @@ class AgentSummary(BaseModel):
     base_url: str
     organization_id: str
     connection_status: str
+
+
+class IpPoolCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    cidr: str = Field(examples=["10.100.0.0/16"])
+    description: str | None = None
+    exceptions: list[str] = Field(default_factory=list, description="Reserved CIDRs skipped by allocator")
+
+
+class IpPoolOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    organization_id: str
+    name: str
+    cidr: str
+    description: str | None
+    exceptions: list[str]
+    created_at: datetime
+
+
+AllocationStatus = Literal["reserved", "allocated", "released"]
+
+
+class IpAllocationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    pool_id: str
+    project_id: str
+    cidr: str
+    network_name: str | None
+    status: AllocationStatus
+    created_at: datetime
+
+
+class WizardPlanRequest(BaseModel):
+    pool_id: str
+    network_count: int = Field(ge=1, le=64)
+    hosts_per_network: int = Field(ge=1, le=4096)
+    exceptions: list[str] = Field(default_factory=list)
+
+
+class WizardSubnetPlan(BaseModel):
+    suggested_name: str
+    cidr: str
+
+
+class WizardPlanResponse(BaseModel):
+    pool_id: str
+    subnets: list[WizardSubnetPlan]
+
+
+class WizardApplySubnet(BaseModel):
+    cidr: str
+    name: str | None = None
+
+
+class WizardApplyRequest(BaseModel):
+    pool_id: str
+    subnets: list[WizardApplySubnet] = Field(min_length=1)

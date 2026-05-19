@@ -67,3 +67,40 @@ class ProjectResource(Base):
         onupdate=lambda: datetime.now(UTC),
         nullable=False,
     )
+
+
+class IpPool(Base):
+    """RFC1918 address pool per organization (Phase 4)."""
+
+    __tablename__ = "ip_pools"
+    __table_args__ = (UniqueConstraint("organization_id", "name", name="uq_ip_pool_org_name"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    organization_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    cidr: Mapped[str] = mapped_column(String(64), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    exceptions: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class IpAllocation(Base):
+    """Subnet carved from a pool for a project vnet."""
+
+    __tablename__ = "ip_allocations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    pool_id: Mapped[str] = mapped_column(
+        ForeignKey("ip_pools.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    cidr: Mapped[str] = mapped_column(String(64), nullable=False)
+    network_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="reserved")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

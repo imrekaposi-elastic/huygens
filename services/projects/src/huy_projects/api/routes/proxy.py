@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Body, Query
+from fastapi import APIRouter, Body, HTTPException, Query
 
-from huy_projects.api.deps import AgentProxyDep, CurrentUserDep, ReadableProjectDep, SessionDep
-from huy_projects.services import authorization, desired_state
+from huy_projects.api.deps import AgentProxyDep, CurrentUserDep, ReadableProjectDep, SessionDep, SettingsDep
+from huy_projects.services import authorization, desired_state, ipam_service
 
 router = APIRouter(prefix="/api/v1/projects/{project_id}/agents/{agent_id}", tags=["agent-proxy"])
 
@@ -131,17 +131,38 @@ async def create_network(
     user: CurrentUserDep,
     proxy: AgentProxyDep,
     session: SessionDep,
+    settings: SettingsDep,
     body: dict[str, Any] = Body(...),
 ) -> dict[str, Any]:
     authorization.require_project_operate(user, project)
-    result = await proxy.create_network(agent_id, project.organization_id, body)
+    raw = dict(body)
+    ipam_bypass = raw.get("ipam_bypass") is True and user.is_platform_admin()
+    has_ipam = "ipam" in raw or "allocation_id" in raw
+    has_manual_cidr = "ipv4_cidr" in raw and not has_ipam
+
+    if settings.ipam_enforce and has_manual_cidr and not ipam_bypass:
+        raise HTTPException(
+            status_code=400,
+            detail="ipv4_cidr must come from IPAM; set ipam.pool_id+hosts or allocation_id",
+        )
+
+    agent_body, allocation = await ipam_service.resolve_network_cidr(session, project, raw)
+    if "ipv4_cidr" not in agent_body:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing ipv4_cidr; provide ipam, allocation_id, or ipam_bypass (platform_admin)",
+        )
+
+    result = await proxy.create_network(agent_id, project.organization_id, agent_body)
+    if allocation is not None:
+        await ipam_service.bind_allocation_to_network(session, allocation, result["name"])
     await desired_state.upsert_desired_state(
         session,
         project_id=project.id,
         agent_id=agent_id,
         resource_type="network",
         name=result["name"],
-        desired_state=body,
+        desired_state={**raw, "ipv4_cidr": agent_body["ipv4_cidr"]},
     )
     return result
 
@@ -184,6 +205,19 @@ async def delete_network(
     await proxy.delete_network(
         agent_id, project.organization_id, name, purge=purge
     )
+    from sqlalchemy import select
+
+    from huy_projects.models import IpAllocation
+
+    result = await session.execute(
+        select(IpAllocation).where(
+            IpAllocation.project_id == project.id,
+            IpAllocation.network_name == name,
+            IpAllocation.status == "allocated",
+        )
+    )
+    for row in result.scalars().all():
+        await ipam_service.release_allocation(session, row)
     await desired_state.clear_desired_state(
         session,
         project_id=project.id,

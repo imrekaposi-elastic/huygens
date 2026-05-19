@@ -12,6 +12,7 @@ os.environ.setdefault("JWT_SECRET", "test-jwt-secret-key-minimum-32-bytes!")
 os.environ.setdefault("JWT_ISSUER", "huy-iam")
 os.environ.setdefault("PROJECTS_SERVICE_TOKEN", "test-projects-service-token")
 os.environ.setdefault("REGISTRY_URL", "http://registry.test")
+os.environ.setdefault("IPAM_ENFORCE", "false")
 
 
 @pytest.fixture

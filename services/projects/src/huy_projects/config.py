@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     )
     host: str = Field(default="127.0.0.1", alias="HUY_PROJECTS_HOST")
     port: int = Field(default=8084, alias="HUY_PROJECTS_PORT")
+    ipam_enforce: bool = Field(
+        default=True,
+        alias="IPAM_ENFORCE",
+        description="Reject raw ipv4_cidr on network create unless platform_admin bypass",
+    )
 
 
 @lru_cache

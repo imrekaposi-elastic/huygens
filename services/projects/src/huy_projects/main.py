@@ -10,7 +10,7 @@ import uvicorn
 from fastapi import FastAPI
 
 from huy_projects import __version__
-from huy_projects.api.routes import health, projects, proxy
+from huy_projects.api.routes import health, ipam, projects, proxy
 from huy_projects.config import get_settings
 from huy_projects.db import dispose_db, get_engine, init_db
 from huy_projects.models import Base
@@ -36,11 +36,12 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Huygens Projects",
         version=__version__,
-        description="Project CRUD and libvirt agent proxy (Phase 3)",
+        description="Project CRUD, IPAM, and libvirt agent proxy (Phases 3–4)",
         lifespan=lifespan,
     )
     app.include_router(health.router)
     app.include_router(projects.router)
+    app.include_router(ipam.router)
     app.include_router(proxy.router)
     return app
 

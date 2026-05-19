@@ -466,7 +466,7 @@ def diagram_phases() -> Diagram:
         ("p1", "1\nRegistry", True),
         ("p2", "2\nSSO", True),
         ("p3", "3\nProjects", True),
-        ("p4", "4\nIPAM", False),
+        ("p4", "4\nIPAM", True),
         ("p5", "5\nConsole", False),
         ("p6", "6\nBreakout", False),
         ("p7", "7\nCompliance", False),
