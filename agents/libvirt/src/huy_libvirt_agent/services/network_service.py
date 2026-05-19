@@ -73,11 +73,7 @@ class NetworkService:
         stored = self._state.iptables.checksum_for_vnet(name)
         in_sync = stored is not None
         agent_managed = self._vnet_dir(name).exists()
-        if lv_info is not None:
-            readonly = bool(lv_info.get("readonly", False))
-            deletable = bool(lv_info.get("deletable", False))
-        else:
-            readonly, deletable = network_access_flags(name, agent_managed=agent_managed)
+        readonly, deletable = network_access_flags(name, agent_managed=agent_managed)
         return NetworkResponse(
             name=name,
             labels=labels,

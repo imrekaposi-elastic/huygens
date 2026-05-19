@@ -14,8 +14,6 @@ from huy_libvirt_agent.services.libvirt_errors import (
     libvirt_wrapped,
     translate_libvirt_exception,
 )
-from huy_libvirt_agent.services.system_networks import network_access_flags
-
 logger = structlog.get_logger(__name__)
 
 try:
@@ -68,17 +66,13 @@ class LibvirtClient:
             xml = net.XMLDesc(0)
             root = ET.fromstring(xml)
             bridge = root.find(".//bridge[@name]")
-            net_name = net.name()
-            readonly, deletable = network_access_flags(net_name, agent_managed=False)
             result.append(
                 {
-                    "name": net_name,
+                    "name": net.name(),
                     "uuid": net.UUIDString(),
                     "active": net.isActive(),
                     "bridge": bridge.get("name") if bridge is not None else None,
                     "xml": xml,
-                    "readonly": readonly,
-                    "deletable": deletable,
                 }
             )
         return result
