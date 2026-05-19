@@ -1,6 +1,6 @@
 # Huygens platform — phased subprojects (v3)
 
-Canonical delivery roadmap for the monorepo (phases 0–11). For requirements detail see
+Canonical delivery roadmap for the monorepo (phases 0–13). For requirements detail see
 [FRAMEWORK_PLAN.md](../FRAMEWORK_PLAN.md); for ADRs and diagrams see
 [architecture/](architecture/README.md).
 
@@ -21,7 +21,7 @@ The strategic proposal and the build plan share one delivery model: **Huygens is
 | **Compliant** | Phase 7 checks, owners, validity periods; drift flags from Phase 1 |
 | **Who changed** | ECS audit (ES); RBAC including `auditor`, `compliance_engineer` |
 | **How connected** | Phase 6 overlay/breakout + topology UI |
-| **Audited access** | Phase 9 SSH gateway + session logs to ES |
+| **Audited access** | Phase 9 VM SSH; Phase 12 K8s exec/k9s via API proxy; Phase 13 playbooks; sessions → ES |
 | **Elastic-correlatable telemetry** | ECS logs; inventory/drift/events Kafka → ES; metrics Phase 8 |
 | **Under Kubernetes, not instead of it** | **Phase 11** (crucial) |
 | **Open source** | Phase 0: LICENSE, CONTRIBUTING, public API/agent contracts, OSS governance |
@@ -321,7 +321,7 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 | `03-tenancy.excalidraw` | Org → provider → region → agent; project → vnet/VM |
 | `04-agent-dual-io.excalidraw` | Write queue vs read path |
 | `05-event-flow.excalidraw` | Kafka topics and consumers |
-| `06-phase-roadmap.excalidraw` | Delivery phases 0–11 |
+| `06-phase-roadmap.excalidraw` | Delivery phases 0–13 |
 | `07-air-gapped.excalidraw` | Offline / customer-network topology |
 
 ---
@@ -418,9 +418,12 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - VM and hypervisor charts in console + Elastic Observability when EDOT stack present
 - **Deliverable:** OTel on all services; EDOT integration guide; graphs in UI
 
-### Phase 9 — SSH gateway
-- `ssh_access` role; session recording; audit to ES
-- **Deliverable:** Recorded sessions searchable in ES
+### Phase 9 — Audited SSH access (VMs)
+- **`ssh_access` project role** — SSH to project VMs (libvirt guests); no direct hypervisor admin SSH for org users
+- **`ssh-gateway` service** (Go): jump/proxy, PTY **session recording**, metadata (user, org, project, target VM) → **Elasticsearch ECS** (same session index family as Phase 12)
+- Console or CLI obtains **short-lived credentials** via IAM; all access RBAC-scoped to project
+- **Not in scope:** Kubernetes pod exec, `kubectl`, or **k9s** (those use the K8s API — see Phase 12)
+- **Deliverable:** Recorded VM SSH sessions searchable in ES
 
 ### Phase 10 — Hardening, air-gapped, and scale
 - HA control plane, Kafka cluster ops, secrets rotation for agent tokens
@@ -438,7 +441,27 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - **Audit:** cluster-scoped infra changes feed Kafka → ES ECS (same pipeline as VM events)
 - Optional later: `agents/k8s` observer agent (read-only) — polyglot per bounded context
 - **Disconnected clusters:** ADR for reachability (air-gapped / one-way) — same install model as hypervisor agents
+- **Interactive pod shell / k9s:** not Phase 11 — see **Phase 12** (audited K8s API access)
 - **Deliverable:** Console shows cluster ↔ hypervisor ↔ region; answers strategic K8s bullet list at infra layer
+
+### Phase 12 — Audited Kubernetes access (exec, k9s)
+*Depends on Phase 11 (cluster registry) and Phase 9 (session recording + ES patterns).*
+
+- **Kubernetes API proxy** (or dedicated access service): project/cluster RBAC; short-lived **kubeconfig** or token from IAM
+- **Recorded sessions:** `exec` / `attach` / `port-forward` WebSocket streams → same ECS session documents as Phase 9 (searchable in Elasticsearch)
+- **k9s compatibility:** users point kubeconfig `server` at Huygens proxy; validate against k9s’ API subset (list, exec, logs, port-forward)
+- **Not** an SSH gateway — k9s speaks HTTPS to the Kubernetes API, not SSH to pods
+- Reuse `ssh_access` or add **`k8s_access`** role; map namespaces/workloads to **project** scope from Phase 11
+- **Deliverable:** Audited pod exec and k9s-via-proxy with sessions in ES
+
+### Phase 13 — Session playbooks and runbooks
+*Depends on Phase 9 and/or Phase 12 (stable session objects in ES).*
+
+- **Playbooks:** org-defined allow-listed command sequences or guided steps for VM SSH (9) and/or K8s exec (12)
+- Tie sessions to playbook runs; optional approval workflow (future)
+- **Search & replay metadata** in Elasticsearch / Kibana (full PTY replay storage policy in ADR)
+- Console or API to launch playbook-bound sessions
+- **Deliverable:** Playbook catalog, enforced commands on gateway/proxy, playbook-linked sessions searchable in ES
 
 ---
 
@@ -468,16 +491,32 @@ flowchart LR
   P1a --> P7[Phase7_Compliance]
   P1 --> P8[Phase8_Metrics]
   P5 --> P8
-  P3 --> P9[Phase9_SSH]
+  P3 --> P9[Phase9_SSH_VM]
+  P5 --> P9
   P5 --> P10[Phase10_HA]
-  P6 --> P11[Phase11_Kubernetes]
+  P6 --> P11[Phase11_K8s_inventory]
   P7 --> P11
   P8 --> P11
+  P9 --> P12[Phase12_K8s_access]
+  P11 --> P12
+  P5 --> P12
+  P9 --> P13[Phase13_Playbooks]
+  P12 --> P13
 ```
 
 **MVP critical path:** Phase 0 → 1a + 1b (parallel) → Phase 1 → **Phase 3** (operator API). Phases 2 (SSO) and 5 (console) can follow in parallel where useful.
 
-**Strategic completeness path:** Phases 0–10 deliver FRAMEWORK_PLAN + OSS platform; **Phase 11 closes gap with strategic K8s narrative.**
+**Strategic completeness path:** Phases 0–10 deliver FRAMEWORK_PLAN + OSS platform; **Phase 11** K8s inventory/placement; **Phases 12–13** audited K8s/k9s access and playbooks.
+
+### Access-plane phases (9, 12, 13)
+
+| Phase | Protocol | Tools |
+|-------|----------|--------|
+| **9** | SSH → project VMs | `ssh`, console terminal |
+| **12** | Kubernetes API (exec/attach/port-forward) | `kubectl exec`, **k9s** (via proxy kubeconfig) |
+| **13** | Policy on top of 9/12 | Playbooks, allow-lists, ES/Kibana search |
+
+Phase **9** can ship before **11** (VM-only). Phase **12** requires **11** (cluster/project binding). Phase **13** follows **9** and **12**.
 
 ---
 
@@ -494,6 +533,8 @@ flowchart LR
 | `breakout-controller` | Go | Central WG |
 | `api-gateway` | Go/Kong | Auth, routing |
 | `web` | React/TS | Phase 5 console → IAM, projects, inventory |
+| `ssh-gateway` | Go | Phase 9 — audited VM SSH, PTY recording → ES |
+| `k8s-access` | Go | Phase 12 — K8s API proxy, exec recording, k9s-compatible |
 | `agents/libvirt` | Python | Write queue + read path |
 
 ---
@@ -513,11 +554,11 @@ flowchart LR
 
 - Keycloak SSO + group→role mapping — **done** Phase 2; see [ADR 0011](architecture/adrs/0011-keycloak-group-role-mapping.md)
 - Drag-and-drop network graph (Phase 6)
-- SSH gateway (Phase 9)
+- Audited VM SSH (Phase 9); K8s exec / k9s via proxy (Phase 12); session playbooks (Phase 13)
 - Multi-region control-plane HA (Phase 10)
 - **Ticketing** — SNOW/Jira plugin only if needed later
 - **Asset criticality UI** — Phase 7 (role exists in FRAMEWORK_PLAN from day one in IAM stubs only)
-- **Kubernetes** — Phase 11 (not deferred indefinitely; **crucial** after core platform)
+- **Kubernetes inventory** — Phase 11 (not deferred indefinitely; **crucial** after core platform)
 
 ---
 
@@ -530,6 +571,7 @@ flowchart LR
 5. **Open source** is the delivery model for the whole monorepo (Phase 0), matching the strategic proposal.
 6. **`compliance_engineer`** maps org compliance items to per-resource **asset criticality** (Phase 7) — core to “know why.”
 7. **Phase 11 Kubernetes** is required for close alignment with the strategic document, not optional future work.
+12. **Phase 9** = VM SSH only; **Phase 12** = K8s API + k9s (not SSH); **Phase 13** = playbooks on recorded sessions.
 8. **License:** **Apache 2.0** (chosen); OSPO/Legal sign-off before public launch.
 9. **Air-gapped install** is a first-class deliverable (Phase 0 ADR + Phase 10 docs), not an afterthought.
 10. **Kibana compliance node** replaces “SIEM index templates” as the Elastic UX integration path (Phase 7/8 optional pack).
