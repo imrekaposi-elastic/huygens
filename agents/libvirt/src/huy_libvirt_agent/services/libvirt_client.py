@@ -14,6 +14,7 @@ from huy_libvirt_agent.services.libvirt_errors import (
     libvirt_wrapped,
     translate_libvirt_exception,
 )
+from huy_libvirt_agent.services.system_networks import network_access_flags
 
 logger = structlog.get_logger(__name__)
 
@@ -67,13 +68,17 @@ class LibvirtClient:
             xml = net.XMLDesc(0)
             root = ET.fromstring(xml)
             bridge = root.find(".//bridge[@name]")
+            net_name = net.name()
+            readonly, deletable = network_access_flags(net_name, agent_managed=False)
             result.append(
                 {
-                    "name": net.name(),
+                    "name": net_name,
                     "uuid": net.UUIDString(),
                     "active": net.isActive(),
                     "bridge": bridge.get("name") if bridge is not None else None,
                     "xml": xml,
+                    "readonly": readonly,
+                    "deletable": deletable,
                 }
             )
         return result
@@ -183,6 +188,51 @@ class LibvirtClient:
                 if addr.get("type") == libvirt.VIR_IP_ADDR_TYPE_IPV4:
                     ips.append(addr["addr"])
         return ips
+
+    @libvirt_wrapped
+    def domain_runtime_metrics(self, name: str) -> dict | None:
+        """Collect VM stats in one libvirt call chain (for metrics / read path)."""
+        if not self.connected:
+            return None
+        dom = self.lookup_domain(name)
+        info = dom.info()
+        max_mem_kib, mem_kib, vcpus, cpu_time_ns = info[1], info[2], info[3], info[4]
+        payload: dict = {
+            "vcpus": float(vcpus),
+            "memory_max_bytes": float(max_mem_kib) * 1024,
+            "cpu_time_seconds": float(cpu_time_ns) / 1e9,
+            "memory_used_bytes": None,
+            "block_stats": [],
+        }
+        if dom.isActive():
+            payload["memory_used_bytes"] = float(mem_kib) * 1024
+            try:
+                stats = dom.memoryStats()
+                rss = stats.get("rss") or stats.get("actual")
+                if rss is not None:
+                    payload["memory_used_bytes"] = float(rss) * 1024
+            except Exception:
+                pass
+            xml = dom.XMLDesc(0)
+            for dev in _block_devices_from_xml(xml):
+                try:
+                    _rd_req, rd_bytes, _wr_req, wr_bytes, _errs = dom.blockStats(dev)
+                    payload["block_stats"].append(
+                        {"device": dev, "read_bytes": float(rd_bytes), "write_bytes": float(wr_bytes)}
+                    )
+                except Exception:
+                    continue
+        return payload
+
+
+def _block_devices_from_xml(xml: str) -> list[str]:
+    root = ET.fromstring(xml)
+    devices: list[str] = []
+    for disk in root.findall(".//devices/disk"):
+        target = disk.find("target")
+        if target is not None and target.get("dev"):
+            devices.append(target.get("dev"))
+    return devices or ["vda"]
 
 
 @contextmanager

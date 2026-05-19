@@ -59,9 +59,11 @@ def create_app(state: AppState | None = None) -> FastAPI:
             if app_state.libvirt is not None:
                 app_state.libvirt.connect()
                 logger.info(
-                    "libvirt_queue_started",
-                    workers=settings.libvirt_queue_workers,
-                    max_pending=settings.libvirt_queue_max_pending,
+                    "libvirt_dual_io_started",
+                    write_workers=settings.libvirt_queue_workers,
+                    read_workers=settings.libvirt_read_queue_workers,
+                    write_max_pending=settings.libvirt_queue_max_pending,
+                    read_max_pending=settings.libvirt_read_queue_max_pending,
                 )
         except Exception as e:
             logger.warning("libvirt_connect_failed", error=str(e))
@@ -75,8 +77,10 @@ def create_app(state: AppState | None = None) -> FastAPI:
         await app_state.monitor.stop()
         if app_state.libvirt is not None:
             app_state.libvirt.close()
-        if app_state.libvirt_queue is not None:
-            app_state.libvirt_queue.shutdown()
+        if app_state.libvirt_read_queue is not None:
+            app_state.libvirt_read_queue.shutdown()
+        if app_state.libvirt_write_queue is not None:
+            app_state.libvirt_write_queue.shutdown()
         app_state.event_bus.publish(
             "huy.agent.stopped",
             f"/hypervisors/{app_state.hostname}",

@@ -342,11 +342,11 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - Multi-tenant org isolation
 - **Deliverable:** Login API + JWT/session; RBAC middleware; `platform_admin` role assignable — **done** (`services/iam`)
 
-### Phase 1b — Agent dual I/O (parallel)
+### Phase 1b — Agent dual I/O (parallel) ✅
 - Write queue for mutations; read path for list/state/metrics
 - Status monitor on read path; DHCP-lease IP only; interval aligned to poll config
 - API: `GET /api/v1/networks` includes `readonly` / `deletable` flags; `default` is readonly
-- **Deliverable:** Merged agent release; no list-networks hang under load
+- **Deliverable:** Merged agent release; no list-networks hang under load — **done** (`agents/libvirt`)
 
 ### Phase 1 — Agent registry and inventory (MVP)
 - **`platform_admin` only:** CRUD **provider → region → agent**, assign agent to **organization**, technical connection workflow (export token, connection status)

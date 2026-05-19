@@ -46,7 +46,27 @@ class Settings(BaseSettings):
         ge=1.0,
         description="Max seconds a libvirt call may wait in queue plus execution",
     )
-    status_poll_seconds: int = 10
+    libvirt_read_queue_workers: int = Field(
+        default=2,
+        ge=1,
+        le=4,
+        description="Worker threads for libvirt read path (list, state, metrics)",
+    )
+    libvirt_read_queue_max_pending: int = Field(
+        default=64,
+        ge=1,
+        description="Max pending read-path libvirt calls before 503",
+    )
+    libvirt_read_queue_timeout_seconds: float = Field(
+        default=120.0,
+        ge=1.0,
+        description="Timeout for read-path libvirt queue calls",
+    )
+    status_poll_seconds: int = Field(
+        default=30,
+        ge=10,
+        description="Status monitor interval (align with inventory poll; min 10s)",
+    )
     ssh_probe_timeout_seconds: float = 2.0
     image_download_timeout_seconds: int = 600
     cloud_init_validation: Literal["off", "basic", "schema"] = Field(

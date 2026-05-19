@@ -65,7 +65,7 @@ class StatusMonitor:
         timeout = self._state.settings.ssh_probe_timeout_seconds
         for name in list(self._status_cache.keys()):
             try:
-                _state_code, state_name = await lv.queue.run_async(lv.domain_state, name)
+                _state_code, state_name = await lv.domain_state_async(name)
             except Exception:
                 state_name = "SHUTOFF"
             guest_ip = await self._resolve_ip_async(name)
@@ -102,7 +102,7 @@ class StatusMonitor:
         lv = self._state.libvirt
         if lv is None:
             return None
-        ips = await lv.queue.run_async(lv.domain_interface_addresses, name)
+        ips = await lv.domain_interface_addresses_async(name)
         if ips:
             return ips[0]
         meta_path = self._state.settings.data_dir / "instances" / name / "metadata.json"

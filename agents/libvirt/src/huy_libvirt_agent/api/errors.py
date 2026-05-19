@@ -21,6 +21,7 @@ def register_exception_handlers(app) -> None:
             "PROFILE_EXISTS": 409,
             "DOMAIN_EXISTS": 409,
             "NETWORK_EXISTS": 409,
+            "NETWORK_READONLY": 403,
             "OPERATION_INVALID": 409,
             "XML_ERROR": 400,
             "DEFINE_FAILED": 502,

@@ -61,6 +61,8 @@ class NetworkResponse(BaseModel):
     ipv4_cidr: str | None = None
     dnat_rule_count: int = 0
     iptables_in_sync: bool = True
+    readonly: bool = False
+    deletable: bool = True
 
 
 class DnatRuleCreate(BaseModel):

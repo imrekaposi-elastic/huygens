@@ -150,22 +150,30 @@ def _collect_libvirt(state: AppState) -> list[GaugeMetricFamily]:
         up.add_metric([], 0.0)
     families.append(up)
 
-    if state.libvirt_queue is not None:
+    for path, queue in (
+        ("write", state.libvirt_write_queue),
+        ("read", state.libvirt_read_queue),
+    ):
+        if queue is None:
+            continue
         q_pending = GaugeMetricFamily(
             "huy_libvirt_queue_pending",
             "Libvirt API calls currently queued or running",
+            labels=["path"],
         )
         q_max = GaugeMetricFamily(
             "huy_libvirt_queue_max_pending",
             "Configured maximum libvirt queue depth",
+            labels=["path"],
         )
         q_workers = GaugeMetricFamily(
             "huy_libvirt_queue_workers",
             "Libvirt worker threads processing the queue",
+            labels=["path"],
         )
-        q_pending.add_metric([], float(state.libvirt_queue.pending))
-        q_max.add_metric([], float(state.libvirt_queue.max_pending))
-        q_workers.add_metric([], float(state.libvirt_queue.workers))
+        q_pending.add_metric([path], float(queue.pending))
+        q_max.add_metric([path], float(queue.max_pending))
+        q_workers.add_metric([path], float(queue.workers))
         families.extend([q_pending, q_max, q_workers])
 
     vm_count = GaugeMetricFamily(
@@ -226,30 +234,18 @@ def _collect_libvirt(state: AppState) -> list[GaugeMetricFamily]:
         if not state.libvirt.connected:
             continue
         try:
-            dom = state.libvirt.lookup_domain(name)
-            info = dom.info()
-            # maxMem, memory KiB, vcpus, cpuTime ns
-            max_mem_kib, mem_kib, vcpus, cpu_time_ns = info[1], info[2], info[3], info[4]
-            vm_vcpu.add_metric([name], float(vcpus))
-            vm_mem_max.add_metric([name], float(max_mem_kib) * 1024)
-            vm_cpu_time.add_metric([name], float(cpu_time_ns) / 1e9)
-            if dom.isActive():
-                vm_mem_used.add_metric([name], float(mem_kib) * 1024)
-                try:
-                    stats = dom.memoryStats()
-                    rss = stats.get("rss") or stats.get("actual")
-                    if rss is not None:
-                        vm_mem_used.add_metric([name], float(rss) * 1024)
-                except Exception:
-                    pass
-                xml = dom.XMLDesc(0)
-                for dev in _block_devices_from_xml(xml):
-                    try:
-                        rd_req, rd_bytes, wr_req, wr_bytes, _errs = dom.blockStats(dev)
-                        vm_block_read.add_metric([name, dev], float(rd_bytes))
-                        vm_block_write.add_metric([name, dev], float(wr_bytes))
-                    except Exception:
-                        continue
+            metrics = state.libvirt.domain_runtime_metrics(name)
+            if not metrics:
+                continue
+            vm_vcpu.add_metric([name], metrics["vcpus"])
+            vm_mem_max.add_metric([name], metrics["memory_max_bytes"])
+            vm_cpu_time.add_metric([name], metrics["cpu_time_seconds"])
+            used = metrics.get("memory_used_bytes")
+            if used is not None:
+                vm_mem_used.add_metric([name], float(used))
+            for block in metrics.get("block_stats", []):
+                vm_block_read.add_metric([name, block["device"]], block["read_bytes"])
+                vm_block_write.add_metric([name, block["device"]], block["write_bytes"])
         except Exception as exc:
             logger.debug("vm_metrics_collect_failed", vm=name, error=str(exc))
 
@@ -269,18 +265,6 @@ def _collect_libvirt(state: AppState) -> list[GaugeMetricFamily]:
         ]
     )
     return families
-
-
-def _block_devices_from_xml(xml: str) -> list[str]:
-    import xml.etree.ElementTree as ET
-
-    root = ET.fromstring(xml)
-    devices: list[str] = []
-    for disk in root.findall(".//devices/disk"):
-        target = disk.find("target")
-        if target is not None and target.get("dev"):
-            devices.append(target.get("dev"))
-    return devices or ["vda"]
 
 
 def bind_metrics_state(state: AppState) -> None:

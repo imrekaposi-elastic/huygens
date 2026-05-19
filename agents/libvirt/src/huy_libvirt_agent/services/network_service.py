@@ -14,6 +14,7 @@ from huy_libvirt_agent.api.schemas.network import (
 )
 from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.services.libvirt_client import LibvirtError
+from huy_libvirt_agent.services.system_networks import SYSTEM_READONLY_NETWORKS, network_access_flags
 from huy_libvirt_agent.services.metadata import read_metadata, write_metadata
 from huy_libvirt_agent.services.network_xml import render_network_xml
 
@@ -71,6 +72,12 @@ class NetworkService:
             dnat_count = len(json.loads(dnat_path.read_text()))
         stored = self._state.iptables.checksum_for_vnet(name)
         in_sync = stored is not None
+        agent_managed = self._vnet_dir(name).exists()
+        if lv_info is not None:
+            readonly = bool(lv_info.get("readonly", False))
+            deletable = bool(lv_info.get("deletable", False))
+        else:
+            readonly, deletable = network_access_flags(name, agent_managed=agent_managed)
         return NetworkResponse(
             name=name,
             labels=labels,
@@ -80,6 +87,8 @@ class NetworkService:
             ipv4_cidr=meta.get("ipv4_cidr"),
             dnat_rule_count=dnat_count,
             iptables_in_sync=in_sync,
+            readonly=readonly,
+            deletable=deletable,
         )
 
     def create_network(
@@ -121,6 +130,12 @@ class NetworkService:
         return self.get_network(name)
 
     def delete_network(self, name: str, purge: bool = False, correlation_id: str | None = None) -> None:
+        if name in SYSTEM_READONLY_NETWORKS:
+            raise LibvirtError(f"Network {name} is a system network and cannot be deleted", "NETWORK_READONLY")
+        agent_managed = self._vnet_dir(name).exists()
+        readonly, deletable = network_access_flags(name, agent_managed=agent_managed)
+        if readonly or not deletable:
+            raise LibvirtError(f"Network {name} cannot be deleted", "NETWORK_READONLY")
         try:
             self._state.libvirt.destroy_network(name)
         except LibvirtError:
