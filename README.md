@@ -25,11 +25,28 @@ make run
 
 See [agents/libvirt/README.md](agents/libvirt/README.md).
 
-## Control plane (Phase 0 scaffolds)
+## Local mock stack (Docker Compose)
 
 ```bash
-cd services/iam && pip install -e . && huy-iam        # :8081
-cd services/registry && pip install -e . && huy-registry  # :8082
+cp compose.env.example .env
+docker compose up -d --build
+# IAM http://localhost:8081/docs  ·  registry :8082  ·  inventory :8083
+```
+
+See [docs/install/docker-compose.md](docs/install/docker-compose.md).
+
+## Control plane
+
+**IAM (Phase 1a):**
+
+```bash
+cd services/iam && cp .env.example .env && make install && make run   # :8081
+```
+
+**Registry / inventory (Phase 0 scaffolds):**
+
+```bash
+cd services/registry && pip install -e . && huy-registry    # :8082
 cd services/inventory && pip install -e . && huy-inventory  # :8083
 ```
 

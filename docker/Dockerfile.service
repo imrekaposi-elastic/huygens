@@ -1,0 +1,22 @@
+# Build a Huygens Python microservice from the monorepo root:
+#   docker build -f docker/Dockerfile.service --build-arg SERVICE_DIR=services/iam --build-arg RUN_SCRIPT=huy-iam .
+
+FROM python:3.12-slim-bookworm
+
+ARG SERVICE_DIR=services/iam
+ARG RUN_SCRIPT=huy-iam
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY ${SERVICE_DIR}/pyproject.toml ${SERVICE_DIR}/README.md ./
+COPY ${SERVICE_DIR}/src ./src
+
+RUN pip install --no-cache-dir .
+
+ENV RUN_SCRIPT=${RUN_SCRIPT}
+# Services read bind host/port from their own env vars (set in compose).
+CMD ["/bin/sh", "-c", "exec ${RUN_SCRIPT}"]

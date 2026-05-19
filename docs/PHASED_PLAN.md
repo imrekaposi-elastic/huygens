@@ -336,11 +336,11 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - Excalidraw set (7 files) — see table above
 - **Deliverable:** ADR pack + OSS-ready repo + diagrams + Kafka topic schemas + service scaffolds — **done**
 
-### Phase 1a — Local IAM (before registry UI)
+### Phase 1a — Local IAM (before registry UI) ✅
 - **LOCAL** authentication only (username/password or API key; no OIDC/LDAP/SAML yet)
 - Built-in roles per [FRAMEWORK_PLAN.md](../FRAMEWORK_PLAN.md): `admin`, `compliance_admin`, **`platform_admin`**, **`compliance_engineer`** (stub; full criticality APIs in Phase 7), project roles (stub assignments OK)
 - Multi-tenant org isolation
-- **Deliverable:** Login API + JWT/session; RBAC middleware; `platform_admin` role assignable
+- **Deliverable:** Login API + JWT/session; RBAC middleware; `platform_admin` role assignable — **done** (`services/iam`)
 
 ### Phase 1b — Agent dual I/O (parallel)
 - Write queue for mutations; read path for list/state/metrics

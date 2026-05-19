@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import uvicorn
 from fastapi import FastAPI
 
@@ -20,7 +22,9 @@ def health() -> dict[str, str]:
 
 
 def run() -> None:
-    uvicorn.run("huy_inventory.main:app", host="127.0.0.1", port=8083, reload=False)
+    host = os.getenv("HUY_INVENTORY_HOST", "127.0.0.1")
+    port = int(os.getenv("HUY_INVENTORY_PORT", "8083"))
+    uvicorn.run("huy_inventory.main:app", host=host, port=port, reload=False)
 
 
 if __name__ == "__main__":
