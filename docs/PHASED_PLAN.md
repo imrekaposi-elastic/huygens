@@ -45,7 +45,7 @@ The strategic proposal and the build plan share one delivery model: **Huygens is
 
 ---
 
-Based on [FRAMEWORK_PLAN.md](FRAMEWORK_PLAN.md) and your iteration:
+Based on [FRAMEWORK_PLAN.md](../FRAMEWORK_PLAN.md) and your iteration:
 
 | Decision | Choice |
 |----------|--------|
@@ -338,7 +338,7 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 
 ### Phase 1a — Local IAM (before registry UI)
 - **LOCAL** authentication only (username/password or API key; no OIDC/LDAP/SAML yet)
-- Built-in roles per [FRAMEWORK_PLAN.md](FRAMEWORK_PLAN.md): `admin`, `compliance_admin`, **`platform_admin`**, **`compliance_engineer`** (stub; full criticality APIs in Phase 7), project roles (stub assignments OK)
+- Built-in roles per [FRAMEWORK_PLAN.md](../FRAMEWORK_PLAN.md): `admin`, `compliance_admin`, **`platform_admin`**, **`compliance_engineer`** (stub; full criticality APIs in Phase 7), project roles (stub assignments OK)
 - Multi-tenant org isolation
 - **Deliverable:** Login API + JWT/session; RBAC middleware; `platform_admin` role assignable
 
