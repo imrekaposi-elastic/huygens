@@ -358,13 +358,13 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - Publish inventory snapshots to Kafka (optional in 1.0, required before Phase 5)
 - **Deliverable:** 2+ agents registered per org; dashboard API shows inventory; mutations still via agent Swagger — **done** (`services/registry`, `services/inventory`, `shared/huy_auth`)
 
-### Phase 2 — External authentication (Keycloak + group mapping)
+### Phase 2 — External authentication (Keycloak + group mapping) ✅
 - **Keycloak** for LDAP/AD, SAML, and OIDC federation ([ADR 0011](architecture/adrs/0011-keycloak-group-role-mapping.md)); Huygens does not embed SAML/LDAP parsers
 - **OIDC login** (authorization code + PKCE) → IAM issues **same Huygens JWT** as Phase 1a; registry/inventory unchanged
 - **Groups** from token (`groups` claim via Keycloak mapper); **Huygens admin** CRUD **IdP group → role** mappings (org `admin` + `platform_admin`)
 - Default: **union** of mapped roles + manual PG assignments; local login + API keys for break-glass and automation
-- Keycloak in Compose dev profile; `docs/install/keycloak.md`; mapping APIs audited to Kafka when configured
-- **Deliverable:** SSO login; admin-configurable group→role mapping UI/API; local auth remains for break-glass
+- Keycloak in Compose `--profile sso`; [docs/install/keycloak.md](install/keycloak.md)
+- **Deliverable:** SSO login; admin-configurable group→role mapping API; local auth remains for break-glass — **done** (`services/iam`)
 
 ### Phase 3 — Project service and agent proxy
 - Project CRUD; proxy operator CRUD to agents

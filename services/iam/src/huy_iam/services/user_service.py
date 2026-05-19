@@ -16,6 +16,7 @@ from huy_iam.models import (
     User,
     UserPlatformRole,
 )
+from huy_iam.services import idp_mapping_service
 from huy_iam.security import hash_api_key, hash_password
 
 
@@ -39,6 +40,18 @@ async def get_user_by_id(session: AsyncSession, user_id: str) -> User | None:
             selectinload(User.project_roles),
         )
         .execution_options(populate_existing=True)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_user_by_external_subject(
+    session: AsyncSession, external_subject: str, realm: str | None
+) -> User | None:
+    result = await session.execute(
+        select(User).where(
+            User.external_subject == external_subject,
+            User.keycloak_realm == realm,
+        )
     )
     return result.scalar_one_or_none()
 
@@ -73,11 +86,48 @@ async def build_auth_context(session: AsyncSession, user: User) -> AuthContext:
     )
 
 
+async def build_auth_context_with_idp(
+    session: AsyncSession,
+    user: User,
+    *,
+    organization_id: str,
+    idp_groups: list[str],
+) -> AuthContext:
+    base = await build_auth_context(session, user)
+    if not idp_groups:
+        return base
+    mappings = await idp_mapping_service.list_all_mappings_for_org_login(session, organization_id)
+    platform_extra, org_extra = idp_mapping_service.resolve_roles_from_groups(
+        mappings, idp_groups, organization_id=organization_id
+    )
+    platform_roles = sorted(set(base.platform_roles) | platform_extra)
+    memberships: dict[str, set[str]] = {
+        m.organization_id: set(m.roles) for m in base.org_memberships
+    }
+    if org_extra:
+        memberships.setdefault(organization_id, set()).update(org_extra)
+    org_memberships = [
+        OrgMembership(organization_id=oid, roles=sorted(roles))
+        for oid, roles in memberships.items()
+        if roles
+    ]
+    return AuthContext(
+        user_id=base.user_id,
+        email=base.email,
+        username=base.username,
+        platform_roles=platform_roles,
+        org_memberships=org_memberships,
+        project_roles=base.project_roles,
+    )
+
+
 async def authenticate_password(session: AsyncSession, username: str, password: str) -> User | None:
     from huy_iam.security import verify_password
 
     user = await get_user_by_username(session, username)
     if user is None or not user.is_active:
+        return None
+    if user.auth_provider != "local" or not user.password_hash:
         return None
     if not verify_password(password, user.password_hash):
         return None
@@ -116,6 +166,30 @@ async def create_user(
         email=email.lower(),
         username=username,
         password_hash=hash_password(password),
+        auth_provider="local",
+        display_name=display_name,
+    )
+    session.add(user)
+    await session.flush()
+    return user
+
+
+async def create_oidc_user(
+    session: AsyncSession,
+    *,
+    email: str,
+    username: str,
+    external_subject: str,
+    keycloak_realm: str | None,
+    display_name: str | None = None,
+) -> User:
+    user = User(
+        email=email.lower(),
+        username=username,
+        password_hash=None,
+        auth_provider="oidc",
+        external_subject=external_subject,
+        keycloak_realm=keycloak_realm,
         display_name=display_name,
     )
     session.add(user)

@@ -29,6 +29,20 @@ class Settings(BaseSettings):
     )
     host: str = Field(default="127.0.0.1", alias="HUY_IAM_HOST")
     port: int = Field(default=8081, alias="HUY_IAM_PORT")
+    oidc_enabled: bool = Field(default=False, alias="OIDC_ENABLED")
+    oidc_issuer: str = Field(
+        default="http://127.0.0.1:8080/realms/huygens",
+        alias="OIDC_ISSUER",
+    )
+    oidc_realm: str = Field(default="huygens", alias="OIDC_REALM")
+    oidc_client_id: str = Field(default="huy-iam", alias="OIDC_CLIENT_ID")
+    oidc_client_secret: str | None = Field(default="huy-iam-dev-secret", alias="OIDC_CLIENT_SECRET")
+    oidc_redirect_uri: str = Field(
+        default="http://127.0.0.1:8081/api/v1/auth/oidc/callback",
+        alias="OIDC_REDIRECT_URI",
+    )
+    oidc_scopes: str = Field(default="openid profile email", alias="OIDC_SCOPES")
+    oidc_post_login_redirect: str | None = Field(default=None, alias="OIDC_POST_LOGIN_REDIRECT")
 
 
 @lru_cache

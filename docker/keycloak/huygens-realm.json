@@ -1,0 +1,65 @@
+{
+  "realm": "huygens",
+  "enabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "clients": [
+    {
+      "clientId": "huy-iam",
+      "name": "Huygens IAM",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "huy-iam-dev-secret",
+      "redirectUris": [
+        "http://127.0.0.1:8081/api/v1/auth/oidc/callback",
+        "http://localhost:8081/api/v1/auth/oidc/callback"
+      ],
+      "webOrigins": ["+"],
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "groups": [
+    { "name": "acme-admins" },
+    { "name": "acme-compliance" },
+    { "name": "huy-platform-ops" }
+  ],
+  "users": [
+    {
+      "username": "sso-user",
+      "email": "sso-user@acme.example",
+      "firstName": "SSO",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "groups": ["/acme-admins"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "sso-user-dev",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

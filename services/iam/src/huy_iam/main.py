@@ -10,7 +10,7 @@ import uvicorn
 from fastapi import FastAPI
 
 from huy_iam import __version__
-from huy_iam.api.routes import auth, health, organizations, users
+from huy_iam.api.routes import auth, health, idp_mappings, oidc, organizations, users
 from huy_iam.bootstrap import bootstrap_platform_admin
 from huy_iam.config import get_settings
 from huy_iam.db import dispose_db, get_engine, get_session_factory, init_db
@@ -39,11 +39,15 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Huygens IAM",
         version=__version__,
-        description="Local authentication and RBAC (Phase 1a)",
+        description="Local auth, Keycloak OIDC, and RBAC (Phase 1a–2)",
         lifespan=lifespan,
     )
     app.include_router(health.router)
     app.include_router(auth.router)
+    app.include_router(oidc.router)
+    app.include_router(idp_mappings.org_router)
+    app.include_router(idp_mappings.platform_router)
+    app.include_router(idp_mappings.auth_router)
     app.include_router(organizations.router)
     app.include_router(users.router)
     return app

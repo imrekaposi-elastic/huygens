@@ -22,6 +22,15 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
+async def login(client: AsyncClient, username: str, password: str) -> str:
+    r = await client.post(
+        "/api/v1/auth/login",
+        json={"username": username, "password": password},
+    )
+    assert r.status_code == 200, r.text
+    return r.json()["access_token"]
+
+
 @pytest.fixture
 async def client() -> AsyncClient:
     get_settings.cache_clear()

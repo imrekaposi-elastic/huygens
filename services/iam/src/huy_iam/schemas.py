@@ -86,3 +86,42 @@ class ApiKeyCreated(BaseModel):
 class ProjectRoleAssign(BaseModel):
     project_id: str
     role: str
+
+
+class IdpGroupMappingCreate(BaseModel):
+    idp_group_name: str = Field(min_length=1, max_length=255)
+    match_type: str = Field(default="exact", pattern=r"^(exact|regex)$")
+    huy_role: str = Field(min_length=1, max_length=64)
+    priority: int = Field(default=0)
+    enabled: bool = True
+
+
+class IdpGroupMappingUpdate(BaseModel):
+    idp_group_name: str | None = Field(default=None, min_length=1, max_length=255)
+    match_type: str | None = Field(default=None, pattern=r"^(exact|regex)$")
+    huy_role: str | None = Field(default=None, min_length=1, max_length=64)
+    priority: int | None = None
+    enabled: bool | None = None
+
+
+class IdpGroupMappingOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    organization_id: str | None
+    idp_group_name: str
+    match_type: str
+    huy_role: str
+    priority: int
+    enabled: bool
+    created_by: str | None
+    created_at: datetime
+
+
+class IdpGroupsOut(BaseModel):
+    groups: list[str]
+    organization_id: str | None = None
+
+
+class OidcAuthorizeOut(BaseModel):
+    authorization_url: str

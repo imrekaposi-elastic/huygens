@@ -430,7 +430,7 @@ def diagram_phases() -> Diagram:
         ("p1a", "1a\nIAM", True),
         ("p1b", "1b\nAgent I/O", True),
         ("p1", "1\nRegistry", True),
-        ("p2", "2\nSSO", False),
+        ("p2", "2\nSSO", True),
         ("p3", "3\nProjects", False),
         ("p4", "4\nIPAM", False),
         ("p5", "5\nConsole", False),

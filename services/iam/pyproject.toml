@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "huy-iam"
-version = "0.1.0"
-description = "Huygens IAM service (local auth, RBAC)"
+version = "0.2.0"
+description = "Huygens IAM service (local auth, Keycloak OIDC, RBAC)"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
@@ -22,6 +22,7 @@ dependencies = [
     "bcrypt>=4.2.0",
     "pyjwt>=2.9.0",
     "email-validator>=2.2.0",
+    "httpx>=0.27.0",
 ]
 
 [project.optional-dependencies]

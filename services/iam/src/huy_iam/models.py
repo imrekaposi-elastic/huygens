@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -36,7 +36,10 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
     username: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    auth_provider: Mapped[str] = mapped_column(String(32), nullable=False, default="local")
+    external_subject: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    keycloak_realm: Mapped[str | None] = mapped_column(String(128), nullable=True)
     display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -47,6 +50,7 @@ class User(Base):
     org_memberships: Mapped[list[OrganizationMember]] = relationship(back_populates="user")
     api_keys: Mapped[list[ApiKey]] = relationship(back_populates="user")
     project_roles: Mapped[list[ProjectRoleAssignment]] = relationship(back_populates="user")
+    idp_groups_seen: Mapped[list[UserIdpGroup]] = relationship(back_populates="user")
 
 
 class UserPlatformRole(Base):
@@ -135,3 +139,46 @@ class ApiKey(Base):
         if self.expires_at is None:
             return False
         return datetime.now(UTC) >= self.expires_at
+
+
+class IdpGroupMapping(Base):
+    __tablename__ = "idp_group_mappings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    organization_id: Mapped[str | None] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    idp_group_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    match_type: Mapped[str] = mapped_column(String(16), nullable=False, default="exact")
+    huy_role: Mapped[str] = mapped_column(String(64), nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class UserIdpGroup(Base):
+    """Last IdP groups observed at SSO login (admin troubleshooting)."""
+
+    __tablename__ = "user_idp_groups"
+    __table_args__ = (UniqueConstraint("user_id", "group_name", name="uq_user_idp_group"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    group_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="idp_groups_seen")
+
+
+class OidcLoginState(Base):
+    __tablename__ = "oidc_login_states"
+
+    state: Mapped[str] = mapped_column(String(64), primary_key=True)
+    code_verifier: Mapped[str] = mapped_column(String(128), nullable=False)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
