@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "huy-iam"
+version = "0.0.1"
+description = "Huygens IAM service (local auth, RBAC)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+    "structlog>=24.4.0",
+]
+
+[project.scripts]
+huy-iam = "huy_iam.main:run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/huy_iam"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"

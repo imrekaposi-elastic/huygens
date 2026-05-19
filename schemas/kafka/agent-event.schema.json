@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://huygens.dev/schemas/kafka/agent-event.schema.json",
+  "title": "HuygensAgentEventData",
+  "description": "CloudEvents data payload for huy.agent.events",
+  "type": "object",
+  "required": ["version", "agent_id", "organization_id", "event_type", "resource"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "agent_id": { "type": "string", "format": "uuid" },
+    "organization_id": { "type": "string", "format": "uuid" },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "vm.state_changed",
+        "vm.created",
+        "vm.deleted",
+        "network.changed",
+        "agent.heartbeat"
+      ]
+    },
+    "resource": {
+      "type": "object",
+      "required": ["kind", "name"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["vm", "network", "agent"] },
+        "name": { "type": "string" },
+        "project_id": { "type": "string", "format": "uuid" },
+        "state": { "type": "string" },
+        "metadata": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "trace_id": { "type": "string" }
+  },
+  "additionalProperties": false
+}

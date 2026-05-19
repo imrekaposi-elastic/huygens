@@ -1,0 +1,31 @@
+# Huygens architecture
+
+Architecture decisions, diagrams, and contracts for the Huygens platform.
+
+## Documents
+
+| Path | Description |
+|------|-------------|
+| [erd/tenancy.md](erd/tenancy.md) | Multi-tenant data model |
+| [adrs/](adrs/) | Architecture Decision Records (ADRs) |
+| [../install/air-gapped.md](../install/air-gapped.md) | Offline / air-gapped installation |
+| [diagrams/](diagrams/) | Excalidraw diagrams (import into [excalidraw.com](https://excalidraw.com)) |
+
+## ADR index
+
+| ADR | Title |
+|-----|--------|
+| [0001](adrs/0001-monorepo-and-open-source.md) | Monorepo layout and Apache 2.0 |
+| [0002](adrs/0002-tenancy-and-projects.md) | Tenancy: organization, project, resources |
+| [0003](adrs/0003-postgresql-and-elasticsearch.md) | PostgreSQL vs Elasticsearch ECS |
+| [0004](adrs/0004-kafka-event-bus.md) | Kafka topics and event envelope |
+| [0005](adrs/0005-agent-token-vault.md) | Agent token vault and platform_admin |
+| [0006](adrs/0006-libvirt-dual-io.md) | Libvirt write queue and read path |
+| [0007](adrs/0007-readonly-system-networks.md) | Readonly libvirt `default` network |
+| [0008](adrs/0008-opentelemetry-and-edot.md) | OpenTelemetry and EDOT-friendly export |
+| [0009](adrs/0009-air-gapped-install.md) | Air-gapped installation |
+| [0010](adrs/0010-know-why-and-asset-criticality.md) | Know why: compliance and asset criticality |
+
+## Phase map
+
+See the Cursor plan *Huygens Framework Phases* for delivery phases 0–11.

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://huygens.dev/schemas/kafka/inventory-snapshot.schema.json",
+  "title": "HuygensInventorySnapshotData",
+  "description": "CloudEvents data payload for huy.inventory.snapshots",
+  "type": "object",
+  "required": ["version", "agent_id", "organization_id", "polled_at", "vms", "networks"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "agent_id": { "type": "string", "format": "uuid" },
+    "organization_id": { "type": "string", "format": "uuid" },
+    "region_id": { "type": "string", "format": "uuid" },
+    "polled_at": { "type": "string", "format": "date-time" },
+    "vms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "state"],
+        "properties": {
+          "name": { "type": "string" },
+          "uuid": { "type": "string" },
+          "state": { "type": "string" },
+          "project_id": { "type": "string", "format": "uuid" },
+          "networks": { "type": "array", "items": { "type": "string" } },
+          "ips": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "networks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "active": { "type": "boolean" },
+          "readonly": { "type": "boolean" },
+          "bridge": { "type": "string" }
+        }
+      }
+    },
+    "config_drift": { "type": "boolean" }
+  },
+  "additionalProperties": false
+}
