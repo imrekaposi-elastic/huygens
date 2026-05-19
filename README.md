@@ -12,6 +12,7 @@ they are placed there. Apache License 2.0.
 | [docs/architecture/](docs/architecture/) | ADRs, ERD, Excalidraw diagrams |
 | [docs/install/air-gapped.md](docs/install/air-gapped.md) | Offline installation guide |
 | [FRAMEWORK_PLAN.md](FRAMEWORK_PLAN.md) | Product scope and non-functional requirements |
+| [docs/PHASED_PLAN.md](docs/PHASED_PLAN.md) | Phased delivery roadmap (0–11) |
 
 ## Quick start (libvirt agent)
 
@@ -42,4 +43,4 @@ Phase **0** (this repo state): monorepo layout, ADRs, Kafka schemas, service sca
 
 Phase **1a/1b/1**: IAM, agent dual I/O completion, registry + inventory poll.
 
-See architecture [README](docs/architecture/README.md) and delivery plan in Cursor.
+See [architecture README](docs/architecture/README.md) and [phased plan](docs/PHASED_PLAN.md).

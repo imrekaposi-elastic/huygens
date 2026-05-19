@@ -28,4 +28,4 @@ Architecture decisions, diagrams, and contracts for the Huygens platform.
 
 ## Phase map
 
-See the Cursor plan *Huygens Framework Phases* for delivery phases 0–11.
+See [../PHASED_PLAN.md](../PHASED_PLAN.md) for delivery phases 0–11.
