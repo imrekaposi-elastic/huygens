@@ -40,6 +40,7 @@ Internal (header `X-Huy-Service-Token`):
 | Method | Path |
 |--------|------|
 | GET | `/api/v1/internal/poll-targets` |
+| GET | `/api/v1/internal/agents/{id}/connect` |
 | PATCH | `/api/v1/internal/agents/{id}/poll-status` |
 
 ## Configuration

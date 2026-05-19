@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 
 from huy_registry.api.deps import InventoryServiceDep, SessionDep, SettingsDep
-from huy_registry.schemas import PollStatusUpdate, PollTargetOut
+from huy_registry.schemas import AgentConnectOut, PollStatusUpdate, PollTargetOut
 from huy_registry.services import agent_service
 
 router = APIRouter(prefix="/api/v1/internal", tags=["internal"])
@@ -16,6 +16,19 @@ async def poll_targets(
     settings: SettingsDep,
 ) -> list[PollTargetOut]:
     return await agent_service.list_poll_targets(session, settings)
+
+
+@router.get("/agents/{agent_id}/connect", response_model=AgentConnectOut)
+async def agent_connect(
+    agent_id: str,
+    _service: InventoryServiceDep,
+    session: SessionDep,
+    settings: SettingsDep,
+) -> AgentConnectOut:
+    info = await agent_service.get_agent_connect(session, settings, agent_id)
+    if info is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return info
 
 
 @router.patch("/agents/{agent_id}/poll-status", status_code=204)

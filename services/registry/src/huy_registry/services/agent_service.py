@@ -17,7 +17,7 @@ from huy_auth.agent_tokens import (
 )
 from huy_registry.config import Settings
 from huy_registry.models import Agent, Provider, Region
-from huy_registry.schemas import AgentCreate, AgentOut, AgentUpdate, PollTargetOut
+from huy_registry.schemas import AgentConnectOut, AgentCreate, AgentOut, AgentUpdate, PollTargetOut
 
 
 def agent_to_out(agent: Agent) -> AgentOut:
@@ -120,6 +120,22 @@ async def rotate_token(session: AsyncSession, settings: Settings, agent: Agent) 
     agent.updated_at = datetime.now(UTC)
     await session.commit()
     return token
+
+
+async def get_agent_connect(
+    session: AsyncSession, settings: Settings, agent_id: str
+) -> AgentConnectOut | None:
+    agent = await get_agent(session, agent_id)
+    if agent is None:
+        return None
+    token = decrypt_agent_token(agent.token_encrypted, settings.agent_token_encryption_key)
+    return AgentConnectOut(
+        agent_id=agent.id,
+        organization_id=agent.organization_id,
+        base_url=agent.base_url,
+        agent_token=token,
+        tls_verify=agent.tls_verify,
+    )
 
 
 async def list_poll_targets(session: AsyncSession, settings: Settings) -> list[PollTargetOut]:

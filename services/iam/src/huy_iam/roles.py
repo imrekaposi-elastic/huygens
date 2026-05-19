@@ -39,6 +39,9 @@ PERM_PLATFORM_ASSIGN_PLATFORM_ADMIN = "platform:assign_platform_admin"
 PERM_AGENT_REGISTER = "agent:register"
 PERM_AGENT_EXPORT_TOKEN = "agent:export_token"
 PERM_INVENTORY_READ = "inventory:read"
+PERM_PROJECT_READ = "project:read"
+PERM_PROJECT_MANAGE = "project:manage"
+PERM_PROJECT_OPERATE = "project:operate"
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     PlatformRole.PLATFORM_ADMIN.value: frozenset(
@@ -51,6 +54,9 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_AGENT_REGISTER,
             PERM_AGENT_EXPORT_TOKEN,
             PERM_INVENTORY_READ,
+            PERM_PROJECT_READ,
+            PERM_PROJECT_MANAGE,
+            PERM_PROJECT_OPERATE,
         }
     ),
     OrgRole.ADMIN.value: frozenset(
@@ -58,12 +64,27 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_ORG_READ,
             PERM_ORG_MANAGE_USERS,
             PERM_INVENTORY_READ,
+            PERM_PROJECT_READ,
+            PERM_PROJECT_MANAGE,
+            PERM_PROJECT_OPERATE,
         }
     ),
     OrgRole.COMPLIANCE_ADMIN.value: frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
     OrgRole.COMPLIANCE_ENGINEER.value: frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
-    ProjectRole.PROJECT_ADMIN.value: frozenset({PERM_ORG_READ}),
-    ProjectRole.OPERATOR.value: frozenset({PERM_ORG_READ}),
+    ProjectRole.PROJECT_ADMIN.value: frozenset(
+        {
+            PERM_ORG_READ,
+            PERM_PROJECT_READ,
+            PERM_PROJECT_MANAGE,
+            PERM_PROJECT_OPERATE,
+        }
+    ),
+    ProjectRole.OPERATOR.value: frozenset(
+        {PERM_ORG_READ, PERM_PROJECT_READ, PERM_PROJECT_OPERATE}
+    ),
+    ProjectRole.RESOURCE_MANAGER.value: frozenset(
+        {PERM_ORG_READ, PERM_PROJECT_READ, PERM_PROJECT_OPERATE}
+    ),
     ProjectRole.AUDITOR.value: frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
     ProjectRole.COMPLIANCE_READER.value: frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
 }

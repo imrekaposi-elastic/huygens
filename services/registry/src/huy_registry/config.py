@@ -25,6 +25,10 @@ class Settings(BaseSettings):
         default="dev-inventory-service-token",
         alias="INVENTORY_SERVICE_TOKEN",
     )
+    projects_service_token: str | None = Field(
+        default=None,
+        alias="PROJECTS_SERVICE_TOKEN",
+    )
     default_refresh_seconds: int = Field(default=30, ge=10, alias="DEFAULT_REFRESH_SECONDS")
     host: str = Field(default="127.0.0.1", alias="HUY_REGISTRY_HOST")
     port: int = Field(default=8082, alias="HUY_REGISTRY_PORT")

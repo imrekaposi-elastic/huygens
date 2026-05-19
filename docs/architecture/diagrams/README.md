@@ -4,7 +4,7 @@ Excalidraw source files for Huygens. Open in [excalidraw.com](https://excalidraw
 
 | File | Topic |
 |------|--------|
-| [01-system-context.excalidraw](01-system-context.excalidraw) | C4-style system context |
+| [01-system-context.excalidraw](01-system-context.excalidraw) | C4-style system context (operators → **Projects** proxy) |
 | [02-deployment.excalidraw](02-deployment.excalidraw) | Physical / K8s deployment |
 | [03-tenancy.excalidraw](03-tenancy.excalidraw) | Org, project, agent hierarchy |
 | [04-agent-dual-io.excalidraw](04-agent-dual-io.excalidraw) | Libvirt write queue vs read path |

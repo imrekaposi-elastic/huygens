@@ -30,3 +30,7 @@ Architecture decisions, diagrams, and contracts for the Huygens platform.
 ## Phase map
 
 See [../PHASED_PLAN.md](../PHASED_PLAN.md) for delivery phases 0–11.
+
+**Projects service** (`services/projects`, port 8084) is the operator-facing control-plane API: project CRUD, RBAC, and proxied libvirt agent mutations. It appears on [diagrams/01-system-context.excalidraw](diagrams/01-system-context.excalidraw) and related deployment/tenancy drawings.
+
+**Elasticsearch** is part of the target architecture for **audit logs (ECS)**, compliance dashboards, and **SSH session recording search** (Phase 9). Events flow **Kafka → ES ingest**; PostgreSQL stays the system of record. Agent→Kafka and some consumers are still **work in progress** — see [adrs/0004-kafka-event-bus.md](adrs/0004-kafka-event-bus.md).

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from huy_auth.roles import ROLE_PERMISSIONS
+from huy_auth.roles import PERM_PROJECT_READ, ROLE_PERMISSIONS
 
 
 @dataclass
@@ -42,6 +42,39 @@ class AuthContext:
         if self.is_platform_admin():
             return True
         return any(m.organization_id == organization_id for m in self.org_memberships)
+
+    def project_role(self, organization_id: str, project_id: str) -> str | None:
+        for grant in self.project_roles:
+            if grant.organization_id == organization_id and grant.project_id == project_id:
+                return grant.role
+        return None
+
+    def can_operate_project(self, organization_id: str, project_id: str) -> bool:
+        if self.is_platform_admin():
+            return True
+        if "admin" in self.org_roles(organization_id):
+            return True
+        role = self.project_role(organization_id, project_id)
+        return role in ("project_admin", "operator", "resource_manager")
+
+    def can_manage_project(self, organization_id: str, project_id: str) -> bool:
+        if self.is_platform_admin():
+            return True
+        if "admin" in self.org_roles(organization_id):
+            return True
+        return self.project_role(organization_id, project_id) == "project_admin"
+
+    def can_read_project(self, organization_id: str, project_id: str) -> bool:
+        if self.is_platform_admin():
+            return True
+        if self.project_role(organization_id, project_id) is not None:
+            return True
+        if self.can_access_org(organization_id):
+            if "admin" in self.org_roles(organization_id):
+                return True
+            if self.has_permission(PERM_PROJECT_READ, organization_id):
+                return True
+        return False
 
     def has_permission(self, permission: str, organization_id: str | None = None) -> bool:
         if self.is_platform_admin():

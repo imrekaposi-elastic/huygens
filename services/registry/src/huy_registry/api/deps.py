@@ -67,12 +67,20 @@ AgentExportDep = Annotated[AuthContext, Depends(require_permission(PERM_AGENT_EX
 InventoryReadDep = Annotated[AuthContext, Depends(require_permission(PERM_INVENTORY_READ))]
 
 
-async def verify_inventory_service(
+def _internal_service_tokens(settings: Settings) -> frozenset[str]:
+    tokens = {settings.inventory_service_token}
+    if settings.projects_service_token:
+        tokens.add(settings.projects_service_token)
+    return frozenset(tokens)
+
+
+async def verify_internal_service(
     settings: SettingsDep,
     x_huy_service_token: Annotated[str | None, Header(alias="X-Huy-Service-Token")] = None,
 ) -> None:
-    if x_huy_service_token != settings.inventory_service_token:
+    if x_huy_service_token not in _internal_service_tokens(settings):
         raise HTTPException(status_code=401, detail="Invalid service token")
 
 
-InventoryServiceDep = Annotated[None, Depends(verify_inventory_service)]
+InternalServiceDep = Annotated[None, Depends(verify_internal_service)]
+InventoryServiceDep = InternalServiceDep

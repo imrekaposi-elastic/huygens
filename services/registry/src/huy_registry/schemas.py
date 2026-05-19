@@ -95,6 +95,16 @@ class PollTargetOut(BaseModel):
     tls_verify: bool
 
 
+class AgentConnectOut(BaseModel):
+    """Agent connection details for internal services (projects proxy)."""
+
+    agent_id: str
+    organization_id: str
+    base_url: str
+    agent_token: str
+    tls_verify: bool
+
+
 class PollStatusUpdate(BaseModel):
     connection_status: ConnectionStatus
     last_seen_at: datetime | None = None

@@ -162,3 +162,37 @@ async def test_internal_poll_targets(client: AsyncClient, service_headers: dict[
     assert targets.status_code == 200
     assert len(targets.json()) >= 1
     assert targets.json()[0]["agent_token"]
+
+
+@pytest.mark.asyncio
+async def test_internal_agent_connect(client: AsyncClient, service_headers: dict[str, str]) -> None:
+    pa = {"Authorization": f"Bearer {_platform_token()}"}
+    provider = await client.post("/api/v1/providers", headers=pa, json={"name": "P", "slug": "p4"})
+    provider_id = provider.json()["id"]
+    region = await client.post(
+        f"/api/v1/providers/{provider_id}/regions",
+        headers=pa,
+        json={"name": "R", "slug": "r4"},
+    )
+    region_id = region.json()["id"]
+    agent = await client.post(
+        "/api/v1/agents",
+        headers=pa,
+        json={
+            "name": "connect-me",
+            "base_url": "https://connect.example",
+            "organization_id": "44444444-4444-4444-4444-444444444444",
+            "provider_id": provider_id,
+            "region_id": region_id,
+        },
+    )
+    agent_id = agent.json()["id"]
+    connect = await client.get(
+        f"/api/v1/internal/agents/{agent_id}/connect",
+        headers=service_headers,
+    )
+    assert connect.status_code == 200
+    body = connect.json()
+    assert body["agent_id"] == agent_id
+    assert body["agent_token"]
+    assert body["base_url"] == "https://connect.example"

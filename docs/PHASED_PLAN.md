@@ -369,7 +369,7 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 ### Phase 3 — Project service and agent proxy
 - Project CRUD; proxy operator CRUD to agents
 - Enforce readonly networks in proxy (reject delete on `default`)
-- **Deliverable:** Single control-plane API for operators
+- **Deliverable:** Single control-plane API for operators — **done** (`services/projects`)
 
 ### Phase 4 — IPAM and subnet wizard
 - RFC1918 pool, wizard, allocation to vnets
