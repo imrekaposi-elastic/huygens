@@ -455,8 +455,8 @@ def diagram_event_flow() -> Diagram:
 
 def diagram_phases() -> Diagram:
     d = Diagram()
-    d.label("title", 40, 20, "Huygens — Delivery phases 0–11", size=28)
-    d.label("legend", 40, 52, "Yellow = complete  ·  Blue = planned", size=14)
+    d.label("title", 40, 20, "Huygens — Delivery phases 0–13", size=28)
+    d.label("legend", 40, 52, "Yellow = complete  ·  Blue = planned  ·  Two rows, left→right", size=14)
 
     # (id, label, done)
     phases_spec = [
@@ -471,25 +471,42 @@ def diagram_phases() -> Diagram:
         ("p6", "6\nBreakout", False),
         ("p7", "7\nCompliance", False),
         ("p8", "8\nOTel", False),
-        ("p9", "9\nSSH GW", False),
+        ("p9", "9\nSSH VM", False),
         ("p10", "10\nHardening", False),
-        ("p11", "11\nK8s", False),
+        ("p11", "11\nK8s inv", False),
+        ("p12", "12\nK8s access", False),
+        ("p13", "13\nPlaybooks", False),
     ]
 
-    box_w, box_h, gap = 88, 64, 10
-    x0, y0 = 40, 100
-    n = len(phases_spec)
-    track_w = n * box_w + (n - 1) * gap + 24
-    d.box("track", x0 - 12, y0 - 12, track_w, box_h + 24, "", bg="#f8f9fa", stroke_style="solid", underlay=True)
+    box_w, box_h, gap = 80, 58, 8
+    x0, y0_row1, y0_row2 = 40, 95, 195
+    row1 = phases_spec[:8]
+    row2 = phases_spec[8:]
 
-    ids: list[str] = []
-    for i, (eid, lbl, done) in enumerate(phases_spec):
-        x = x0 + i * (box_w + gap)
-        d.box(eid, x, y0, box_w, box_h, lbl, bg=C_DONE if done else C_SVC, font_size=14)
-        ids.append(eid)
+    def _draw_row(spec: list, y0: float) -> list[str]:
+        track_w = len(spec) * box_w + (len(spec) - 1) * gap + 24
+        d.box(
+            f"track-{y0}",
+            x0 - 12,
+            y0 - 12,
+            track_w,
+            box_h + 24,
+            "",
+            bg="#f8f9fa",
+            stroke_style="solid",
+            underlay=True,
+        )
+        ids: list[str] = []
+        for i, (eid, lbl, done) in enumerate(spec):
+            x = x0 + i * (box_w + gap)
+            d.box(eid, x, y0, box_w, box_h, lbl, bg=C_DONE if done else C_SVC, font_size=13)
+            ids.append(eid)
+        for i in range(len(ids) - 1):
+            d.arrow(f"ph-{ids[i]}-{ids[i + 1]}", ids[i], ids[i + 1], src_side="right", dst_side="left")
+        return ids
 
-    for i in range(len(ids) - 1):
-        d.arrow(f"ph-{ids[i]}-{ids[i + 1]}", ids[i], ids[i + 1], src_side="right", dst_side="left")
+    _draw_row(row1, y0_row1)
+    _draw_row(row2, y0_row2)
     return d
 
 

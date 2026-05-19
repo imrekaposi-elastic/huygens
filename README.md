@@ -12,7 +12,7 @@ they are placed there. Apache License 2.0.
 | [docs/architecture/](docs/architecture/) | ADRs, ERD, Excalidraw diagrams |
 | [docs/install/air-gapped.md](docs/install/air-gapped.md) | Offline installation guide |
 | [FRAMEWORK_PLAN.md](FRAMEWORK_PLAN.md) | Product scope and non-functional requirements |
-| [docs/PHASED_PLAN.md](docs/PHASED_PLAN.md) | Phased delivery roadmap (0–11) |
+| [docs/PHASED_PLAN.md](docs/PHASED_PLAN.md) | Phased delivery roadmap (0–13) |
 
 ## Quick start (libvirt agent)
 
