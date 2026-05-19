@@ -33,6 +33,9 @@ class QueuedLibvirtClient:
     def list_networks(self) -> list[dict]:
         return self._queue.run(self._inner.list_networks)
 
+    async def list_networks_async(self) -> list[dict]:
+        return await self._queue.run_async(self._inner.list_networks)
+
     def define_network_xml(self, xml: str) -> str:
         return self._queue.run(self._inner.define_network_xml, xml)
 

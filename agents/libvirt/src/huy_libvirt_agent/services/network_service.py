@@ -26,24 +26,45 @@ class NetworkService:
         return self._state.settings.data_dir / "vnets" / name
 
     def list_networks(self) -> list[NetworkResponse]:
+        return self._build_network_list(self._state.libvirt.list_networks())
+
+    async def list_networks_async(self) -> list[NetworkResponse]:
+        lv = self._state.libvirt
+        nets = await lv.list_networks_async()
+        return self._build_network_list(nets)
+
+    def _build_network_list(self, libvirt_nets_list: list[dict]) -> list[NetworkResponse]:
         managed = {
             p.name
             for p in (self._state.settings.data_dir / "vnets").glob("*")
             if p.is_dir()
         }
-        libvirt_nets = {n["name"]: n for n in self._state.libvirt.list_networks()}
+        libvirt_nets = {n["name"]: n for n in libvirt_nets_list}
         all_names = sorted(managed | set(libvirt_nets.keys()))
         return [self.get_network(n, libvirt_nets.get(n)) for n in all_names]
 
     def get_network(self, name: str, lv_info: dict | None = None) -> NetworkResponse:
-        meta_path = self._vnet_dir(name) / "metadata.json"
-        meta = read_metadata(meta_path)
-        labels = AgentLabels(**meta.get("labels", self._state.settings.agent_labels))
-        if lv_info is None:
+        if lv_info is None and self._state.libvirt.connected:
             for n in self._state.libvirt.list_networks():
                 if n["name"] == name:
                     lv_info = n
                     break
+        return self._network_response(name, lv_info)
+
+    async def get_network_async(self, name: str) -> NetworkResponse:
+        lv = self._state.libvirt
+        lv_info: dict | None = None
+        if lv.connected:
+            for n in await lv.list_networks_async():
+                if n["name"] == name:
+                    lv_info = n
+                    break
+        return self._network_response(name, lv_info)
+
+    def _network_response(self, name: str, lv_info: dict | None) -> NetworkResponse:
+        meta_path = self._vnet_dir(name) / "metadata.json"
+        meta = read_metadata(meta_path)
+        labels = AgentLabels(**meta.get("labels", self._state.settings.agent_labels))
         dnat_path = self._vnet_dir(name) / "dnat.json"
         dnat_count = 0
         if dnat_path.exists():

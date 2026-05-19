@@ -34,7 +34,7 @@ def _vnet_cidr(state: StateDep, name: str) -> str:
 
 @router.get("", response_model=list[NetworkResponse], summary="List virtual networks")
 async def list_networks(state: StateDep) -> list[NetworkResponse]:
-    return _svc(state).list_networks()
+    return await _svc(state).list_networks_async()
 
 
 @router.get(
@@ -43,7 +43,7 @@ async def list_networks(state: StateDep) -> list[NetworkResponse]:
     summary="Get virtual network",
 )
 async def get_network(name: str, state: StateDep) -> NetworkResponse:
-    return _svc(state).get_network(name)
+    return await _svc(state).get_network_async(name)
 
 
 @router.post(

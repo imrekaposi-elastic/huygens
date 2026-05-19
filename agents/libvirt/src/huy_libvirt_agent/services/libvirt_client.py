@@ -171,10 +171,10 @@ class LibvirtClient:
         dom = self.lookup_domain(name)
         if not dom.isActive():
             return []
+        # Use DHCP lease only; guest-agent (qemu-ga) queries can block the libvirt worker for minutes.
+        lease_src = getattr(libvirt, "VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_LEASE", 2)
         try:
-            ifaces = dom.interfaceAddresses(
-                libvirt.VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_AGENT, 0
-            )
+            ifaces = dom.interfaceAddresses(lease_src, 0)
         except Exception:
             return []
         ips = []
