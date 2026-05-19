@@ -16,6 +16,7 @@ C_UI = "#d0bfff"
 C_SVC = "#a5d8ff"
 C_DATA = "#b2f2bb"
 C_INFRA = "#ffec99"
+C_DONE = "#ffec99"  # completed phases (roadmap)
 C_AGENT = "#ffd8a8"
 C_BUS = "#e599f7"
 C_BORDER = "#1e1e1e"
@@ -170,6 +171,7 @@ class Diagram:
         dst_side: str = "top",
         label: str | None = None,
         dashed: bool = False,
+        curved: bool = True,
     ) -> None:
         sb = self._boxes[src]
         db = self._boxes[dst]
@@ -200,7 +202,7 @@ class Diagram:
             "opacity": 100,
             "groupIds": [],
             "frameId": None,
-            "roundness": {"type": 2},
+            "roundness": {"type": 2} if curved else None,
             "seed": s,
             "version": 1,
             "versionNonce": s + 1,
@@ -387,56 +389,73 @@ def diagram_dual_io() -> Diagram:
 def diagram_event_flow() -> Diagram:
     d = Diagram()
     d.label("title", 40, 20, "Huygens — Event flow (Kafka)", size=28)
-    d.box("agent", 40, 140, 140, 72, "Libvirt\nagent", bg=C_AGENT)
-    d.box("inv", 40, 280, 140, 72, "Inventory\npoller", bg=C_SVC)
-    d.box("svc", 40, 420, 140, 72, "All services", bg=C_SVC)
-    d.box("t-agent", 240, 140, 220, 56, "huy.agent.events", bg=C_BUS)
-    d.box("t-inv", 240, 280, 220, 56, "huy.inventory.snapshots", bg=C_BUS)
-    d.box("t-audit", 240, 420, 220, 56, "huy.audit.events", bg=C_BUS)
-    d.box("reg", 520, 120, 140, 56, "Registry", bg=C_SVC)
-    d.box("pg", 520, 200, 140, 56, "PostgreSQL", bg=C_DATA)
-    d.box("console", 520, 300, 140, 56, "Console", bg=C_UI)
-    d.box("es", 520, 420, 140, 56, "ES ingest", bg=C_DATA)
+    d.label("ce", 40, 52, "Left → right · CloudEvents 1.0 + JSON (schemas/kafka/)", size=14)
 
-    d.arrow("e1", "agent", "t-agent", src_side="right", dst_side="left")
-    d.arrow("e2", "inv", "t-inv", src_side="right", dst_side="left")
-    d.arrow("e3", "svc", "t-audit", src_side="right", dst_side="left")
-    d.arrow("e4", "t-agent", "reg", label="consume")
-    d.arrow("e5", "t-inv", "pg")
-    d.arrow("e6", "t-inv", "console", src_side="right", dst_side="left")
-    d.arrow("e7", "t-audit", "es")
-    d.label("ce", 240, 80, "CloudEvents 1.0 envelope + JSON data (schemas/kafka/)", size=14)
+    row_h = 64
+    y1, y2, y3 = 120, 220, 320
+    side = {"src_side": "right", "dst_side": "left", "curved": False}
+
+    # Column 1 — publishers
+    d.box("agent", 40, y1, 130, row_h, "Libvirt\nagent", bg=C_AGENT)
+    d.box("inv", 40, y2, 130, row_h, "Inventory\npoller", bg=C_SVC)
+    d.box("svc", 40, y3, 130, row_h, "All services", bg=C_SVC)
+    # Column 2 — Kafka topics
+    d.box("t-agent", 220, y1, 230, 52, "huy.agent.events", bg=C_BUS)
+    d.box("t-inv", 220, y2, 230, 52, "huy.inventory.snapshots", bg=C_BUS)
+    d.box("t-audit", 220, y3, 230, 52, "huy.audit.events", bg=C_BUS)
+    # Column 3 — consumers (PG then Console: both from topic, no link between them)
+    d.box("reg", 520, y1, 130, 52, "Registry", bg=C_SVC)
+    d.box("pg", 520, y2, 130, 52, "PostgreSQL", bg=C_DATA)
+    d.box("console", 690, y2, 130, 52, "Console", bg=C_UI)
+    d.box("es", 520, y3, 130, 52, "ES ingest", bg=C_DATA)
+
+    d.arrow("e1", "agent", "t-agent", **side)
+    d.arrow("e2", "inv", "t-inv", **side)
+    d.arrow("e3", "svc", "t-audit", **side)
+    d.arrow("e4", "t-agent", "reg", label="consume", **side)
+    d.arrow("e5", "t-inv", "pg", **side)
+    d.arrow("e6", "t-inv", "console", **side)
+    d.arrow("e7", "t-audit", "es", **side)
     return d
 
 
 def diagram_phases() -> Diagram:
     d = Diagram()
-    d.label("title", 40, 20, "Huygens — Delivery phases", size=28)
-    phases = [
-        ("p0", 40, 120, "Phase 0\nFoundation"),
-        ("p1a", 180, 120, "Phase 1a\nIAM"),
-        ("p1b", 320, 120, "Phase 1b\nAgent I/O"),
-        ("p1", 460, 120, "Phase 1\nRegistry"),
-        ("p2", 600, 120, "Phase 2\nSSO"),
-        ("p3", 180, 240, "Phase 3\nProjects"),
-        ("p5", 320, 240, "Phase 5\nConsole"),
-        ("p7", 460, 240, "Phase 7\nCompliance"),
-        ("p11", 600, 240, "Phase 11\nKubernetes"),
+    d.label("title", 40, 20, "Huygens — Delivery phases 0–11", size=28)
+    d.label("legend", 40, 52, "Yellow = complete  ·  Blue = planned", size=14)
+
+    # (id, label, done)
+    phases_spec = [
+        ("p0", "0\nFoundation", True),
+        ("p1a", "1a\nIAM", True),
+        ("p1b", "1b\nAgent I/O", True),
+        ("p1", "1\nRegistry", True),
+        ("p2", "2\nSSO", False),
+        ("p3", "3\nProjects", False),
+        ("p4", "4\nIPAM", False),
+        ("p5", "5\nConsole", False),
+        ("p6", "6\nBreakout", False),
+        ("p7", "7\nCompliance", False),
+        ("p8", "8\nOTel", False),
+        ("p9", "9\nSSH GW", False),
+        ("p10", "10\nHardening", False),
+        ("p11", "11\nK8s", False),
     ]
-    for eid, x, y, lbl in phases:
-        d.box(eid, x, y, 120, 72, lbl, bg=C_SVC if "0" not in eid else C_INFRA)
-    for a, b in [
-        ("p0", "p1a"),
-        ("p1a", "p1b"),
-        ("p1b", "p1"),
-        ("p1", "p2"),
-        ("p2", "p3"),
-        ("p3", "p5"),
-        ("p5", "p7"),
-        ("p7", "p11"),
-    ]:
-        d.arrow(f"ph-{a}-{b}", a, b, src_side="right", dst_side="left")
-    d.arrow("ph-1-3", "p1", "p3", src_side="bottom", dst_side="top")
+
+    box_w, box_h, gap = 88, 64, 10
+    x0, y0 = 40, 100
+    n = len(phases_spec)
+    track_w = n * box_w + (n - 1) * gap + 24
+    d.box("track", x0 - 12, y0 - 12, track_w, box_h + 24, "", bg="#f8f9fa", stroke_style="solid", underlay=True)
+
+    ids: list[str] = []
+    for i, (eid, lbl, done) in enumerate(phases_spec):
+        x = x0 + i * (box_w + gap)
+        d.box(eid, x, y0, box_w, box_h, lbl, bg=C_DONE if done else C_SVC, font_size=14)
+        ids.append(eid)
+
+    for i in range(len(ids) - 1):
+        d.arrow(f"ph-{ids[i]}-{ids[i + 1]}", ids[i], ids[i + 1], src_side="right", dst_side="left")
     return d
 
 

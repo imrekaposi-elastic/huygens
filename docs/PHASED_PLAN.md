@@ -348,7 +348,7 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - API: `GET /api/v1/networks` includes `readonly` / `deletable` flags; `default` is readonly
 - **Deliverable:** Merged agent release; no list-networks hang under load — **done** (`agents/libvirt`)
 
-### Phase 1 — Agent registry and inventory (MVP)
+### Phase 1 — Agent registry and inventory (MVP) ✅ (MVP)
 - **`platform_admin` only:** CRUD **provider → region → agent**, assign agent to **organization**, technical connection workflow (export token, connection status)
 - Org `admin`: **read** agents/inventory for their org only — no register/connect APIs
 - Agent enrollment stores token hash; **token export: `platform_admin` only**
@@ -356,7 +356,7 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - Poll via read path: `/api/v1/agent`, `/api/v1/vms`, `/api/v1/networks`, `/metrics`
 - Desired vs actual in PostgreSQL; `detected.config_drift` on resources
 - Publish inventory snapshots to Kafka (optional in 1.0, required before Phase 5)
-- **Deliverable:** 2+ agents registered per org; dashboard API shows inventory; mutations still via agent Swagger
+- **Deliverable:** 2+ agents registered per org; dashboard API shows inventory; mutations still via agent Swagger — **done** (`services/registry`, `services/inventory`, `shared/huy_auth`)
 
 ### Phase 2 — External authentication (deferred)
 - LDAP, SAML, OIDC adapters behind same RBAC

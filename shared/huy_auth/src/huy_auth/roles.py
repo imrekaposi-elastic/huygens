@@ -1,0 +1,38 @@
+"""Built-in role identifiers and permission map (mirrors services/iam)."""
+
+from __future__ import annotations
+
+PERM_ORG_READ = "org:read"
+PERM_ORG_MANAGE_USERS = "org:manage_users"
+PERM_ORG_MANAGE = "org:manage"
+PERM_PLATFORM_MANAGE_ORGS = "platform:manage_orgs"
+PERM_PLATFORM_ASSIGN_PLATFORM_ADMIN = "platform:assign_platform_admin"
+PERM_AGENT_REGISTER = "agent:register"
+PERM_AGENT_EXPORT_TOKEN = "agent:export_token"
+PERM_INVENTORY_READ = "inventory:read"
+
+ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
+    "platform_admin": frozenset(
+        {
+            PERM_ORG_READ,
+            PERM_ORG_MANAGE_USERS,
+            PERM_ORG_MANAGE,
+            PERM_PLATFORM_MANAGE_ORGS,
+            PERM_PLATFORM_ASSIGN_PLATFORM_ADMIN,
+            PERM_AGENT_REGISTER,
+            PERM_AGENT_EXPORT_TOKEN,
+            PERM_INVENTORY_READ,
+        }
+    ),
+    "admin": frozenset(
+        {
+            PERM_ORG_READ,
+            PERM_ORG_MANAGE_USERS,
+            PERM_INVENTORY_READ,
+        }
+    ),
+    "compliance_admin": frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
+    "compliance_engineer": frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
+    "auditor": frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
+    "compliance_reader": frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
+}
