@@ -32,7 +32,8 @@ The strategic proposal and the build plan share one delivery model: **Huygens is
 
 | Area | Strategic doc | FRAMEWORK_PLAN | Phased plan v3 | Gap |
 |------|---------------|----------------|----------------|-----|
-| Workload inventory | Yes | Via console/agents | Phase 1 + agent | MVP in progress |
+| Workload inventory | Yes | Via console/agents | Phase 1 + agent | **Done** (Phase 1) |
+| Operator VM/network CRUD | Yes | Via console | **Phase 3** projects proxy | **Done** (Phase 3); console in Phase 5 |
 | Asset **criticality** | Implied (risk-aware) | **NEW:** `compliance_engineer`, org compliance picker | **Phase 7** | Not in Phases 0–1 |
 | Org compliance standards | Yes | Provider/region traits, MoSCoW | Phase 7 | Planned |
 | Config drift | Yes (Elastic narrative) | `config_drift` API flag | Phase 1 + 7 UI | Agent/control plane partial |
@@ -62,7 +63,7 @@ Based on [FRAMEWORK_PLAN.md](../FRAMEWORK_PLAN.md) and your iteration:
 | **Events** | **Kafka** (event-driven target); HTTP poll acceptable for Phase 1 MVP |
 | **PostgreSQL** | System of record (orgs, projects, desired state, RBAC, registry) |
 | **Elasticsearch ECS** | Audit logs, compliance search/views, operator/auditor queries — not primary transactional store |
-| MVP | Registry + live status API; operators still use agent Swagger for mutations |
+| MVP | Registry + inventory + **projects proxy** (Phase 3); console in Phase 5 |
 | **Open source** | Entire monorepo OSS; Phase 0 **license ADR** (align Elastic: Apache 2.0 vs AGPLv3 — see below) |
 | **Air-gapped install** | No mandatory cloud; offline bundles (containers/Helm/packages); Phase 0 ADR + Phase 10 runbook — **strategic link** alongside OSS self-hosted |
 | **Observability** | **OpenTelemetry throughout**, **EDOT-friendly** (FRAMEWORK_PLAN); ECS logs + OTLP to Elastic Observability or any OTLP backend |
@@ -265,8 +266,8 @@ sequenceDiagram
 | Role | Register / connect hypervisor | Export agent token | View org inventory | CRUD VMs |
 |------|------------------------------|--------------------|--------------------|----------|
 | `platform_admin` | **Yes** | **Yes (only role)** | All orgs | Yes |
-| `admin` (org admin) | **No** | No | Own org, read-only inventory | Later via proxy |
-| `operator` | No | No | Project-scoped | Later via proxy |
+| `admin` (org admin) | **No** | No | Own org, read-only inventory | Yes (all org projects via **projects** API) |
+| `operator` | No | No | Project-scoped | Yes (project-scoped via **projects** API) |
 
 - **Binding:** `platform_admin` sets `organization_id` + `region_id` + `provider_id` at registration time.
 - **One token per agent**; rotate/rebind only via `platform_admin`.
@@ -278,7 +279,7 @@ sequenceDiagram
 | Layer | Behavior |
 |-------|----------|
 | **Agent** | Networks named `default` (and optionally other system names) expose `readonly: true`, `deletable: false` in API schema |
-| **Control plane** | Registry inventory marks `default` readonly; desired-state collector never schedules delete |
+| **Control plane** | Registry inventory marks `default` readonly; **projects proxy** rejects DELETE on readonly networks; desired-state rows in PG |
 | **GUI (Phase 5+)** | No delete button; greyed card with tooltip "system network" |
 | **Operators** | Create project vnets via IPAM (`lab0`, etc.); do not manage host `default` through console |
 
@@ -356,7 +357,7 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - Poll via read path: `/api/v1/agent`, `/api/v1/vms`, `/api/v1/networks`, `/metrics`
 - Desired vs actual in PostgreSQL; `detected.config_drift` on resources
 - Publish inventory snapshots to Kafka (optional in 1.0, required before Phase 5)
-- **Deliverable:** 2+ agents registered per org; dashboard API shows inventory; mutations still via agent Swagger — **done** (`services/registry`, `services/inventory`, `shared/huy_auth`)
+- **Deliverable:** 2+ agents registered per org; dashboard API shows inventory — **done** (`services/registry`, `services/inventory`, `shared/huy_auth`). Operator mutations moved to Phase 3 projects proxy (agent Swagger remains break-glass).
 
 ### Phase 2 — External authentication (Keycloak + group mapping) ✅
 - **Keycloak** for LDAP/AD, SAML, and OIDC federation ([ADR 0011](architecture/adrs/0011-keycloak-group-role-mapping.md)); Huygens does not embed SAML/LDAP parsers
@@ -366,19 +367,28 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - Keycloak in Compose `--profile sso`; [docs/install/keycloak.md](install/keycloak.md)
 - **Deliverable:** SSO login; admin-configurable group→role mapping API; local auth remains for break-glass — **done** (`services/iam`)
 
-### Phase 3 — Project service and agent proxy
-- Project CRUD; proxy operator CRUD to agents
-- Enforce readonly networks in proxy (reject delete on `default`)
-- **Deliverable:** Single control-plane API for operators — **done** (`services/projects`)
+### Phase 3 — Project service and agent proxy ✅
+- **`huy-projects`** (`services/projects`, port **8084**, Docker Compose service `projects`)
+- **Project CRUD** per organization (slug unique per org); `project_resources` table stores **desired state** for proxied VMs/networks
+- **Agent proxy:** `GET/POST/PATCH/DELETE` under `/api/v1/projects/{project_id}/agents/{agent_id}/vms` and `/networks`
+  - JWT from IAM; project/org RBAC (`project_admin`, `operator`, org `admin`, `platform_admin`)
+  - Resolves agent URL + bearer token via registry **`GET /api/v1/internal/agents/{id}/connect`** (`PROJECTS_SERVICE_TOKEN`)
+  - Direct HTTPS to libvirt agent write/read APIs (inventory continues separate **poll** on read path)
+- **Readonly networks:** proxy returns **403** on DELETE for `default` or `readonly: true` / `deletable: false` ([ADR 0007](architecture/adrs/0007-readonly-system-networks.md))
+- **Not in scope (Phase 3):** IPAM, quotas enforcement, Kafka publish, web console — see Phases 4–5
+- **Tests:** unit tests with respx; `make test` includes projects; cross-phase integration scaffold in `tests/integration/` ([docs/testing.md](testing.md))
+- **Diagrams:** `01-system-context` (console → IAM/projects/inventory; ES for audit); `06-phase-roadmap` Phase 3 yellow
+- **Deliverable:** Single control-plane API for operators (no agent Swagger for day-to-day CRUD) — **done** (`services/projects`, registry internal connect, `shared/huy_auth` project permissions)
 
 ### Phase 4 — IPAM and subnet wizard
 - RFC1918 pool, wizard, allocation to vnets
 - **Deliverable:** No ad-hoc CIDRs on create
 
 ### Phase 5 — Web console + Kafka live updates
-- SPA: org-scoped views; no delete on readonly networks
-- Kafka consumer for status/events; poller as fallback
-- **Deliverable:** Operators use console only
+- SPA: org-scoped views; **console → IAM** (auth), **→ projects** (mutations), **→ inventory** (read); no direct agent URLs in browser
+- No delete on readonly networks (matches projects proxy rules)
+- Kafka consumer for status/events; inventory poller as fallback
+- **Deliverable:** Operators use console only (replaces curl/projects CLI for normal work)
 
 ### Phase 6 — Hybrid breakout and network linking
 - Central `breakout-controller` + per-agent breakout
@@ -462,7 +472,7 @@ flowchart LR
   P8 --> P11
 ```
 
-**MVP critical path:** Phase 0 → 1a + 1b (parallel) → Phase 1.
+**MVP critical path:** Phase 0 → 1a + 1b (parallel) → Phase 1 → **Phase 3** (operator API). Phases 2 (SSO) and 5 (console) can follow in parallel where useful.
 
 **Strategic completeness path:** Phases 0–10 deliver FRAMEWORK_PLAN + OSS platform; **Phase 11 closes gap with strategic K8s narrative.**
 
@@ -476,11 +486,11 @@ flowchart LR
 | `registry` | Python | Agents, token vault, enrollment |
 | `inventory` | Python | Poller + Kafka producer; uses agent **read path** |
 | `audit-ingest` | Python/Logstash | Writes ECS to Elasticsearch |
-| `projects` | Python | Proxy + quotas |
+| `projects` | Python | **Phase 3 ✅** Project CRUD, desired state, libvirt agent proxy (`:8084`); quotas in Phase 4 |
 | `compliance` | Python | Org catalog, asset criticality, traits, checks; PG + ES views |
 | `breakout-controller` | Go | Central WG |
 | `api-gateway` | Go/Kong | Auth, routing |
-| `web` | React/TS | Readonly network UX |
+| `web` | React/TS | Phase 5 console → IAM, projects, inventory |
 | `agents/libvirt` | Python | Write queue + read path |
 
 ---
@@ -498,7 +508,7 @@ flowchart LR
 
 ## Deferred / out of scope for near phases
 
-- Keycloak SSO + group→role mapping — see [ADR 0011](architecture/adrs/0011-keycloak-group-role-mapping.md) (Phase 2)
+- Keycloak SSO + group→role mapping — **done** Phase 2; see [ADR 0011](architecture/adrs/0011-keycloak-group-role-mapping.md)
 - Drag-and-drop network graph (Phase 6)
 - SSH gateway (Phase 9)
 - Multi-region control-plane HA (Phase 10)
