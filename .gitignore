@@ -26,6 +26,9 @@
 **/venv/
 **/ENV/
 
+# uv lockfiles (project uses pip on hosts; uv optional for local dev only)
+**/uv.lock
+
 # --- Environment & secrets ---
 .env
 .env.*
