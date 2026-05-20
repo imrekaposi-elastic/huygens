@@ -3,19 +3,41 @@
 Open-source infrastructure operations platform: **know where** workloads run and **why**
 they are placed there. Apache License 2.0.
 
-| Path | Description |
-|------|-------------|
-| [agents/libvirt](agents/libvirt/) | KVM hypervisor agent (REST API, libvirt, networking) |
-| [services/](services/) | Control plane: IAM, registry, inventory (scaffolds) |
-| [web/](web/) | Console SPA (Phase 5) — `npm run dev` or Compose `:5173` |
-| [shared/huy_events](shared/huy_events/) | Shared Kafka / CloudEvents client (`huy-events`) |
-| [schemas/kafka/](schemas/kafka/) | CloudEvents JSON schemas |
-| [docs/architecture/](docs/architecture/) | ADRs, ERD, Excalidraw diagrams |
-| [docs/install/air-gapped.md](docs/install/air-gapped.md) | Offline installation guide |
-| [FRAMEWORK_PLAN.md](FRAMEWORK_PLAN.md) | Product scope and non-functional requirements |
-| [docs/PHASED_PLAN.md](docs/PHASED_PLAN.md) | Phased delivery roadmap (0–13) |
+## Quick start
 
-## Quick start (libvirt agent)
+**Control plane and console** run in Docker Compose. The **libvirt agent** runs on each
+KVM hypervisor (host libvirt/KVM required) and is not containerized in the default stack.
+
+```bash
+cp compose.env.example .env
+docker compose up -d --build
+```
+
+Open the console at **http://localhost:5173** and sign in with the bootstrap user from
+`.env` (default `platform-admin` / `platform-admin-dev`). First-time platform admins with
+no organizations are guided through **Setup** in the UI.
+
+| Service | Port | Role |
+|---------|------|------|
+| Console (nginx) | 5173 | Web UI |
+| IAM | 8081 | Auth, orgs, users, RBAC |
+| Registry | 8082 | Agents, infrastructure, regions |
+| Inventory | 8083 | Poll agents, dashboard, live events |
+| Projects | 8084 | Projects, IPAM, agent API proxy |
+| PostgreSQL | 5432 | System of record |
+| Kafka | 9092 | Inventory change events |
+
+Check health: `docker compose ps`. Details: [docs/install/docker-compose.md](docs/install/docker-compose.md).
+
+Optional Keycloak SSO:
+
+```bash
+docker compose --profile sso up -d --build
+```
+
+## Libvirt agent (hypervisor)
+
+Install and run on the host that manages VMs (not via Compose):
 
 ```bash
 cd agents/libvirt
@@ -24,41 +46,43 @@ make install
 make run
 ```
 
-See [agents/libvirt/README.md](agents/libvirt/README.md).
+Register the agent in the console (**Agents**), assign it to a region, then use **IPAM** and
+**Projects** for networks and workloads. See [agents/libvirt/README.md](agents/libvirt/README.md).
 
-## Local mock stack (Docker Compose)
+## Repository layout
+
+| Path | Description |
+|------|-------------|
+| [agents/libvirt](agents/libvirt/) | KVM hypervisor agent (REST API, libvirt, networking) |
+| [services/iam](services/iam/) | Authentication, organizations, RBAC |
+| [services/registry](services/registry/) | Agent registry, infrastructure providers, regions |
+| [services/inventory](services/inventory/) | Agent polling, inventory API, SSE |
+| [services/projects](services/projects/) | Projects, IPAM, proxied operator APIs |
+| [web](web/) | Console SPA (built into the `web` Compose service) |
+| [shared/huy_events](shared/huy_events/) | Shared Kafka / CloudEvents client |
+| [schemas/kafka](schemas/kafka/) | CloudEvents JSON schemas |
+| [docs/architecture](docs/architecture/) | ADRs, ERD, diagrams |
+| [docs/install/air-gapped.md](docs/install/air-gapped.md) | Offline installation |
+| [docs/PHASED_PLAN.md](docs/PHASED_PLAN.md) | Delivery roadmap |
+| [FRAMEWORK_PLAN.md](FRAMEWORK_PLAN.md) | Product scope and NFRs |
+
+## Development
+
+**Console (hot reload, proxies to local services):**
 
 ```bash
-cp compose.env.example .env
-docker compose up -d --build
-# IAM :8081 · registry :8082 · inventory :8083 · projects :8084 · Kafka :9092
+cd web && npm install && npm run dev
 ```
 
-See [docs/install/docker-compose.md](docs/install/docker-compose.md).
+Run individual services on the host instead of Compose when debugging — see each
+service README under `services/`.
 
-## Control plane
-
-**IAM (Phase 1a):**
-
-```bash
-cd services/iam && cp .env.example .env && make install && make run   # :8081
-```
-
-**Registry / inventory (Phase 0 scaffolds):**
+**Agent tests:**
 
 ```bash
-cd services/registry && pip install -e . && huy-registry    # :8082
-cd services/inventory && pip install -e . && huy-inventory  # :8083
+make -C agents/libvirt test
 ```
 
 ## Contributing
 
 [CONTRIBUTING.md](CONTRIBUTING.md) · [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) · [LICENSE](LICENSE)
-
-## Phases
-
-Phase **0** (this repo state): monorepo layout, ADRs, Kafka schemas, service scaffolds.
-
-Phase **1a/1b/1**: IAM, agent dual I/O completion, registry + inventory poll.
-
-See [architecture README](docs/architecture/README.md) and [phased plan](docs/PHASED_PLAN.md).
