@@ -22,6 +22,10 @@ class Settings(BaseSettings):
         default="dev-projects-service-token",
         alias="PROJECTS_SERVICE_TOKEN",
     )
+    inventory_service_token: str | None = Field(
+        default="dev-inventory-service-token",
+        alias="INVENTORY_SERVICE_TOKEN",
+    )
     host: str = Field(default="127.0.0.1", alias="HUY_PROJECTS_HOST")
     port: int = Field(default=8084, alias="HUY_PROJECTS_PORT")
     ipam_enforce: bool = Field(

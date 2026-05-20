@@ -106,6 +106,51 @@ class AgentProxy:
         response = await self._request(info, "PATCH", f"/api/v1/networks/{name}", json=body)
         return response.json()
 
+    async def list_cloud_init_profiles(
+        self, agent_id: str, organization_id: str
+    ) -> list[dict[str, Any]]:
+        info = await self._connect(agent_id, organization_id)
+        response = await self._request(info, "GET", "/api/v1/cloud-init")
+        return response.json()
+
+    async def get_cloud_init_profile(
+        self, agent_id: str, organization_id: str, name: str
+    ) -> dict[str, Any]:
+        info = await self._connect(agent_id, organization_id)
+        response = await self._request(info, "GET", f"/api/v1/cloud-init/{name}")
+        return response.json()
+
+    async def create_cloud_init_profile(
+        self, agent_id: str, organization_id: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        info = await self._connect(agent_id, organization_id)
+        response = await self._request(info, "POST", "/api/v1/cloud-init", json=body)
+        return response.json()
+
+    async def update_cloud_init_profile(
+        self, agent_id: str, organization_id: str, name: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        info = await self._connect(agent_id, organization_id)
+        response = await self._request(
+            info, "PATCH", f"/api/v1/cloud-init/{name}", json=body
+        )
+        return response.json()
+
+    async def delete_cloud_init_profile(
+        self, agent_id: str, organization_id: str, name: str
+    ) -> None:
+        info = await self._connect(agent_id, organization_id)
+        await self._request(info, "DELETE", f"/api/v1/cloud-init/{name}")
+
+    async def validate_cloud_init(
+        self, agent_id: str, organization_id: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        info = await self._connect(agent_id, organization_id)
+        response = await self._request(
+            info, "POST", "/api/v1/cloud-init/validate", json=body
+        )
+        return response.json()
+
     async def delete_network(
         self,
         agent_id: str,

@@ -7,7 +7,9 @@ from typing import Any
 from fastapi import APIRouter, Body, HTTPException, Query
 
 from huy_projects.api.deps import AgentProxyDep, CurrentUserDep, ReadableProjectDep, SessionDep, SettingsDep
-from huy_projects.services import authorization, desired_state, ipam_service
+from huy_projects.schemas import ResourceAssignRequest, ResourceAssignmentOut
+from huy_projects.libvirt_system import is_system_network
+from huy_projects.services import authorization, desired_state, ipam_service, resource_assignment_service
 
 router = APIRouter(prefix="/api/v1/projects/{project_id}/agents/{agent_id}", tags=["agent-proxy"])
 
@@ -223,5 +225,65 @@ async def delete_network(
         project_id=project.id,
         agent_id=agent_id,
         resource_type="network",
+        name=name,
+    )
+
+
+@router.post("/assignments", response_model=ResourceAssignmentOut, status_code=201)
+async def assign_existing_resource(
+    project: ReadableProjectDep,
+    agent_id: str,
+    body: ResourceAssignRequest,
+    user: CurrentUserDep,
+    proxy: AgentProxyDep,
+    session: SessionDep,
+) -> ResourceAssignmentOut:
+    """Adopt an existing agent VM or network into this project (inventory orphan → managed)."""
+    authorization.require_project_operate(user, project)
+    if body.resource_type == "network" and is_system_network(body.name):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Network '{body.name}' is a system network and cannot be assigned to a project",
+        )
+    try:
+        if body.resource_type == "vm":
+            actual = await proxy.get_vm(agent_id, project.organization_id, body.name)
+        else:
+            actual = await proxy.get_network(agent_id, project.organization_id, body.name)
+    except HTTPException as exc:
+        if exc.status_code == 404:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No {body.resource_type} '{body.name}' on this agent",
+            ) from exc
+        raise
+    return await resource_assignment_service.assign_resource(
+        session,
+        project,
+        agent_id=agent_id,
+        resource_type=body.resource_type,
+        name=body.name,
+        actual_state=actual,
+    )
+
+
+@router.delete("/assignments/{resource_type}/{name}", status_code=204)
+async def unassign_resource(
+    project: ReadableProjectDep,
+    agent_id: str,
+    resource_type: str,
+    name: str,
+    user: CurrentUserDep,
+    session: SessionDep,
+) -> None:
+    """Remove project membership without deleting the resource on the agent."""
+    authorization.require_project_operate(user, project)
+    if resource_type not in ("vm", "network"):
+        raise HTTPException(status_code=400, detail="resource_type must be vm or network")
+    await resource_assignment_service.unassign_resource(
+        session,
+        project,
+        agent_id=agent_id,
+        resource_type=resource_type,  # type: ignore[arg-type]
         name=name,
     )

@@ -11,7 +11,7 @@ from huy_libvirt_agent.api.schemas.vm import VMCreateRequest, VMPatchRequest, VM
 from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.services.cloudinit import CloudInitBuilder
 from huy_libvirt_agent.services.cloudinit_profile_service import CloudInitProfileService
-from huy_libvirt_agent.services.domain_xml import render_domain_xml
+from huy_libvirt_agent.services.domain_xml import render_domain_xml, update_domain_xml_resources
 from huy_libvirt_agent.services.image_service import ImageService
 from huy_libvirt_agent.services.image_store import ImageStore
 from huy_libvirt_agent.services.libvirt_client import LibvirtError
@@ -142,6 +142,25 @@ class VMService:
     def patch_vm(self, name: str, body: VMPatchRequest) -> VMResponse:
         meta_path = self._instance_dir(name) / "metadata.json"
         meta = read_metadata(meta_path)
+        resize = body.vcpu is not None or body.memory_mib is not None
+        was_running = False
+        if resize and self._state.libvirt.connected:
+            try:
+                _, state_name = self._state.libvirt.domain_state(name)
+                was_running = state_name == "RUNNING"
+            except LibvirtError:
+                was_running = False
+            if was_running:
+                self._state.libvirt.destroy_domain(name)
+            xml = self._state.libvirt.domain_xml(name)
+            xml = update_domain_xml_resources(
+                xml,
+                vcpu=body.vcpu if body.vcpu is not None else meta.get("vcpu"),
+                memory_mib=body.memory_mib if body.memory_mib is not None else meta.get("memory_mib"),
+            )
+            self._state.libvirt.define_domain_xml(xml)
+            if was_running:
+                self._state.libvirt.create_domain(name)
         if body.autostart is not None:
             self._state.libvirt.set_domain_autostart(name, body.autostart)
             meta["autostart"] = body.autostart

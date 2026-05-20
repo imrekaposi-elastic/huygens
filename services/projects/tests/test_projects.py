@@ -64,6 +64,26 @@ async def test_list_project_agents(client: AsyncClient) -> None:
     )
     project_id = project.json()["id"]
 
+    respx.get("http://registry.test/api/v1/internal/agent-technologies").mock(
+        return_value=Response(
+            200,
+            json=[
+                {
+                    "id": "tech-1",
+                    "slug": "libvirt-agent",
+                    "name": "Libvirt agent",
+                    "description": None,
+                    "platform_enabled": True,
+                }
+            ],
+        )
+    )
+    await client.put(
+        f"/api/v1/projects/{project_id}/agent-technologies",
+        headers=headers,
+        json={"technologies": [{"agent_technology_id": "tech-1", "enabled": True}]},
+    )
+
     respx.get("http://registry.test/api/v1/agents").mock(
         return_value=Response(
             200,
@@ -73,6 +93,8 @@ async def test_list_project_agents(client: AsyncClient) -> None:
                     "name": "dommel",
                     "base_url": "https://dommel:8765",
                     "organization_id": ORG_ID,
+                    "agent_technology_id": "tech-1",
+                    "agent_technology_slug": "libvirt-agent",
                     "connection_status": "connected",
                 },
                 {
@@ -225,3 +247,117 @@ async def test_reject_delete_readonly_network_by_flag(client: AsyncClient) -> No
         headers=headers,
     )
     assert denied.status_code == 403
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_internal_resource_assignments(client: AsyncClient) -> None:
+    headers = {"Authorization": f"Bearer {org_admin_token(ORG_ID)}"}
+    project = await client.post(
+        "/api/v1/projects",
+        headers=headers,
+        json={"organization_id": ORG_ID, "name": "Lab", "slug": "lab-assign"},
+    )
+    project_id = project.json()["id"]
+    agent_id = "dddddddd-dddd-dddd-dddd-dddddddddddd"
+
+    respx.get(f"http://registry.test/api/v1/internal/agents/{agent_id}/connect").mock(
+        return_value=Response(
+            200,
+            json={
+                "agent_id": agent_id,
+                "organization_id": ORG_ID,
+                "base_url": "https://agent.test",
+                "agent_token": "agent-secret",
+                "tls_verify": False,
+            },
+        )
+    )
+    respx.post("https://agent.test/api/v1/vms").mock(
+        return_value=Response(201, json={"name": "web-01", "status": "on"})
+    )
+
+    created = await client.post(
+        f"/api/v1/projects/{project_id}/agents/{agent_id}/vms",
+        headers=headers,
+        json={"name": "web-01", "vcpu": 1, "memory_mb": 512},
+    )
+    assert created.status_code == 201
+
+    listed = await client.get(
+        f"/api/v1/internal/organizations/{ORG_ID}/resource-assignments",
+        headers={"X-Huy-Service-Token": "test-inventory-service-token"},
+    )
+    assert listed.status_code == 200
+    rows = listed.json()
+    assert len(rows) == 1
+    assert rows[0]["name"] == "web-01"
+    assert rows[0]["resource_type"] == "vm"
+    assert rows[0]["project_name"] == "Lab"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_assign_existing_vm_to_project(client: AsyncClient) -> None:
+    headers = {"Authorization": f"Bearer {org_admin_token(ORG_ID)}"}
+    project = await client.post(
+        "/api/v1/projects",
+        headers=headers,
+        json={"organization_id": ORG_ID, "name": "Adopt", "slug": "adopt"},
+    )
+    project_id = project.json()["id"]
+    agent_id = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
+
+    respx.get(f"http://registry.test/api/v1/internal/agents/{agent_id}/connect").mock(
+        return_value=Response(
+            200,
+            json={
+                "agent_id": agent_id,
+                "organization_id": ORG_ID,
+                "base_url": "https://agent.test",
+                "agent_token": "agent-secret",
+                "tls_verify": False,
+            },
+        )
+    )
+    respx.get("https://agent.test/api/v1/vms/web-01").mock(
+        return_value=Response(
+            200,
+            json={"name": "web-01", "status": "on", "libvirt_state": "RUNNING"},
+        )
+    )
+
+    assigned = await client.post(
+        f"/api/v1/projects/{project_id}/agents/{agent_id}/assignments",
+        headers=headers,
+        json={"resource_type": "vm", "name": "web-01"},
+    )
+    assert assigned.status_code == 201, assigned.text
+    assert assigned.json()["project_name"] == "Adopt"
+
+    listed = await client.get(
+        f"/api/v1/internal/organizations/{ORG_ID}/resource-assignments",
+        headers={"X-Huy-Service-Token": "test-inventory-service-token"},
+    )
+    assert any(r["name"] == "web-01" for r in listed.json())
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_cannot_assign_system_default_network(client: AsyncClient) -> None:
+    headers = {"Authorization": f"Bearer {org_admin_token(ORG_ID)}"}
+    project = await client.post(
+        "/api/v1/projects",
+        headers=headers,
+        json={"organization_id": ORG_ID, "name": "Sys", "slug": "sys-net"},
+    )
+    project_id = project.json()["id"]
+    agent_id = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+
+    denied = await client.post(
+        f"/api/v1/projects/{project_id}/agents/{agent_id}/assignments",
+        headers=headers,
+        json={"resource_type": "network", "name": "default"},
+    )
+    assert denied.status_code == 400
+    assert "system network" in denied.json()["detail"].lower()

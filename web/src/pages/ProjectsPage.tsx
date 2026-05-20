@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/auth/AuthContext";
+import { slugFromName } from "@/auth/setup";
 import { api, ApiError } from "@/api/client";
 
 export function ProjectsPage() {
@@ -9,7 +10,9 @@ export function ProjectsPage() {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [slugTouched, setSlugTouched] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["projects", selectedOrgId],
@@ -21,17 +24,38 @@ export function ProjectsPage() {
     mutationFn: () =>
       api.createProject({
         organization_id: selectedOrgId!,
-        name,
-        slug: slug || name.toLowerCase().replace(/\s+/g, "-"),
+        name: name.trim(),
+        slug: slug.trim() || slugFromName(name),
       }),
     onSuccess: () => {
       setName("");
       setSlug("");
+      setSlugTouched(false);
       setErr(null);
       void qc.invalidateQueries({ queryKey: ["projects", selectedOrgId] });
     },
     onError: (e) => setErr(e instanceof ApiError ? e.message : "Create failed"),
   });
+
+  async function handleDelete(projectId: string, projectName: string) {
+    if (
+      !window.confirm(
+        `Delete project "${projectName}"?\n\nProject resources in the database will be removed.`,
+      )
+    ) {
+      return;
+    }
+    setErr(null);
+    setDeletingId(projectId);
+    try {
+      await api.deleteProject(projectId);
+      void qc.invalidateQueries({ queryKey: ["projects", selectedOrgId] });
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : "Delete failed");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   if (!selectedOrgId) return <p className="text-slate-400">Select an organization</p>;
 
@@ -50,7 +74,10 @@ export function ProjectsPage() {
           <input
             className="mt-1 w-full min-h-11 rounded border border-slate-700 bg-slate-800 px-3"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (!slugTouched) setSlug(slugFromName(e.target.value));
+            }}
             required
           />
         </label>
@@ -59,7 +86,10 @@ export function ProjectsPage() {
           <input
             className="mt-1 w-full min-h-11 rounded border border-slate-700 bg-slate-800 px-3"
             value={slug}
-            onChange={(e) => setSlug(e.target.value)}
+            onChange={(e) => {
+              setSlugTouched(true);
+              setSlug(e.target.value);
+            }}
             placeholder="auto from name"
           />
         </label>
@@ -75,15 +105,26 @@ export function ProjectsPage() {
       {isLoading && <p className="text-slate-400">Loading…</p>}
       <ul className="space-y-2">
         {data?.map((p) => (
-          <li key={p.id}>
+          <li
+            key={p.id}
+            className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 p-4"
+          >
             <Link
-              to="/projects/$projectId"
+              to="/projects/$projectId/vms"
               params={{ projectId: p.id }}
-              className="block rounded-lg border border-slate-800 bg-slate-900 p-4 hover:border-emerald-800"
+              className="min-w-0 flex-1 hover:text-emerald-400"
             >
               <span className="font-medium">{p.name}</span>
               <span className="ml-2 text-sm text-slate-500">{p.slug}</span>
             </Link>
+            <button
+              type="button"
+              onClick={() => void handleDelete(p.id, p.name)}
+              disabled={deletingId === p.id}
+              className="shrink-0 min-h-11 rounded-lg border border-red-900/80 px-3 text-sm text-red-300 hover:bg-red-950/40 disabled:opacity-50"
+            >
+              {deletingId === p.id ? "Deleting…" : "Delete"}
+            </button>
           </li>
         ))}
       </ul>

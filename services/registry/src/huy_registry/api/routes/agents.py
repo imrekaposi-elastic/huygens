@@ -32,6 +32,17 @@ def _filter_agents(user, agents):
     return [a for a in agents if a.organization_id in allowed_orgs]
 
 
+async def _probe_and_update(session, settings, agent, token: str):
+    ok, err = await connection_probe.probe_agent(agent.base_url, token, tls_verify=agent.tls_verify)
+    return await agent_service.update_poll_status(
+        session,
+        agent,
+        connection_status="connected" if ok else "error",
+        last_seen_at=datetime.now(UTC) if ok else agent.last_seen_at,
+        last_poll_error=err,
+    )
+
+
 @router.post("", response_model=AgentCreated, status_code=201)
 async def register_agent(
     body: AgentCreate,
@@ -40,6 +51,7 @@ async def register_agent(
     settings: SettingsDep,
 ) -> AgentCreated:
     agent, token = await agent_service.create_agent(session, settings, body)
+    agent = await _probe_and_update(session, settings, agent, token)
     out = agent_to_out(agent)
     return AgentCreated(**out.model_dump(), agent_token=token)
 
@@ -69,6 +81,19 @@ async def get_agent(agent_id: str, user: CurrentUserDep, session: SessionDep) ->
     if not user.is_platform_admin() and not user.can_access_org(agent.organization_id):
         raise HTTPException(status_code=403, detail="Access denied")
     return agent_to_out(agent)
+
+
+@router.delete("/{agent_id}", status_code=204)
+async def delete_agent(
+    agent_id: str,
+    _admin: PlatformAdminDep,
+    session: SessionDep,
+    settings: SettingsDep,
+) -> None:
+    agent = await agent_service.get_agent(session, agent_id)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    await agent_service.delete_agent(session, settings, agent)
 
 
 @router.patch("/{agent_id}", response_model=AgentOut)
@@ -124,13 +149,5 @@ async def test_connection(
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
     token = decrypt_agent_token(agent.token_encrypted, settings.agent_token_encryption_key)
-    ok, err = await connection_probe.probe_agent(agent.base_url, token, tls_verify=agent.tls_verify)
-    status = "connected" if ok else "error"
-    updated = await agent_service.update_poll_status(
-        session,
-        agent,
-        connection_status=status,
-        last_seen_at=datetime.now(UTC) if ok else agent.last_seen_at,
-        last_poll_error=err,
-    )
+    updated = await _probe_and_update(session, settings, agent, token)
     return agent_to_out(updated)

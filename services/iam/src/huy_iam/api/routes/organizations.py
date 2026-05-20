@@ -50,6 +50,18 @@ async def list_organizations(
     return [OrganizationOut.model_validate(o) for o in orgs if o.id in allowed]
 
 
+@router.delete("/{organization_id}", status_code=204)
+async def delete_organization(
+    organization_id: str,
+    _admin: PlatformAdminDep,
+    session: SessionDep,
+) -> None:
+    deleted = await user_service.delete_organization(session, organization_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    await session.commit()
+
+
 @router.get("/{organization_id}", response_model=OrganizationOut)
 async def get_organization(
     organization_id: str,

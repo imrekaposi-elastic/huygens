@@ -19,6 +19,29 @@ class Base(DeclarativeBase):
     pass
 
 
+class ProjectAgentTechnology(Base):
+    """Which agent technologies (libvirt-agent, …) are enabled for a project."""
+
+    __tablename__ = "project_agent_technologies"
+    __table_args__ = (
+        UniqueConstraint("project_id", "agent_technology_id", name="uq_project_agent_technology"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    agent_technology_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    agent_technology_slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    enabled: Mapped[bool] = mapped_column(default=False, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+
 class Project(Base):
     __tablename__ = "projects"
     __table_args__ = (UniqueConstraint("organization_id", "slug", name="uq_project_org_slug"),)

@@ -16,8 +16,9 @@ from huy_auth.agent_tokens import (
     hash_agent_token,
 )
 from huy_registry.config import Settings
-from huy_registry.models import Agent, Provider, Region
+from huy_registry.models import Agent, InfrastructureProvider, Region
 from huy_registry.schemas import AgentConnectOut, AgentCreate, AgentOut, AgentUpdate, PollTargetOut
+from huy_registry.services import agent_technology_service
 
 
 def agent_to_out(agent: Agent) -> AgentOut:
@@ -26,8 +27,10 @@ def agent_to_out(agent: Agent) -> AgentOut:
         name=agent.name,
         base_url=agent.base_url,
         organization_id=agent.organization_id,
-        provider_id=agent.provider_id,
+        infrastructure_provider_id=agent.infrastructure_provider_id,
         region_id=agent.region_id,
+        agent_technology_id=agent.agent_technology_id,
+        agent_technology_slug=agent.agent_technology.slug,
         refresh_seconds=agent.refresh_seconds,
         tls_verify=agent.tls_verify,
         connection_status=agent.connection_status,  # type: ignore[arg-type]
@@ -41,13 +44,19 @@ def agent_to_out(agent: Agent) -> AgentOut:
 
 async def get_agent(session: AsyncSession, agent_id: str) -> Agent | None:
     result = await session.execute(
-        select(Agent).where(Agent.id == agent_id).options(selectinload(Agent.region))
+        select(Agent)
+        .where(Agent.id == agent_id)
+        .options(selectinload(Agent.region), selectinload(Agent.agent_technology))
     )
     return result.scalar_one_or_none()
 
 
 async def list_agents(session: AsyncSession, organization_id: str | None = None) -> list[Agent]:
-    stmt = select(Agent).order_by(Agent.name)
+    stmt = (
+        select(Agent)
+        .order_by(Agent.name)
+        .options(selectinload(Agent.agent_technology))
+    )
     if organization_id is not None:
         stmt = stmt.where(Agent.organization_id == organization_id)
     result = await session.execute(stmt)
@@ -55,12 +64,15 @@ async def list_agents(session: AsyncSession, organization_id: str | None = None)
 
 
 async def create_agent(session: AsyncSession, settings: Settings, body: AgentCreate) -> tuple[Agent, str]:
-    provider = await session.get(Provider, body.provider_id)
+    provider = await session.get(InfrastructureProvider, body.infrastructure_provider_id)
     if provider is None:
-        raise HTTPException(status_code=400, detail="Unknown provider_id")
+        raise HTTPException(status_code=400, detail="Unknown infrastructure_provider_id")
     region = await session.get(Region, body.region_id)
-    if region is None or region.provider_id != body.provider_id:
-        raise HTTPException(status_code=400, detail="Unknown region_id for provider")
+    if region is None or region.infrastructure_provider_id != body.infrastructure_provider_id:
+        raise HTTPException(status_code=400, detail="Unknown region_id for infrastructure provider")
+    technology = await agent_technology_service.require_enabled_technology(
+        session, body.agent_technology_id
+    )
 
     existing = await session.execute(select(Agent).where(Agent.name == body.name))
     if existing.scalar_one_or_none() is not None:
@@ -72,8 +84,9 @@ async def create_agent(session: AsyncSession, settings: Settings, body: AgentCre
         name=body.name,
         base_url=str(body.base_url).rstrip("/"),
         organization_id=body.organization_id,
-        provider_id=body.provider_id,
+        infrastructure_provider_id=body.infrastructure_provider_id,
         region_id=body.region_id,
+        agent_technology_id=technology.id,
         token_hash=hash_agent_token(token),
         token_encrypted=encrypt_agent_token(token, settings.agent_token_encryption_key),
         refresh_seconds=refresh,
@@ -82,8 +95,17 @@ async def create_agent(session: AsyncSession, settings: Settings, body: AgentCre
     )
     session.add(agent)
     await session.commit()
-    await session.refresh(agent)
+    await session.refresh(agent, attribute_names=["agent_technology"])
     return agent, token
+
+
+async def delete_agent(session: AsyncSession, settings: Settings, agent: Agent) -> None:
+    agent_id = agent.id
+    await session.delete(agent)
+    await session.commit()
+    from huy_registry.services.inventory_client import delete_agent_snapshot
+
+    await delete_agent_snapshot(settings, agent_id)
 
 
 async def update_agent(session: AsyncSession, agent: Agent, body: AgentUpdate) -> Agent:
@@ -99,7 +121,7 @@ async def update_agent(session: AsyncSession, agent: Agent, body: AgentUpdate) -
         agent.connection_status = body.connection_status
     agent.updated_at = datetime.now(UTC)
     await session.commit()
-    await session.refresh(agent)
+    await session.refresh(agent, attribute_names=["agent_technology"])
     return agent
 
 
@@ -142,19 +164,19 @@ async def list_poll_targets(session: AsyncSession, settings: Settings) -> list[P
     agents = await list_agents(session)
     targets: list[PollTargetOut] = []
     for agent in agents:
-        if agent.connection_status == "pending" and agent.last_seen_at is None:
-            # Still poll pending agents so inventory can mark connected
-            pass
         token = decrypt_agent_token(agent.token_encrypted, settings.agent_token_encryption_key)
         targets.append(
             PollTargetOut(
                 agent_id=agent.id,
+                name=agent.name,
                 organization_id=agent.organization_id,
                 region_id=agent.region_id,
+                agent_technology_id=agent.agent_technology_id,
                 base_url=agent.base_url,
                 agent_token=token,
                 refresh_seconds=agent.refresh_seconds,
                 tls_verify=agent.tls_verify,
+                connection_status=agent.connection_status,  # type: ignore[arg-type]
             )
         )
     return targets
@@ -173,5 +195,5 @@ async def update_poll_status(
     agent.last_poll_error = last_poll_error
     agent.updated_at = datetime.now(UTC)
     await session.commit()
-    await session.refresh(agent)
+    await session.refresh(agent, attribute_names=["agent_technology"])
     return agent

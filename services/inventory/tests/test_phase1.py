@@ -39,18 +39,24 @@ async def test_poller_stores_snapshot(client: AsyncClient) -> None:
     agent_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
     base = "https://agent.test"
 
+    respx.get(f"{settings.projects_url}/api/v1/internal/organizations/{org_id}/resource-assignments").mock(
+        return_value=Response(200, json=[])
+    )
     respx.get(f"{settings.registry_url}/api/v1/internal/poll-targets").mock(
         return_value=Response(
             200,
             json=[
                 {
                     "agent_id": agent_id,
+                    "name": "test-agent",
                     "organization_id": org_id,
                     "region_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                    "agent_technology_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
                     "base_url": base,
                     "agent_token": "secret",
                     "refresh_seconds": 30,
                     "tls_verify": False,
+                    "connection_status": "pending",
                 }
             ],
         )
@@ -95,4 +101,9 @@ async def test_poller_stores_snapshot(client: AsyncClient) -> None:
 
     dash = await client.get(f"/api/v1/inventory/organizations/{org_id}/dashboard", headers=headers)
     assert dash.status_code == 200
-    assert dash.json()["agent_count"] == 1
+    body = dash.json()
+    assert body["agent_count"] == 1
+    assert body["agents"][0]["agent_name"] == "test-agent"
+    assert body["agents"][0]["networks"] == []
+    assert body["agents"][0]["orphaned_network_count"] == 0
+    assert body["network_count"] == 0

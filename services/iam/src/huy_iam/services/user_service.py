@@ -257,6 +257,15 @@ async def get_organization(session: AsyncSession, org_id: str) -> Organization |
     return result.scalar_one_or_none()
 
 
+async def delete_organization(session: AsyncSession, org_id: str) -> bool:
+    org = await get_organization(session, org_id)
+    if org is None:
+        return False
+    await session.delete(org)
+    await session.flush()
+    return True
+
+
 async def list_org_users(session: AsyncSession, organization_id: str) -> list[User]:
     result = await session.execute(
         select(User)

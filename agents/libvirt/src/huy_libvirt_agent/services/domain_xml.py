@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from jinja2 import Template
@@ -72,3 +73,24 @@ def render_domain_xml(
         vcpu=vcpu,
         memory_mib=memory_mib,
     )
+
+
+def update_domain_xml_resources(
+    xml: str,
+    *,
+    vcpu: int | None = None,
+    memory_mib: int | None = None,
+) -> str:
+    """Patch persistent domain XML for vCPU / memory (MiB)."""
+    root = ET.fromstring(xml)
+    if memory_mib is not None:
+        for tag in ("memory", "currentMemory"):
+            elem = root.find(tag)
+            if elem is not None:
+                elem.text = str(memory_mib)
+                elem.set("unit", "MiB")
+    if vcpu is not None:
+        elem = root.find("vcpu")
+        if elem is not None:
+            elem.text = str(vcpu)
+    return ET.tostring(root, encoding="unicode")

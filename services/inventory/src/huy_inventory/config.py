@@ -16,6 +16,7 @@ class Settings(BaseSettings):
         alias="DATABASE_URL",
     )
     registry_url: str = Field(default="http://127.0.0.1:8082", alias="REGISTRY_URL")
+    projects_url: str = Field(default="http://127.0.0.1:8084", alias="PROJECTS_URL")
     inventory_service_token: str = Field(
         default="dev-inventory-service-token",
         alias="INVENTORY_SERVICE_TOKEN",

@@ -11,8 +11,15 @@ from huy_projects.api.deps import (
     RegistryClientDep,
     SessionDep,
 )
-from huy_projects.schemas import AgentSummary, ProjectCreate, ProjectOut, ProjectUpdate
-from huy_projects.services import authorization, project_service
+from huy_projects.schemas import (
+    AgentSummary,
+    ProjectAgentTechnologyOut,
+    ProjectAgentTechnologySet,
+    ProjectCreate,
+    ProjectOut,
+    ProjectUpdate,
+)
+from huy_projects.services import authorization, project_agent_technology_service, project_service
 
 router = APIRouter(prefix="/api/v1/projects", tags=["projects"])
 
@@ -85,20 +92,55 @@ async def delete_project(
     await project_service.delete_project(session, project)
 
 
+@router.get("/{project_id}/agent-technologies", response_model=list[ProjectAgentTechnologyOut])
+async def list_project_agent_technologies(
+    project: ReadableProjectDep,
+    user: CurrentUserDep,
+    session: SessionDep,
+    registry: RegistryClientDep,
+) -> list[ProjectAgentTechnologyOut]:
+    authorization.require_project_manage(user, project)
+    return await project_agent_technology_service.list_for_project(session, registry, project)
+
+
+@router.put("/{project_id}/agent-technologies", response_model=list[ProjectAgentTechnologyOut])
+async def set_project_agent_technologies(
+    project: ReadableProjectDep,
+    body: ProjectAgentTechnologySet,
+    user: CurrentUserDep,
+    session: SessionDep,
+    registry: RegistryClientDep,
+) -> list[ProjectAgentTechnologyOut]:
+    authorization.require_project_manage(user, project)
+    return await project_agent_technology_service.set_for_project(
+        session, registry, project, body
+    )
+
+
 @router.get("/{project_id}/agents", response_model=list[AgentSummary])
 async def list_project_agents(
     project: ReadableProjectDep,
     registry: RegistryClientDep,
     bearer: BearerTokenDep,
+    session: SessionDep,
 ) -> list[AgentSummary]:
     agents = await registry.list_agents(bearer)
+    enabled_ids = await project_agent_technology_service.enabled_technology_ids(
+        session, project.id
+    )
     filtered = [a for a in agents if a["organization_id"] == project.organization_id]
+    if enabled_ids:
+        filtered = [a for a in filtered if a.get("agent_technology_id") in enabled_ids]
+    else:
+        filtered = []
     return [
         AgentSummary(
             id=a["id"],
             name=a["name"],
             base_url=a["base_url"],
             organization_id=a["organization_id"],
+            agent_technology_id=a["agent_technology_id"],
+            agent_technology_slug=a["agent_technology_slug"],
             connection_status=a["connection_status"],
         )
         for a in filtered

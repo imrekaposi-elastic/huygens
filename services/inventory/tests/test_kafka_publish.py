@@ -72,12 +72,15 @@ async def test_poller_publishes_after_successful_poll() -> None:
             json=[
                 {
                     "agent_id": agent_id,
+                    "name": "test-agent",
                     "organization_id": org_id,
                     "region_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                    "agent_technology_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
                     "base_url": base,
                     "agent_token": "secret",
                     "refresh_seconds": 30,
                     "tls_verify": False,
+                    "connection_status": "connected",
                 }
             ],
         )

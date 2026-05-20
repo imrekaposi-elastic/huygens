@@ -3,10 +3,19 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 
 from huy_registry.api.deps import InventoryServiceDep, SessionDep, SettingsDep
-from huy_registry.schemas import AgentConnectOut, PollStatusUpdate, PollTargetOut
-from huy_registry.services import agent_service
+from huy_registry.schemas import AgentConnectOut, AgentTechnologyOut, PollStatusUpdate, PollTargetOut
+from huy_registry.services import agent_service, agent_technology_service
 
 router = APIRouter(prefix="/api/v1/internal", tags=["internal"])
+
+
+@router.get("/agent-technologies", response_model=list[AgentTechnologyOut])
+async def list_agent_technologies_internal(
+    _service: InventoryServiceDep,
+    session: SessionDep,
+) -> list[AgentTechnologyOut]:
+    rows = await agent_technology_service.list_agent_technologies(session)
+    return [AgentTechnologyOut.model_validate(r) for r in rows]
 
 
 @router.get("/poll-targets", response_model=list[PollTargetOut])

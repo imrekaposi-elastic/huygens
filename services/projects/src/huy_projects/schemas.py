@@ -44,12 +44,48 @@ class ProjectResourceOut(BaseModel):
     updated_at: datetime
 
 
+class ResourceAssignmentOut(BaseModel):
+    """Maps an agent VM/network name to a project (operator desired state)."""
+
+    agent_id: str
+    resource_type: Literal["vm", "network"]
+    name: str
+    project_id: str
+    project_name: str
+    project_slug: str
+
+
+class ResourceAssignRequest(BaseModel):
+    resource_type: Literal["vm", "network"]
+    name: str = Field(min_length=1, max_length=255)
+
+
 class AgentSummary(BaseModel):
     id: str
     name: str
     base_url: str
     organization_id: str
+    agent_technology_id: str
+    agent_technology_slug: str
     connection_status: str
+
+
+class ProjectAgentTechnologyOut(BaseModel):
+    agent_technology_id: str
+    slug: str
+    name: str
+    description: str | None
+    platform_enabled: bool
+    enabled: bool
+
+
+class ProjectAgentTechnologyItem(BaseModel):
+    agent_technology_id: str
+    enabled: bool
+
+
+class ProjectAgentTechnologySet(BaseModel):
+    technologies: list[ProjectAgentTechnologyItem]
 
 
 class IpPoolCreate(BaseModel):

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
         default="dev-agent-token-encryption-key-change-me",
         alias="AGENT_TOKEN_ENCRYPTION_KEY",
     )
+    inventory_url: str = Field(default="http://127.0.0.1:8083", alias="INVENTORY_URL")
     inventory_service_token: str = Field(
         default="dev-inventory-service-token",
         alias="INVENTORY_SERVICE_TOKEN",

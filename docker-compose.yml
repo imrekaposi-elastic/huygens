@@ -75,6 +75,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me-minimum-32-chars}
       JWT_ISSUER: ${JWT_ISSUER:-huy-iam}
       AGENT_TOKEN_ENCRYPTION_KEY: ${AGENT_TOKEN_ENCRYPTION_KEY:-dev-agent-token-encryption-key-change-me}
+      INVENTORY_URL: http://inventory:8083
       INVENTORY_SERVICE_TOKEN: ${INVENTORY_SERVICE_TOKEN:-dev-inventory-service-token}
       PROJECTS_SERVICE_TOKEN: ${PROJECTS_SERVICE_TOKEN:-dev-projects-service-token}
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
@@ -106,6 +107,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-huy}:${POSTGRES_PASSWORD:-huy}@postgres:5432/${POSTGRES_DB:-huy}
       REGISTRY_URL: http://registry:8082
+      PROJECTS_URL: http://projects:8084
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me-minimum-32-chars}
       JWT_ISSUER: ${JWT_ISSUER:-huy-iam}
       INVENTORY_SERVICE_TOKEN: ${INVENTORY_SERVICE_TOKEN:-dev-inventory-service-token}
@@ -142,6 +144,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me-minimum-32-chars}
       JWT_ISSUER: ${JWT_ISSUER:-huy-iam}
       PROJECTS_SERVICE_TOKEN: ${PROJECTS_SERVICE_TOKEN:-dev-projects-service-token}
+      INVENTORY_SERVICE_TOKEN: ${INVENTORY_SERVICE_TOKEN:-dev-inventory-service-token}
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
       HUY_PROJECTS_HOST: 0.0.0.0
       HUY_PROJECTS_PORT: "8084"

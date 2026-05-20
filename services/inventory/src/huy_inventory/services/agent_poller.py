@@ -12,10 +12,15 @@ logger = structlog.get_logger(__name__)
 
 
 def _normalize_vm(vm: dict) -> dict:
+    libvirt_state = vm.get("libvirt_state")
+    guest_status = vm.get("status")
     return {
         "name": vm.get("name"),
         "uuid": vm.get("uuid"),
-        "state": vm.get("libvirt_state") or vm.get("status"),
+        "state": libvirt_state or guest_status,
+        "libvirt_state": libvirt_state,
+        "guest_status": guest_status,
+        "memory_mib": vm.get("memory_mib"),
         "ips": [vm["guest_ip"]] if vm.get("guest_ip") else [],
         "networks": [vm["network"]] if vm.get("network") else [],
     }

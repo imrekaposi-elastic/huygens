@@ -66,6 +66,23 @@ async def test_platform_admin_creates_org_and_org_admin(client: AsyncClient) -> 
 
 
 @pytest.mark.asyncio
+async def test_platform_admin_deletes_organization(client: AsyncClient) -> None:
+    token = await _login(client, "platform-admin", "platform-admin-secret-12")
+    headers = {"Authorization": f"Bearer {token}"}
+    r = await client.post(
+        "/api/v1/organizations",
+        headers=headers,
+        json={"name": "To Delete", "slug": "to-delete"},
+    )
+    assert r.status_code == 201, r.text
+    org_id = r.json()["id"]
+    r = await client.delete(f"/api/v1/organizations/{org_id}", headers=headers)
+    assert r.status_code == 204, r.text
+    r = await client.get("/api/v1/organizations", headers=headers)
+    assert all(o["id"] != org_id for o in r.json())
+
+
+@pytest.mark.asyncio
 async def test_org_admin_cannot_create_organization(client: AsyncClient) -> None:
     pa_token = await _login(client, "platform-admin", "platform-admin-secret-12")
     pa_headers = {"Authorization": f"Bearer {pa_token}"}

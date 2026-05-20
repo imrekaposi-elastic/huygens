@@ -26,6 +26,15 @@ class RegistryClient:
             response.raise_for_status()
             return response.json()
 
+    async def fetch_agent_technologies(self) -> list[dict[str, Any]]:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                f"{self._base}/api/v1/internal/agent-technologies",
+                headers=self._service_headers(),
+            )
+            response.raise_for_status()
+            return response.json()
+
     async def list_agents(self, bearer_token: str) -> list[dict[str, Any]]:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(

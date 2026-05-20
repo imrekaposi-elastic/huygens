@@ -1,7 +1,10 @@
 from fastapi import APIRouter, HTTPException
 
-from huy_inventory.api.deps import CurrentUserDep, InventoryReadDep, SessionDep
+from huy_inventory.api.deps import CurrentUserDep, InventoryReadDep, SessionDep, SettingsDep
+from huy_inventory.config import Settings
 from huy_inventory.schemas import AgentInventorySummary, OrganizationDashboard, SnapshotOut
+from huy_inventory.services.projects_client import ProjectsClient, assignments_by_resource
+from huy_inventory.services.registry_client import RegistryClient
 from huy_inventory.services.snapshot_service import (
     get_snapshot,
     list_snapshots,
@@ -9,6 +12,21 @@ from huy_inventory.services.snapshot_service import (
     snapshot_to_out,
     snapshot_to_summary,
 )
+
+
+async def _registry_agents_for_org(
+    settings: Settings, organization_id: str
+) -> tuple[set[str], dict[str, dict]]:
+    targets = await RegistryClient(settings).fetch_poll_targets()
+    by_id: dict[str, dict] = {}
+    for t in targets:
+        if t["organization_id"] != organization_id:
+            continue
+        by_id[t["agent_id"]] = {
+            "name": t.get("name"),
+            "connection_status": t.get("connection_status"),
+        }
+    return set(by_id), by_id
 
 router = APIRouter(prefix="/api/v1/inventory", tags=["inventory"])
 
@@ -49,7 +67,20 @@ async def org_dashboard(
     _user: InventoryReadDep,
     user: CurrentUserDep,
     session: SessionDep,
+    settings: SettingsDep,
 ) -> OrganizationDashboard:
     if not user.is_platform_admin() and not user.can_access_org(organization_id):
         raise HTTPException(status_code=403, detail="Access denied")
-    return await organization_dashboard(session, organization_id)
+    active_ids, registry_by_id = await _registry_agents_for_org(settings, organization_id)
+    try:
+        assignment_rows = await ProjectsClient(settings).fetch_resource_assignments(organization_id)
+        assignments = assignments_by_resource(assignment_rows)
+    except Exception:
+        assignments = {}
+    return await organization_dashboard(
+        session,
+        organization_id,
+        active_agent_ids=active_ids,
+        registry_by_id=registry_by_id,
+        assignments=assignments,
+    )
