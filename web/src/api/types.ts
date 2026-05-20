@@ -146,6 +146,36 @@ export type Project = {
   description: string | null;
 };
 
+export type IpPool = {
+  id: string;
+  organization_id: string;
+  name: string;
+  cidr: string;
+  description: string | null;
+  exceptions: string[];
+  created_at: string;
+};
+
+export type IpAllocation = {
+  id: string;
+  pool_id: string;
+  project_id: string;
+  cidr: string;
+  network_name: string | null;
+  status: "reserved" | "allocated" | "released";
+  created_at: string;
+};
+
+export type WizardSubnetPlan = {
+  suggested_name: string;
+  cidr: string;
+};
+
+export type WizardPlanResponse = {
+  pool_id: string;
+  subnets: WizardSubnetPlan[];
+};
+
 export type ProjectAgentTechnology = {
   agent_technology_id: string;
   slug: string;

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from huy_projects.models import ProjectResource
+from huy_projects.services.project_scope import ScopedResourceType
 
 
 async def upsert_desired_state(
@@ -16,7 +17,7 @@ async def upsert_desired_state(
     *,
     project_id: str,
     agent_id: str,
-    resource_type: Literal["vm", "network"],
+    resource_type: ScopedResourceType,
     name: str,
     desired_state: dict[str, Any] | None,
 ) -> ProjectResource:
@@ -51,7 +52,7 @@ async def clear_desired_state(
     *,
     project_id: str,
     agent_id: str,
-    resource_type: Literal["vm", "network"],
+    resource_type: ScopedResourceType,
     name: str,
 ) -> None:
     result = await session.execute(

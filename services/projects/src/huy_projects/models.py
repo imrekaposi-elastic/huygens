@@ -74,6 +74,12 @@ class ProjectResource(Base):
             "name",
             name="uq_project_resource",
         ),
+        UniqueConstraint(
+            "agent_id",
+            "resource_type",
+            "name",
+            name="uq_agent_resource_exclusive",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)

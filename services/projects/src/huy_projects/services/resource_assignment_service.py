@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -12,6 +12,7 @@ from huy_projects.libvirt_system import is_system_network
 from huy_projects.models import Project, ProjectResource
 from huy_projects.schemas import ResourceAssignmentOut
 from huy_projects.services import desired_state
+from huy_projects.services.project_scope import ScopedResourceType
 
 
 async def list_org_resource_assignments(
@@ -74,7 +75,7 @@ async def assign_resource(
     project: Project,
     *,
     agent_id: str,
-    resource_type: Literal["vm", "network"],
+    resource_type: ScopedResourceType,
     name: str,
     actual_state: dict[str, Any],
 ) -> ResourceAssignmentOut:
@@ -116,7 +117,7 @@ async def unassign_resource(
     project: Project,
     *,
     agent_id: str,
-    resource_type: Literal["vm", "network"],
+    resource_type: ScopedResourceType,
     name: str,
 ) -> None:
     existing = await _assignment_for_resource(

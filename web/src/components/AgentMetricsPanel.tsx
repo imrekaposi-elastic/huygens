@@ -4,7 +4,13 @@ import { api, ApiError } from "@/api/client";
 import type { AgentOut, HostMetricsSnapshot } from "@/api/types";
 import { Sparkline } from "@/components/Sparkline";
 import { UsageBar } from "@/components/UsageBar";
-import { formatBytes, formatIops, formatPercent, formatRate } from "@/lib/formatBytes";
+import {
+  bytesPerSecToMbps,
+  formatBytes,
+  formatIops,
+  formatMegabitsPerSec,
+  formatPercent,
+} from "@/lib/formatBytes";
 
 const POLL_MS = 5000;
 const HISTORY_MAX = 72;
@@ -83,8 +89,8 @@ export function AgentMetricsPanel({ agent, onClose }: Props) {
     setHistory((h) => ({
       cpu: pushHistory(h.cpu, data.cpu_percent),
       vmsRunning: pushHistory(h.vmsRunning, data.vms.running),
-      netIn: netIn != null ? pushHistory(h.netIn, netIn) : h.netIn,
-      netOut: netOut != null ? pushHistory(h.netOut, netOut) : h.netOut,
+      netIn: netIn != null ? pushHistory(h.netIn, bytesPerSecToMbps(netIn)) : h.netIn,
+      netOut: netOut != null ? pushHistory(h.netOut, bytesPerSecToMbps(netOut)) : h.netOut,
       iopsRead: iopsR != null ? pushHistory(h.iopsRead, iopsR) : h.iopsRead,
       iopsWrite: iopsW != null ? pushHistory(h.iopsWrite, iopsW) : h.iopsWrite,
     }));
@@ -215,10 +221,10 @@ export function AgentMetricsPanel({ agent, onClose }: Props) {
             title="Network"
             value={
               rates.networkIn != null || rates.networkOut != null
-                ? `↓ ${formatRate(rates.networkIn)} · ↑ ${formatRate(rates.networkOut)}`
+                ? `↓ ${formatMegabitsPerSec(rates.networkIn)} · ↑ ${formatMegabitsPerSec(rates.networkOut)}`
                 : "…"
             }
-            sub="Bytes in (recv) / out (sent) per second"
+            sub="Megabits per second in (recv) / out (sent)"
           >
             <div className="flex gap-2">
               <div className="flex-1">

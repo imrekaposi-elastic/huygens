@@ -1,6 +1,6 @@
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/auth/AuthContext";
-import { canAccessAdmin } from "@/auth/permissions";
+import { canAccessAdmin, canAccessIpam } from "@/auth/permissions";
 import { isPlatformAdmin, getAccessToken } from "@/auth/token";
 import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
 import { NavItem } from "@/components/NavItem";
@@ -9,6 +9,7 @@ import {
   CloudIcon,
   FolderIcon,
   HomeIcon,
+  NetworkIcon,
   ShieldIcon,
 } from "@/components/icons/NavIcons";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -19,6 +20,7 @@ export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const token = getAccessToken();
   const showAgents = isPlatformAdmin(token);
+  const showIpam = canAccessIpam(user, selectedOrgId, showAgents);
   const showAdmin = canAccessAdmin(user, selectedOrgId, showAgents);
 
   useInventoryEvents(selectedOrgId, !!selectedOrgId);
@@ -69,6 +71,14 @@ export function AppShell() {
                 }
               />
             </>
+          )}
+          {showIpam && (
+            <NavItem
+              to="/ipam"
+              label="IPAM"
+              icon={<NetworkIcon />}
+              active={pathname.startsWith("/ipam")}
+            />
           )}
           {showAdmin && (
             <NavItem

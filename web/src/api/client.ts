@@ -8,11 +8,14 @@ import type {
   InfrastructureProvider,
   HostMetricsSnapshot,
   InfrastructureProviderDetail,
+  IpAllocation,
+  IpPool,
   Organization,
   OrganizationDashboard,
   Project,
   ProjectAgentTechnology,
   RegionTreeNode,
+  WizardPlanResponse,
   IdpGroupMapping,
   TokenResponse,
   UserOut,
@@ -237,6 +240,54 @@ export const api = {
     request<void>(`/api/v1/projects/${encodeURIComponent(projectId)}`, {
       method: "DELETE",
     }),
+
+  listIpamPools: (organizationId: string) =>
+    request<IpPool[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/ipam/pools`,
+    ),
+
+  listPoolAllocations: (organizationId: string, poolId: string) =>
+    request<IpAllocation[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/ipam/pools/${encodeURIComponent(poolId)}/allocations`,
+    ),
+
+  createIpamPool: (
+    organizationId: string,
+    body: { name: string; cidr: string; description?: string; exceptions?: string[] },
+  ) =>
+    request<IpPool>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/ipam/pools`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  ipamWizardPlan: (
+    organizationId: string,
+    body: {
+      pool_id: string;
+      network_count: number;
+      hosts_per_network: number;
+      exceptions?: string[];
+    },
+  ) =>
+    request<WizardPlanResponse>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/ipam/wizard/plan`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  ipamWizardApply: (
+    organizationId: string,
+    projectId: string,
+    body: { pool_id: string; subnets: { cidr: string; name?: string }[] },
+  ) =>
+    request<IpAllocation[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/ipam/projects/${encodeURIComponent(projectId)}/wizard/apply`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  listProjectIpAllocations: (organizationId: string, projectId: string) =>
+    request<IpAllocation[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/ipam/projects/${encodeURIComponent(projectId)}/allocations`,
+    ),
 
   projectAgentTechnologies: (projectId: string) =>
     request<ProjectAgentTechnology[]>(

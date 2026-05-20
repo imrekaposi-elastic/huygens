@@ -9,7 +9,13 @@ from fastapi import APIRouter, Body, HTTPException, Query
 from huy_projects.api.deps import AgentProxyDep, CurrentUserDep, ReadableProjectDep, SessionDep, SettingsDep
 from huy_projects.schemas import ResourceAssignRequest, ResourceAssignmentOut
 from huy_projects.libvirt_system import is_system_network
-from huy_projects.services import authorization, desired_state, ipam_service, resource_assignment_service
+from huy_projects.services import (
+    authorization,
+    desired_state,
+    ipam_service,
+    project_scope,
+    resource_assignment_service,
+)
 
 router = APIRouter(prefix="/api/v1/projects/{project_id}/agents/{agent_id}", tags=["agent-proxy"])
 
@@ -20,9 +26,13 @@ async def list_vms(
     agent_id: str,
     user: CurrentUserDep,
     proxy: AgentProxyDep,
+    session: SessionDep,
 ) -> list[dict[str, Any]]:
     authorization.require_project_read(user, project)
-    return await proxy.list_vms(agent_id, project.organization_id)
+    all_vms = await proxy.list_vms(agent_id, project.organization_id)
+    return await project_scope.filter_agent_list(
+        session, project, agent_id=agent_id, resource_type="vm", items=all_vms
+    )
 
 
 @router.get("/vms/{name}", response_model=dict[str, Any])
@@ -32,8 +42,12 @@ async def get_vm(
     name: str,
     user: CurrentUserDep,
     proxy: AgentProxyDep,
+    session: SessionDep,
 ) -> dict[str, Any]:
     authorization.require_project_read(user, project)
+    await project_scope.require_resource_in_project(
+        session, project, agent_id=agent_id, resource_type="vm", name=name
+    )
     return await proxy.get_vm(agent_id, project.organization_id, name)
 
 
@@ -70,6 +84,9 @@ async def patch_vm(
     body: dict[str, Any] = Body(...),
 ) -> dict[str, Any]:
     authorization.require_project_operate(user, project)
+    await project_scope.require_resource_in_project(
+        session, project, agent_id=agent_id, resource_type="vm", name=name
+    )
     result = await proxy.patch_vm(agent_id, project.organization_id, name, body)
     existing = await proxy.get_vm(agent_id, project.organization_id, name)
     await desired_state.upsert_desired_state(
@@ -93,6 +110,9 @@ async def delete_vm(
     session: SessionDep,
 ) -> None:
     authorization.require_project_operate(user, project)
+    await project_scope.require_resource_in_project(
+        session, project, agent_id=agent_id, resource_type="vm", name=name
+    )
     await proxy.delete_vm(agent_id, project.organization_id, name)
     await desired_state.clear_desired_state(
         session,
@@ -109,9 +129,13 @@ async def list_networks(
     agent_id: str,
     user: CurrentUserDep,
     proxy: AgentProxyDep,
+    session: SessionDep,
 ) -> list[dict[str, Any]]:
     authorization.require_project_read(user, project)
-    return await proxy.list_networks(agent_id, project.organization_id)
+    all_networks = await proxy.list_networks(agent_id, project.organization_id)
+    return await project_scope.filter_agent_list(
+        session, project, agent_id=agent_id, resource_type="network", items=all_networks
+    )
 
 
 @router.get("/networks/{name}", response_model=dict[str, Any])
@@ -121,8 +145,12 @@ async def get_network(
     name: str,
     user: CurrentUserDep,
     proxy: AgentProxyDep,
+    session: SessionDep,
 ) -> dict[str, Any]:
     authorization.require_project_read(user, project)
+    await project_scope.require_resource_in_project(
+        session, project, agent_id=agent_id, resource_type="network", name=name
+    )
     return await proxy.get_network(agent_id, project.organization_id, name)
 
 
@@ -180,6 +208,9 @@ async def patch_network(
     body: dict[str, Any] = Body(...),
 ) -> dict[str, Any]:
     authorization.require_project_operate(user, project)
+    await project_scope.require_resource_in_project(
+        session, project, agent_id=agent_id, resource_type="network", name=name
+    )
     result = await proxy.patch_network(agent_id, project.organization_id, name, body)
     existing = await proxy.get_network(agent_id, project.organization_id, name)
     await desired_state.upsert_desired_state(
@@ -204,6 +235,27 @@ async def delete_network(
     purge: bool = Query(False),
 ) -> None:
     authorization.require_project_operate(user, project)
+    if is_system_network(name):
+        await proxy.delete_network(
+            agent_id, project.organization_id, name, purge=purge
+        )
+        return
+    try:
+        existing = await proxy.get_network(agent_id, project.organization_id, name)
+    except HTTPException as exc:
+        if exc.status_code != 404:
+            raise
+        existing = None
+    if existing and (
+        existing.get("readonly") or not existing.get("deletable", True)
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Network '{name}' is readonly and cannot be deleted",
+        )
+    await project_scope.require_resource_in_project(
+        session, project, agent_id=agent_id, resource_type="network", name=name
+    )
     await proxy.delete_network(
         agent_id, project.organization_id, name, purge=purge
     )
@@ -248,8 +300,12 @@ async def assign_existing_resource(
     try:
         if body.resource_type == "vm":
             actual = await proxy.get_vm(agent_id, project.organization_id, body.name)
-        else:
+        elif body.resource_type == "network":
             actual = await proxy.get_network(agent_id, project.organization_id, body.name)
+        else:
+            actual = await proxy.get_cloud_init_profile(
+                agent_id, project.organization_id, body.name
+            )
     except HTTPException as exc:
         if exc.status_code == 404:
             raise HTTPException(
@@ -278,8 +334,11 @@ async def unassign_resource(
 ) -> None:
     """Remove project membership without deleting the resource on the agent."""
     authorization.require_project_operate(user, project)
-    if resource_type not in ("vm", "network"):
-        raise HTTPException(status_code=400, detail="resource_type must be vm or network")
+    if resource_type not in ("vm", "network", "cloud_init"):
+        raise HTTPException(
+            status_code=400,
+            detail="resource_type must be vm, network, or cloud_init",
+        )
     await resource_assignment_service.unassign_resource(
         session,
         project,

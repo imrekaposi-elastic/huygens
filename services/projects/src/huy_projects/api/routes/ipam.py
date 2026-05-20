@@ -80,6 +80,29 @@ async def wizard_plan(
     return await ipam_service.wizard_plan(session, body)
 
 
+@router.get("/projects/{project_id}/allocations", response_model=list[IpAllocationOut])
+async def list_project_allocations(
+    organization_id: str,
+    project_id: str,
+    user: CurrentUserDep,
+    session: SessionDep,
+) -> list[IpAllocationOut]:
+    project = await project_service.get_project(session, project_id)
+    if project is None or project.organization_id != organization_id:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _check_org_access(user, organization_id)
+    authorization.require_project_read(user, project)
+    result = await session.execute(
+        select(IpAllocation)
+        .where(
+            IpAllocation.project_id == project_id,
+            IpAllocation.status.in_(("reserved", "allocated")),
+        )
+        .order_by(IpAllocation.created_at)
+    )
+    return [ipam_service.allocation_to_out(r) for r in result.scalars().all()]
+
+
 @router.post("/projects/{project_id}/wizard/apply", response_model=list[IpAllocationOut])
 async def wizard_apply(
     organization_id: str,

@@ -6,9 +6,18 @@ export function formatBytes(n: number, decimals = 1): string {
   return `${(n / 1024 ** 3).toFixed(decimals)} GB`;
 }
 
-export function formatRate(bytesPerSec: number | null): string {
+/** Bytes per second → megabits per second (decimal Mbps, 1 Mb = 10⁶ bits). */
+export function bytesPerSecToMbps(bytesPerSec: number): number {
+  return (bytesPerSec * 8) / 1_000_000;
+}
+
+export function formatMegabitsPerSec(bytesPerSec: number | null, decimals = 2): string {
   if (bytesPerSec == null || !Number.isFinite(bytesPerSec)) return "—";
-  return `${formatBytes(bytesPerSec)}/s`;
+  const mbps = bytesPerSecToMbps(bytesPerSec);
+  if (mbps >= 1000) return `${(mbps / 1000).toFixed(decimals)} Gbps`;
+  if (mbps >= 1) return `${mbps.toFixed(decimals)} Mbps`;
+  if (mbps >= 0.001) return `${(mbps * 1000).toFixed(decimals)} Kbps`;
+  return `${(bytesPerSec * 8).toFixed(0)} bps`;
 }
 
 export function formatIops(opsPerSec: number | null): string {

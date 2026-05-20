@@ -38,17 +38,17 @@ class ProjectResourceOut(BaseModel):
     id: str
     project_id: str
     agent_id: str
-    resource_type: Literal["vm", "network"]
+    resource_type: Literal["vm", "network", "cloud_init"]
     name: str
     desired_state: dict[str, Any] | None
     updated_at: datetime
 
 
 class ResourceAssignmentOut(BaseModel):
-    """Maps an agent VM/network name to a project (operator desired state)."""
+    """Maps an agent VM/network/cloud-init name to a project (operator desired state)."""
 
     agent_id: str
-    resource_type: Literal["vm", "network"]
+    resource_type: Literal["vm", "network", "cloud_init"]
     name: str
     project_id: str
     project_name: str
@@ -56,7 +56,7 @@ class ResourceAssignmentOut(BaseModel):
 
 
 class ResourceAssignRequest(BaseModel):
-    resource_type: Literal["vm", "network"]
+    resource_type: Literal["vm", "network", "cloud_init"]
     name: str = Field(min_length=1, max_length=255)
 
 

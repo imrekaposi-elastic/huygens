@@ -142,8 +142,18 @@ async def test_operator_can_proxy_list_vms(client: AsyncClient) -> None:
     respx.get("https://agent.test/api/v1/vms").mock(
         return_value=Response(200, json=[{"name": "web-01", "status": "on"}])
     )
+    respx.post("https://agent.test/api/v1/vms").mock(
+        return_value=Response(201, json={"name": "web-01", "status": "on"})
+    )
 
     op_headers = {"Authorization": f"Bearer {operator_token(ORG_ID, project_id)}"}
+    created = await client.post(
+        f"/api/v1/projects/{project_id}/agents/{agent_id}/vms",
+        headers=op_headers,
+        json={"name": "web-01", "vcpu": 1, "memory_mb": 512},
+    )
+    assert created.status_code == 201
+
     vms = await client.get(
         f"/api/v1/projects/{project_id}/agents/{agent_id}/vms",
         headers=op_headers,
@@ -361,3 +371,70 @@ async def test_cannot_assign_system_default_network(client: AsyncClient) -> None
     )
     assert denied.status_code == 400
     assert "system network" in denied.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_vm_not_visible_in_other_project(client: AsyncClient) -> None:
+    """VMs assigned to project A must not appear in project B list or get."""
+    headers = {"Authorization": f"Bearer {org_admin_token(ORG_ID)}"}
+    project_a = await client.post(
+        "/api/v1/projects",
+        headers=headers,
+        json={"organization_id": ORG_ID, "name": "Alpha", "slug": "alpha"},
+    )
+    project_b = await client.post(
+        "/api/v1/projects",
+        headers=headers,
+        json={"organization_id": ORG_ID, "name": "Beta", "slug": "beta"},
+    )
+    project_a_id = project_a.json()["id"]
+    project_b_id = project_b.json()["id"]
+    agent_id = "12121212-1212-1212-1212-121212121212"
+
+    respx.get(f"http://registry.test/api/v1/internal/agents/{agent_id}/connect").mock(
+        return_value=Response(
+            200,
+            json={
+                "agent_id": agent_id,
+                "organization_id": ORG_ID,
+                "base_url": "https://agent.test",
+                "agent_token": "agent-secret",
+                "tls_verify": False,
+            },
+        )
+    )
+    respx.get("https://agent.test/api/v1/vms").mock(
+        return_value=Response(200, json=[{"name": "shared-vm", "status": "on"}])
+    )
+    respx.post("https://agent.test/api/v1/vms").mock(
+        return_value=Response(201, json={"name": "shared-vm", "status": "on"})
+    )
+
+    created = await client.post(
+        f"/api/v1/projects/{project_a_id}/agents/{agent_id}/vms",
+        headers=headers,
+        json={"name": "shared-vm", "vcpu": 1, "memory_mb": 512},
+    )
+    assert created.status_code == 201
+
+    list_b = await client.get(
+        f"/api/v1/projects/{project_b_id}/agents/{agent_id}/vms",
+        headers=headers,
+    )
+    assert list_b.status_code == 200
+    assert list_b.json() == []
+
+    get_b = await client.get(
+        f"/api/v1/projects/{project_b_id}/agents/{agent_id}/vms/shared-vm",
+        headers=headers,
+    )
+    assert get_b.status_code == 404
+
+    list_a = await client.get(
+        f"/api/v1/projects/{project_a_id}/agents/{agent_id}/vms",
+        headers=headers,
+    )
+    assert list_a.status_code == 200
+    assert len(list_a.json()) == 1
+    assert list_a.json()[0]["name"] == "shared-vm"

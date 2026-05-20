@@ -16,7 +16,15 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api/v1/auth": cp(8081),
-      "/api/v1/organizations": cp(8081),
+      "/api/v1/organizations": {
+        ...cp(8081),
+        router(req) {
+          if (req.url && /\/organizations\/[^/]+\/ipam/.test(req.url)) {
+            return "http://127.0.0.1:8084";
+          }
+          return "http://127.0.0.1:8081";
+        },
+      },
       "/api/v1/platform": cp(8081),
       "/api/v1/users": cp(8081),
       "/api/v1/inventory": cp(8083),

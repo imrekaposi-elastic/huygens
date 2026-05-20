@@ -18,3 +18,12 @@ export function canAccessAdmin(
 ): boolean {
   return canManageOrgUsers(user, organizationId, platformAdmin);
 }
+
+/** Org-level IPAM: platform admin or organization admin. */
+export function canAccessIpam(
+  user: UserOut | null,
+  organizationId: string | null,
+  platformAdmin: boolean,
+): boolean {
+  return canManageOrgUsers(user, organizationId, platformAdmin);
+}

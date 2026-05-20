@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "@/api/client";
 import { Modal } from "@/components/Modal";
 
@@ -9,6 +9,7 @@ type Props = {
   open: boolean;
   mode: "create" | "edit";
   projectId: string;
+  organizationId: string;
   agentId: string;
   initial?: NetRecord | null;
   onClose: () => void;
@@ -19,16 +20,28 @@ export function NetworkDialog({
   open,
   mode,
   projectId,
+  organizationId,
   agentId,
   initial,
   onClose,
   onSaved,
 }: Props) {
   const [name, setName] = useState("");
-  const [ipamHosts, setIpamHosts] = useState("10");
+  const [allocationId, setAllocationId] = useState("");
   const [ipv4Cidr, setIpv4Cidr] = useState("");
   const [autostart, setAutostart] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+  const allocations = useQuery({
+    queryKey: ["ipam-allocations", organizationId, projectId],
+    queryFn: () => api.listProjectIpAllocations(organizationId, projectId),
+    enabled: open && mode === "create" && !!organizationId,
+  });
+
+  const available = useMemo(
+    () => (allocations.data ?? []).filter((a) => a.status === "reserved"),
+    [allocations.data],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -39,22 +52,30 @@ export function NetworkDialog({
       setIpv4Cidr(String(initial.ipv4_cidr ?? ""));
     } else {
       setName("");
-      setIpamHosts("10");
       setIpv4Cidr("");
       setAutostart(true);
     }
   }, [open, mode, initial]);
 
+  useEffect(() => {
+    if (!open || mode !== "create") return;
+    if (available.length && !allocationId) {
+      setAllocationId(available[0].id);
+    }
+  }, [open, mode, available, allocationId]);
+
+  const selectedAllocation = available.find((a) => a.id === allocationId);
+
   const save = useMutation({
     mutationFn: async () => {
       if (mode === "create") {
-        const body: Record<string, unknown> = { name: name.trim() };
-        if (ipv4Cidr.trim()) {
-          body.ipv4_cidr = ipv4Cidr.trim();
-        } else {
-          body.ipam = { hosts: parseInt(ipamHosts, 10) || 10 };
+        if (!allocationId) {
+          throw new ApiError("Select a subnet block from General first.", 400);
         }
-        return api.createNetwork(projectId, agentId, body);
+        return api.createNetwork(projectId, agentId, {
+          name: name.trim(),
+          allocation_id: allocationId,
+        });
       }
       return api.patchNetwork(projectId, agentId, name, {
         autostart,
@@ -80,7 +101,7 @@ export function NetworkDialog({
           </button>
           <button
             type="button"
-            disabled={save.isPending}
+            disabled={save.isPending || (mode === "create" && (available.length === 0 || !name.trim()))}
             onClick={() => save.mutate()}
             className="min-h-10 rounded-lg bg-emerald-600 px-5 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
           >
@@ -93,36 +114,46 @@ export function NetworkDialog({
         {err && <p className="text-sm text-red-700 dark:text-red-300">{err}</p>}
         {mode === "create" ? (
           <>
+            {allocations.isLoading && (
+              <p className="text-xs text-slate-500 dark:text-slate-500">Loading subnet blocks…</p>
+            )}
+            {available.length === 0 && !allocations.isLoading && (
+              <p className="rounded-lg bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+                No subnet blocks are assigned to this project. An organization admin must assign blocks in{" "}
+                <strong>IPAM</strong> (sidebar), then you can create networks here.
+              </p>
+            )}
+            {available.length > 0 && (
+              <label className="block text-sm">
+                Subnet block
+                <select
+                  className="mt-1 w-full min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 font-mono text-sm"
+                  value={allocationId}
+                  onChange={(e) => setAllocationId(e.target.value)}
+                >
+                  {available.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.cidr}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-xs text-slate-500 dark:text-slate-500">
+                  CIDR comes from your organization pool — no manual addressing needed.
+                </span>
+              </label>
+            )}
             <label className="block text-sm">
-              Name
-              <input
-                className="mt-1 w-full min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </label>
-            <label className="block text-sm">
-              IPAM hosts (subnet size)
-              <input
-                type="number"
-                min={4}
-                className="mt-1 w-full min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3"
-                value={ipamHosts}
-                onChange={(e) => setIpamHosts(e.target.value)}
-              />
-              <span className="mt-1 block text-xs text-slate-500 dark:text-slate-500">
-                Or set manual CIDR below (org IPAM rules apply).
-              </span>
-            </label>
-            <label className="block text-sm">
-              IPv4 CIDR (optional)
+              Network name
               <input
                 className="mt-1 w-full min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 font-mono text-sm"
-                placeholder="192.168.50.0/24"
-                value={ipv4Cidr}
-                onChange={(e) => setIpv4Cidr(e.target.value)}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={selectedAllocation ? "lab0" : "lab0"}
+                required
               />
+              <span className="mt-1 block text-xs text-slate-500 dark:text-slate-500">
+                Short name used when attaching VMs (e.g. lab0, app-net).
+              </span>
             </label>
           </>
         ) : (
