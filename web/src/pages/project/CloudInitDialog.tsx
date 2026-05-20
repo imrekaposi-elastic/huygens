@@ -116,7 +116,7 @@ export function CloudInitDialog({
           <button
             type="button"
             onClick={onClose}
-            className="min-h-10 rounded-lg border border-slate-600 px-4 text-sm"
+            className="min-h-10 rounded-lg border border-slate-300 dark:border-slate-600 px-4 text-sm"
           >
             Cancel
           </button>
@@ -124,7 +124,7 @@ export function CloudInitDialog({
             type="button"
             disabled={validate.isPending}
             onClick={() => validate.mutate()}
-            className="min-h-10 rounded-lg border border-slate-600 px-4 text-sm text-slate-200 hover:bg-slate-800"
+            className="min-h-10 rounded-lg border border-slate-300 dark:border-slate-600 px-4 text-sm text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:bg-slate-800"
           >
             {validate.isPending ? "Validating…" : "Validate"}
           </button>
@@ -140,15 +140,15 @@ export function CloudInitDialog({
       }
     >
       <div className="space-y-4">
-        {err && <p className="rounded bg-red-950/50 px-3 py-2 text-sm text-red-300">{err}</p>}
+        {err && <p className="rounded bg-red-50/90 dark:bg-red-950/50 px-3 py-2 text-sm text-red-700 dark:text-red-300">{err}</p>}
         {validateOk && (
-          <p className="rounded bg-emerald-950/40 px-3 py-2 text-sm text-emerald-300">{validateOk}</p>
+          <p className="rounded bg-emerald-950/40 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">{validateOk}</p>
         )}
         {mode === "create" && (
           <label className="block text-sm">
             Profile name
             <input
-              className="mt-1 w-full min-h-10 rounded-lg border border-slate-700 bg-slate-800 px-3 font-mono"
+              className="mt-1 w-full min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 font-mono"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -182,7 +182,7 @@ export function CloudInitDialog({
         <label className="block text-sm">
           SSH public keys (one per line, optional)
           <textarea
-            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs"
+            className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-950 px-3 py-2 font-mono text-xs"
             value={sshKeys}
             onChange={(e) => setSshKeys(e.target.value)}
             rows={3}

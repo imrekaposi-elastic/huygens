@@ -46,28 +46,28 @@ export function OrganizationCreateDialog({ open, onClose, onCreated }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/60 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-org-title"
     >
       <form
         onSubmit={submit}
-        className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl"
+        className="w-full max-w-md rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 shadow-xl"
       >
-        <h2 id="create-org-title" className="text-lg font-semibold text-white">
+        <h2 id="create-org-title" className="text-lg font-semibold text-slate-900 dark:text-white">
           New organization
         </h2>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           Organizations isolate tenants. Platform admins can create multiple organizations.
         </p>
         {error && (
-          <p className="mt-3 rounded bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>
+          <p className="mt-3 rounded bg-red-50/90 dark:bg-red-950/50 px-3 py-2 text-sm text-red-700 dark:text-red-300">{error}</p>
         )}
         <label className="mt-4 block text-sm">
           Name
           <input
-            className="mt-1 w-full min-h-11 rounded-lg border border-slate-700 bg-slate-800 px-3"
+            className="mt-1 w-full min-h-11 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3"
             value={name}
             onChange={(e) => {
               setName(e.target.value);
@@ -80,7 +80,7 @@ export function OrganizationCreateDialog({ open, onClose, onCreated }: Props) {
         <label className="mt-3 block text-sm">
           URL slug
           <input
-            className="mt-1 w-full min-h-11 rounded-lg border border-slate-700 bg-slate-800 px-3 font-mono text-sm"
+            className="mt-1 w-full min-h-11 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 font-mono text-sm"
             value={slug}
             onChange={(e) => {
               setSlugTouched(true);
@@ -94,7 +94,7 @@ export function OrganizationCreateDialog({ open, onClose, onCreated }: Props) {
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="min-h-11 rounded-lg border border-slate-600 px-4 text-sm hover:bg-slate-800"
+            className="min-h-11 rounded-lg border border-slate-300 dark:border-slate-600 px-4 text-sm hover:bg-slate-50 dark:bg-slate-800"
           >
             Cancel
           </button>

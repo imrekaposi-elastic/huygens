@@ -73,7 +73,7 @@ class InventoryPoller:
                     session,
                     agent_id=target["agent_id"],
                     organization_id=target["organization_id"],
-                    region_id=target["region_id"],
+                    region_id=target["region_id"] or "",
                     payload=payload,
                     poll_error=error,
                 )

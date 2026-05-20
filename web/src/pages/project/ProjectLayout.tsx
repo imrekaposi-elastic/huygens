@@ -2,12 +2,23 @@ import { useEffect } from "react";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/api/client";
+import {
+  CdIcon,
+  CogIcon,
+  FolderOpenIcon,
+  NetworkIcon,
+  PageTitleIcon,
+  UsersIcon,
+  VmIcon,
+} from "@/components/icons/NavIcons";
 import { useProjectWorkspace } from "@/pages/project/projectContext";
 
 const subNav = [
-  { tab: "vms" as const, label: "Virtual machines" },
-  { tab: "networks" as const, label: "Networks" },
-  { tab: "cloud-init" as const, label: "Cloud-init" },
+  { tab: "vms" as const, label: "Virtual machines", icon: <VmIcon /> },
+  { tab: "images" as const, label: "Images", icon: <CdIcon /> },
+  { tab: "networks" as const, label: "Networks", icon: <NetworkIcon /> },
+  { tab: "cloud-init" as const, label: "Cloud-init", icon: <CogIcon /> },
+  { tab: "access" as const, label: "Access", icon: <UsersIcon /> },
 ];
 
 type Props = { projectId: string };
@@ -57,12 +68,13 @@ export function ProjectLayout({ projectId }: Props) {
               key={item.tab}
               to={`/projects/$projectId/${item.tab}`}
               params={{ projectId }}
-              className={`whitespace-nowrap rounded-lg px-3 py-2.5 text-sm lg:whitespace-normal ${
+              className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm lg:whitespace-normal ${
                 active
-                  ? "bg-slate-800 font-medium text-white"
-                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+                  ? "bg-slate-50 dark:bg-slate-800 font-medium text-slate-900 dark:text-white"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800/60 hover:text-slate-800 dark:hover:text-slate-800 dark:text-slate-200"
               }`}
             >
+              <span className={active ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500 dark:text-slate-500"}>{item.icon}</span>
               {item.label}
             </Link>
           );
@@ -71,24 +83,27 @@ export function ProjectLayout({ projectId }: Props) {
 
       <div className="min-w-0 flex-1 space-y-6">
         <div>
-          <Link to="/projects" className="text-sm text-emerald-400 hover:underline">
+          <Link to="/projects" className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline">
             ← Projects
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold">
+          <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold">
+            <PageTitleIcon>
+              <FolderOpenIcon className="text-amber-700 dark:text-amber-400/90" />
+            </PageTitleIcon>
             {project.data?.name ?? "Project"}
           </h1>
           {project.data?.description && (
-            <p className="mt-1 text-sm text-slate-500">{project.data.description}</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">{project.data.description}</p>
           )}
         </div>
 
-        <section className="rounded-lg border border-slate-800 bg-slate-900/80 p-4">
-          <h2 className="text-sm font-medium text-slate-300">Agent workspace</h2>
+        <section className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/80 p-4">
+          <h2 className="text-sm font-medium text-slate-700 dark:text-slate-300">Agent workspace</h2>
           <div className="mt-3 grid gap-4 md:grid-cols-2">
             <label className="block text-sm">
               Agent
               <select
-                className="mt-1 w-full min-h-10 rounded-lg border border-slate-700 bg-slate-800 px-3"
+                className="mt-1 w-full min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3"
                 value={agentId}
                 onChange={(e) => setAgentId(e.target.value)}
               >
@@ -101,7 +116,7 @@ export function ProjectLayout({ projectId }: Props) {
               </select>
             </label>
             <div className="text-sm">
-              <p className="text-slate-400">Enabled technologies</p>
+              <p className="text-slate-600 dark:text-slate-400">Fabric</p>
               <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto">
                 {agentTechs.data?.map((tech) => (
                   <li key={tech.agent_technology_id} className="flex items-center gap-2">
@@ -120,7 +135,7 @@ export function ProjectLayout({ projectId }: Props) {
                         saveTechs.mutate(next);
                       }}
                     />
-                    <span className={tech.platform_enabled ? "text-slate-300" : "text-slate-600"}>
+                    <span className={tech.platform_enabled ? "text-slate-700 dark:text-slate-300" : "text-slate-600"}>
                       {tech.name}
                     </span>
                   </li>
@@ -129,7 +144,7 @@ export function ProjectLayout({ projectId }: Props) {
             </div>
           </div>
           {saveTechs.isError && (
-            <p className="mt-2 text-xs text-red-300">
+            <p className="mt-2 text-xs text-red-700 dark:text-red-300">
               {saveTechs.error instanceof ApiError ? saveTechs.error.message : "Save failed"}
             </p>
           )}

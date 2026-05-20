@@ -151,6 +151,36 @@ class AgentProxy:
         )
         return response.json()
 
+    async def list_images(self, agent_id: str, organization_id: str) -> list[dict[str, Any]]:
+        info = await self._connect(agent_id, organization_id)
+        response = await self._request(info, "GET", "/api/v1/images")
+        return response.json()
+
+    async def get_image(
+        self, agent_id: str, organization_id: str, name: str
+    ) -> dict[str, Any]:
+        info = await self._connect(agent_id, organization_id)
+        response = await self._request(info, "GET", f"/api/v1/images/{name}")
+        return response.json()
+
+    async def create_image(
+        self, agent_id: str, organization_id: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        info = await self._connect(agent_id, organization_id)
+        response = await self._request(info, "POST", "/api/v1/images", json=body)
+        return response.json()
+
+    async def update_image(
+        self, agent_id: str, organization_id: str, name: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        info = await self._connect(agent_id, organization_id)
+        response = await self._request(info, "PATCH", f"/api/v1/images/{name}", json=body)
+        return response.json()
+
+    async def delete_image(self, agent_id: str, organization_id: str, name: str) -> None:
+        info = await self._connect(agent_id, organization_id)
+        await self._request(info, "DELETE", f"/api/v1/images/{name}")
+
     async def delete_network(
         self,
         agent_id: str,

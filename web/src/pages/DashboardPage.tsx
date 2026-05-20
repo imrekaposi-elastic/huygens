@@ -3,9 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/api/client";
 import { AssignToProjectControl } from "@/components/AssignToProjectControl";
-import { useInventoryEvents } from "@/hooks/useInventoryEvents";
 import type { AgentInventorySummary, NetworkInventoryItem, VmInventoryItem } from "@/api/types";
+import { liveQueryOptions } from "@/lib/liveRefresh";
 import { filterManagedNetworks } from "@/lib/systemNetwork";
+import { PageTitle, HomeIcon } from "@/components/icons/NavIcons";
 import { formatVmStatusLine, guestReachabilityNote } from "@/lib/vmStatus";
 
 export function DashboardPage() {
@@ -15,13 +16,12 @@ export function DashboardPage() {
     queryKey: ["dashboard", selectedOrgId],
     queryFn: () => api.dashboard(selectedOrgId!),
     enabled: !!selectedOrgId,
+    ...liveQueryOptions,
   });
 
-  useInventoryEvents(selectedOrgId, !!selectedOrgId);
-
-  if (!selectedOrgId) return <p className="text-slate-400">Select an organization</p>;
-  if (isLoading) return <p className="text-slate-400">Loading…</p>;
-  if (error) return <p className="text-red-400">{(error as Error).message}</p>;
+  if (!selectedOrgId) return <p className="text-slate-600 dark:text-slate-400">Select an organization</p>;
+  if (isLoading) return <p className="text-slate-600 dark:text-slate-400">Loading…</p>;
+  if (error) return <p className="text-red-600 dark:text-red-400">{(error as Error).message}</p>;
   if (!data) return null;
 
   const totalOrphanedVms = data.agents.reduce((n, a) => n + a.orphaned_vm_count, 0);
@@ -29,8 +29,8 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Inventory dashboard</h1>
-      <p className="text-sm text-slate-500">
+      <PageTitle icon={<HomeIcon />}>Home</PageTitle>
+      <p className="text-sm text-slate-500 dark:text-slate-500">
         Discovered on agents. VMs and networks are <strong className="text-amber-200">unassigned</strong> until
         added to a project (via Projects → agent proxy).
       </p>
@@ -41,8 +41,8 @@ export function DashboardPage() {
           ["Networks", data.network_count],
           ["Changed", data.agents_with_drift],
         ].map(([label, value]) => (
-          <div key={label as string} className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-            <p className="text-xs text-slate-500">{label}</p>
+          <div key={label as string} className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+            <p className="text-xs text-slate-500 dark:text-slate-500">{label}</p>
             <p className="text-2xl font-semibold">{value}</p>
           </div>
         ))}
@@ -69,7 +69,7 @@ export function DashboardPage() {
       <section className="space-y-4">
         <h2 className="text-lg font-medium">Agents</h2>
         {data.agents.length === 0 ? (
-          <p className="text-sm text-slate-500">No enrolled agents with inventory yet.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-500">No enrolled agents with inventory yet.</p>
         ) : (
           data.agents.map((a) => (
             <AgentInventoryPanel key={a.agent_id} agent={a} organizationId={orgId} />
@@ -90,32 +90,32 @@ function AgentInventoryPanel({
   const title = agent.agent_name ?? agent.agent_id;
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-800 px-4 py-3">
+    <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-200 dark:border-slate-800 px-4 py-3">
         <div>
-          <h3 className="font-medium text-white">{title}</h3>
+          <h3 className="font-medium text-slate-900 dark:text-white">{title}</h3>
           {agent.agent_name && (
-            <p className="font-mono text-xs text-slate-500">{agent.agent_id}</p>
+            <p className="font-mono text-xs text-slate-500 dark:text-slate-500">{agent.agent_id}</p>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {agent.poll_error ? (
-            <span className="text-red-400">poll error</span>
+            <span className="text-red-600 dark:text-red-400">poll error</span>
           ) : (
-            <span className="text-slate-400">{agent.connection_status ?? "—"}</span>
+            <span className="text-slate-600 dark:text-slate-400">{agent.connection_status ?? "—"}</span>
           )}
           {agent.config_drift && (
             <span
-              className="rounded bg-amber-950 px-2 py-0.5 text-xs text-amber-300"
+              className="rounded bg-amber-950 px-2 py-0.5 text-xs text-amber-800 dark:text-amber-300"
               title="VM or network inventory changed since the previous successful poll"
             >
               changed
             </span>
           )}
-          <span className="text-slate-500">
+          <span className="text-slate-500 dark:text-slate-500">
             {agent.vm_count} VMs · {agent.network_count} networks
             {(agent.orphaned_vm_count > 0 || agent.orphaned_network_count > 0) && (
-              <span className="text-amber-300/90">
+              <span className="text-amber-800 dark:text-amber-300/90">
                 {" "}
                 ({agent.orphaned_vm_count} unassigned VM
                 {agent.orphaned_vm_count === 1 ? "" : "s"}
@@ -173,18 +173,18 @@ function ResourceInventoryList<T extends { name: string | null; orphaned: boolea
   if (items.length === 0) {
     return (
       <div>
-        <h4 className="mb-2 text-sm font-medium text-slate-300">{title}</h4>
-        <p className="text-sm text-slate-500">{empty}</p>
+        <h4 className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">{title}</h4>
+        <p className="text-sm text-slate-500 dark:text-slate-500">{empty}</p>
       </div>
     );
   }
 
   return (
     <div>
-      <h4 className="mb-2 text-sm font-medium text-slate-300">{title}</h4>
+      <h4 className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">{title}</h4>
       {orphaned.length > 0 && (
         <div className="mb-3">
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-amber-400/90">
+          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-amber-700 dark:text-amber-400/90">
             Unassigned — not in a project
           </p>
           <ul className="space-y-1.5">
@@ -196,7 +196,7 @@ function ResourceInventoryList<T extends { name: string | null; orphaned: boolea
       )}
       {assigned.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-emerald-400/90">
+          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-emerald-600/90 dark:text-emerald-400/90">
             In a project
           </p>
           <ul className="space-y-1.5">
@@ -268,9 +268,9 @@ function VmRow({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <span className="font-medium text-slate-200">{vm.name ?? "—"}</span>
-          {secondary ? <span className="mt-0.5 block text-xs text-slate-500">{secondary}</span> : null}
-          {hint ? <span className="mt-0.5 block text-xs text-amber-400/90">{hint}</span> : null}
+          <span className="font-medium text-slate-800 dark:text-slate-200">{vm.name ?? "—"}</span>
+          {secondary ? <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-500">{secondary}</span> : null}
+          {hint ? <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-400/90">{hint}</span> : null}
         </div>
         {vm.orphaned && vm.name ? (
           <AssignToProjectControl
@@ -318,8 +318,8 @@ function NetworkRow({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <span className="font-medium text-slate-200">{net.name ?? "—"}</span>
-          {secondary ? <span className="mt-0.5 block text-xs text-slate-500">{secondary}</span> : null}
+          <span className="font-medium text-slate-800 dark:text-slate-200">{net.name ?? "—"}</span>
+          {secondary ? <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-500">{secondary}</span> : null}
         </div>
         {net.orphaned && net.name ? (
           <AssignToProjectControl

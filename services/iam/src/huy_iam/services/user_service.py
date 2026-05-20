@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -267,14 +267,21 @@ async def delete_organization(session: AsyncSession, org_id: str) -> bool:
 
 
 async def list_org_users(session: AsyncSession, organization_id: str) -> list[User]:
+    member_ids = select(OrganizationMember.user_id).where(
+        OrganizationMember.organization_id == organization_id
+    )
+    project_user_ids = select(ProjectRoleAssignment.user_id).where(
+        ProjectRoleAssignment.organization_id == organization_id
+    )
     result = await session.execute(
         select(User)
-        .join(OrganizationMember)
-        .where(OrganizationMember.organization_id == organization_id)
+        .where(User.id.in_(member_ids.union(project_user_ids)))
         .options(
             selectinload(User.platform_roles),
             selectinload(User.org_memberships).selectinload(OrganizationMember.roles),
+            selectinload(User.project_roles),
         )
+        .order_by(User.username)
     )
     return list(result.scalars().unique().all())
 
@@ -287,6 +294,18 @@ async def assign_project_role(
     project_id: str,
     role: str,
 ) -> ProjectRoleAssignment:
+    await ensure_org_member(session, user_id, organization_id)
+    existing = await session.execute(
+        select(ProjectRoleAssignment).where(
+            ProjectRoleAssignment.user_id == user_id,
+            ProjectRoleAssignment.organization_id == organization_id,
+            ProjectRoleAssignment.project_id == project_id,
+            ProjectRoleAssignment.role == role,
+        )
+    )
+    row = existing.scalar_one_or_none()
+    if row is not None:
+        return row
     grant = ProjectRoleAssignment(
         user_id=user_id,
         organization_id=organization_id,
@@ -296,3 +315,73 @@ async def assign_project_role(
     session.add(grant)
     await session.flush()
     return grant
+
+
+async def delete_org_user(
+    session: AsyncSession,
+    *,
+    organization_id: str,
+    user_id: str,
+) -> bool:
+    user = await get_user_by_id(session, user_id)
+    if user is None:
+        return False
+
+    await session.execute(
+        delete(ProjectRoleAssignment).where(
+            ProjectRoleAssignment.user_id == user_id,
+            ProjectRoleAssignment.organization_id == organization_id,
+        )
+    )
+
+    member_result = await session.execute(
+        select(OrganizationMember).where(
+            OrganizationMember.user_id == user_id,
+            OrganizationMember.organization_id == organization_id,
+        )
+    )
+    member = member_result.scalar_one_or_none()
+    if member is not None:
+        await session.delete(member)
+
+    other_orgs = await session.execute(
+        select(OrganizationMember).where(
+            OrganizationMember.user_id == user_id,
+            OrganizationMember.organization_id != organization_id,
+        )
+    )
+    has_other_orgs = other_orgs.first() is not None
+    platform = await session.execute(
+        select(UserPlatformRole).where(UserPlatformRole.user_id == user_id)
+    )
+    has_platform = platform.first() is not None
+
+    if not has_other_orgs and not has_platform:
+        await session.delete(user)
+
+    await session.flush()
+    return True
+
+
+async def revoke_project_role(
+    session: AsyncSession,
+    *,
+    user_id: str,
+    organization_id: str,
+    project_id: str,
+    role: str,
+) -> bool:
+    result = await session.execute(
+        select(ProjectRoleAssignment).where(
+            ProjectRoleAssignment.user_id == user_id,
+            ProjectRoleAssignment.organization_id == organization_id,
+            ProjectRoleAssignment.project_id == project_id,
+            ProjectRoleAssignment.role == role,
+        )
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        return False
+    await session.delete(row)
+    await session.flush()
+    return True

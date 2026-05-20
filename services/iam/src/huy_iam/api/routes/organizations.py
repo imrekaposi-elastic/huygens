@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select
 
 from huy_iam.api.converters import user_to_out
@@ -47,6 +47,7 @@ async def list_organizations(
     if user.is_platform_admin():
         return [OrganizationOut.model_validate(o) for o in orgs]
     allowed = {m.organization_id for m in user.org_memberships}
+    allowed |= {g.organization_id for g in user.project_roles}
     return [OrganizationOut.model_validate(o) for o in orgs if o.id in allowed]
 
 
@@ -155,6 +156,28 @@ async def update_org_user_roles(
     return user_to_out(ctx, target)
 
 
+@router.delete("/{organization_id}/users/{user_id}", status_code=204)
+async def delete_org_user(
+    organization_id: str,
+    user_id: str,
+    actor: CurrentUserDep,
+    session: SessionDep,
+) -> None:
+    if not actor.has_permission(PERM_ORG_MANAGE_USERS, organization_id):
+        raise HTTPException(status_code=403, detail="Cannot manage users in this organization")
+    if actor.user_id == user_id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own user account")
+    target = await user_service.get_user_by_id(session, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    deleted = await user_service.delete_org_user(
+        session, organization_id=organization_id, user_id=user_id
+    )
+    if not deleted:
+        raise HTTPException(status_code=404, detail="User not found")
+    await session.commit()
+
+
 @router.post("/{organization_id}/users/{user_id}/project-roles", status_code=201)
 async def assign_project_role(
     organization_id: str,
@@ -181,3 +204,26 @@ async def assign_project_role(
     )
     await session.commit()
     return {"status": "assigned", "project_id": body.project_id, "role": body.role}
+
+
+@router.delete("/{organization_id}/users/{user_id}/project-roles", status_code=204)
+async def revoke_project_role_endpoint(
+    organization_id: str,
+    user_id: str,
+    actor: CurrentUserDep,
+    session: SessionDep,
+    project_id: str = Query(...),
+    role: str = Query(...),
+) -> None:
+    if not actor.has_permission(PERM_ORG_MANAGE_USERS, organization_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    removed = await user_service.revoke_project_role(
+        session,
+        user_id=user_id,
+        organization_id=organization_id,
+        project_id=project_id,
+        role=role,
+    )
+    if not removed:
+        raise HTTPException(status_code=404, detail="Project role assignment not found")
+    await session.commit()

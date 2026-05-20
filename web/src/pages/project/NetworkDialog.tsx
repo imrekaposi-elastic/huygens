@@ -75,7 +75,7 @@ export function NetworkDialog({
       onClose={onClose}
       footer={
         <>
-          <button type="button" onClick={onClose} className="min-h-10 rounded-lg border border-slate-600 px-4 text-sm">
+          <button type="button" onClick={onClose} className="min-h-10 rounded-lg border border-slate-300 dark:border-slate-600 px-4 text-sm">
             Cancel
           </button>
           <button
@@ -90,13 +90,13 @@ export function NetworkDialog({
       }
     >
       <div className="space-y-3">
-        {err && <p className="text-sm text-red-300">{err}</p>}
+        {err && <p className="text-sm text-red-700 dark:text-red-300">{err}</p>}
         {mode === "create" ? (
           <>
             <label className="block text-sm">
               Name
               <input
-                className="mt-1 w-full min-h-10 rounded-lg border border-slate-700 bg-slate-800 px-3"
+                className="mt-1 w-full min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -107,18 +107,18 @@ export function NetworkDialog({
               <input
                 type="number"
                 min={4}
-                className="mt-1 w-full min-h-10 rounded-lg border border-slate-700 bg-slate-800 px-3"
+                className="mt-1 w-full min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3"
                 value={ipamHosts}
                 onChange={(e) => setIpamHosts(e.target.value)}
               />
-              <span className="mt-1 block text-xs text-slate-500">
+              <span className="mt-1 block text-xs text-slate-500 dark:text-slate-500">
                 Or set manual CIDR below (org IPAM rules apply).
               </span>
             </label>
             <label className="block text-sm">
               IPv4 CIDR (optional)
               <input
-                className="mt-1 w-full min-h-10 rounded-lg border border-slate-700 bg-slate-800 px-3 font-mono text-sm"
+                className="mt-1 w-full min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 font-mono text-sm"
                 placeholder="192.168.50.0/24"
                 value={ipv4Cidr}
                 onChange={(e) => setIpv4Cidr(e.target.value)}
@@ -130,7 +130,7 @@ export function NetworkDialog({
             <label className="block text-sm">
               IPv4 CIDR
               <input
-                className="mt-1 w-full min-h-10 rounded-lg border border-slate-700 bg-slate-800 px-3 font-mono text-sm"
+                className="mt-1 w-full min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 font-mono text-sm"
                 value={ipv4Cidr}
                 onChange={(e) => setIpv4Cidr(e.target.value)}
               />

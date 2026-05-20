@@ -15,6 +15,13 @@ import { ProjectWorkspaceProvider } from "@/pages/project/projectContext";
 import { ProjectCloudInitTab } from "@/pages/project/ProjectCloudInitTab";
 import { ProjectVmsTab } from "@/pages/project/ProjectVmsTab";
 import { ProjectNetworksTab } from "@/pages/project/ProjectNetworksTab";
+import { ProjectAccessTab } from "@/pages/project/ProjectAccessTab";
+import { ProjectImagesTab } from "@/pages/project/ProjectImagesTab";
+import { AdminGatePage } from "@/pages/admin/AdminGatePage";
+import { AdminUsersTab } from "@/pages/admin/AdminUsersTab";
+import { AdminIdpMappingsTab } from "@/pages/admin/AdminIdpMappingsTab";
+import { AdminAuthenticationTab } from "@/pages/admin/AdminAuthenticationTab";
+import { AdminRbacTab } from "@/pages/admin/AdminRbacTab";
 
 const rootRoute = createRootRoute({ component: RootLayout });
 
@@ -72,6 +79,45 @@ const agentsRoute = createRoute({
   component: AgentsPage,
 });
 
+const adminRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/admin",
+  component: AdminGatePage,
+});
+
+const adminIndexRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/",
+  beforeLoad: () => {
+    throw redirect({ to: "/admin/users" });
+  },
+  component: () => null,
+});
+
+const adminUsersRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "users",
+  component: AdminUsersTab,
+});
+
+const adminIdpRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "idp",
+  component: AdminIdpMappingsTab,
+});
+
+const adminAuthRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "authentication",
+  component: AdminAuthenticationTab,
+});
+
+const adminRbacRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "rbac",
+  component: AdminRbacTab,
+});
+
 const projectsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/projects",
@@ -112,6 +158,15 @@ const projectVmsRoute = createRoute({
   },
 });
 
+const projectImagesRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "images",
+  component: function ProjectImagesRoute() {
+    const { projectId } = projectRoute.useParams();
+    return <ProjectImagesTab projectId={projectId} />;
+  },
+});
+
 const projectNetworksRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: "networks",
@@ -130,6 +185,15 @@ const projectCloudInitRoute = createRoute({
   },
 });
 
+const projectAccessRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "access",
+  component: function ProjectAccessRoute() {
+    const { projectId } = projectRoute.useParams();
+    return <ProjectAccessTab projectId={projectId} />;
+  },
+});
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
   oidcCallbackRoute,
@@ -139,12 +203,21 @@ const routeTree = rootRoute.addChildren([
     agentTechnologiesRoute,
     infrastructureRoute,
     agentsRoute,
+    adminRoute.addChildren([
+      adminIndexRoute,
+      adminUsersRoute,
+      adminIdpRoute,
+      adminAuthRoute,
+      adminRbacRoute,
+    ]),
     projectsRoute,
     projectRoute.addChildren([
       projectIndexRoute,
       projectVmsRoute,
+      projectImagesRoute,
       projectNetworksRoute,
       projectCloudInitRoute,
+      projectAccessRoute,
     ]),
   ]),
 ]);

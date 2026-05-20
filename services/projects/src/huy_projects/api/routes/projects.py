@@ -49,11 +49,13 @@ async def list_projects(
         if organization_id is not None and not user.can_access_org(organization_id):
             raise HTTPException(status_code=403, detail="Organization access denied")
         projects: list = []
-        org_ids = (
-            [organization_id]
-            if organization_id
-            else [m.organization_id for m in user.org_memberships]
-        )
+        org_ids_set: set[str] = set()
+        if organization_id:
+            org_ids_set.add(organization_id)
+        else:
+            org_ids_set.update(m.organization_id for m in user.org_memberships)
+            org_ids_set.update(g.organization_id for g in user.project_roles)
+        org_ids = list(org_ids_set)
         seen: set[str] = set()
         for org_id in org_ids:
             for project in await project_service.list_projects(session, organization_id=org_id):

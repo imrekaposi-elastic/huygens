@@ -103,8 +103,8 @@ class Agent(Base):
     infrastructure_provider_id: Mapped[str] = mapped_column(
         ForeignKey("infrastructure_providers.id", ondelete="RESTRICT"), nullable=False
     )
-    region_id: Mapped[str] = mapped_column(
-        ForeignKey("infrastructure_regions.id", ondelete="RESTRICT"), nullable=False
+    region_id: Mapped[str | None] = mapped_column(
+        ForeignKey("infrastructure_regions.id", ondelete="SET NULL"), nullable=True, index=True
     )
     agent_technology_id: Mapped[str] = mapped_column(
         ForeignKey("agent_technologies.id", ondelete="RESTRICT"), nullable=False

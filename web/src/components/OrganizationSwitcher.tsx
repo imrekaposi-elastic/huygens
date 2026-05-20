@@ -50,7 +50,7 @@ export function OrganizationSwitcher() {
   if (organizations.length === 0 && isAdmin) {
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-slate-400">No organizations yet</span>
+        <span className="text-sm text-slate-600 dark:text-slate-400">No organizations yet</span>
         <button
           type="button"
           onClick={() => void navigate({ to: "/setup" })}
@@ -61,7 +61,7 @@ export function OrganizationSwitcher() {
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="min-h-11 rounded-lg border border-slate-600 px-4 text-sm hover:bg-slate-800"
+          className="min-h-11 rounded-lg border border-slate-300 dark:border-slate-600 px-4 text-sm hover:bg-slate-50 dark:bg-slate-800"
         >
           New organization
         </button>
@@ -80,10 +80,10 @@ export function OrganizationSwitcher() {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <label className="text-sm text-slate-400">
+      <label className="text-sm text-slate-600 dark:text-slate-400">
         Organization
         <select
-          className="ml-2 min-h-11 rounded border border-slate-700 bg-slate-800 px-2 text-sm text-white"
+          className="ml-2 min-h-11 rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 text-sm text-slate-900 dark:text-white"
           value={selectedOrgId ?? ""}
           onChange={(e) => setSelectedOrgId(e.target.value)}
         >
@@ -99,7 +99,7 @@ export function OrganizationSwitcher() {
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="min-h-11 rounded-lg border border-slate-600 px-3 text-sm hover:bg-slate-800"
+            className="min-h-11 rounded-lg border border-slate-300 dark:border-slate-600 px-3 text-sm hover:bg-slate-50 dark:bg-slate-800"
           >
             New
           </button>
@@ -107,13 +107,13 @@ export function OrganizationSwitcher() {
             type="button"
             onClick={() => void handleDelete()}
             disabled={!selectedOrgId || deleteBusy}
-            className="min-h-11 rounded-lg border border-red-900/80 px-3 text-sm text-red-300 hover:bg-red-950/40 disabled:opacity-40"
+            className="min-h-11 rounded-lg border border-red-300 dark:border-red-900/80 px-3 text-sm text-red-700 dark:text-red-300 hover:bg-red-50 dark:bg-red-950/40 disabled:opacity-40"
           >
             {deleteBusy ? "Deleting…" : "Delete"}
           </button>
         </>
       )}
-      {error && <p className="w-full text-sm text-red-400">{error}</p>}
+      {error && <p className="w-full text-sm text-red-600 dark:text-red-400">{error}</p>}
       <OrganizationCreateDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}

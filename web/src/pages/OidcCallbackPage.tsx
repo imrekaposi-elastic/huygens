@@ -27,7 +27,7 @@ export function OidcCallbackPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <p className="text-slate-400">{error ?? "Completing sign-in…"}</p>
+      <p className="text-slate-600 dark:text-slate-400">{error ?? "Completing sign-in…"}</p>
     </div>
   );
 }

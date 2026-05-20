@@ -6,12 +6,14 @@ import type {
   AgentSummary,
   AgentTechnology,
   InfrastructureProvider,
+  HostMetricsSnapshot,
   InfrastructureProviderDetail,
   Organization,
   OrganizationDashboard,
   Project,
   ProjectAgentTechnology,
   RegionTreeNode,
+  IdpGroupMapping,
   TokenResponse,
   UserOut,
 } from "@/api/types";
@@ -73,6 +75,139 @@ export const api = {
     request<void>(`/api/v1/organizations/${encodeURIComponent(organizationId)}`, {
       method: "DELETE",
     }),
+
+  orgUsers: (organizationId: string) =>
+    request<UserOut[]>(`/api/v1/organizations/${encodeURIComponent(organizationId)}/users`),
+
+  createOrgUser: (
+    organizationId: string,
+    body: {
+      email: string;
+      username: string;
+      password: string;
+      display_name?: string;
+      org_roles?: string[];
+    },
+  ) =>
+    request<UserOut>(`/api/v1/organizations/${encodeURIComponent(organizationId)}/users`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  updateOrgUserRoles: (organizationId: string, userId: string, org_roles: string[]) =>
+    request<UserOut>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/users/${encodeURIComponent(userId)}/roles`,
+      { method: "PUT", body: JSON.stringify({ org_roles }) },
+    ),
+
+  assignProjectRole: (
+    organizationId: string,
+    userId: string,
+    body: { project_id: string; role: string },
+  ) =>
+    request<{ status: string; project_id: string; role: string }>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/users/${encodeURIComponent(userId)}/project-roles`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  revokeProjectRole: (
+    organizationId: string,
+    userId: string,
+    projectId: string,
+    role: string,
+  ) =>
+    request<void>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/users/${encodeURIComponent(userId)}/project-roles?project_id=${encodeURIComponent(projectId)}&role=${encodeURIComponent(role)}`,
+      { method: "DELETE" },
+    ),
+
+  grantPlatformAdmin: (userId: string) =>
+    request<UserOut>(`/api/v1/users/${encodeURIComponent(userId)}/platform-roles`, {
+      method: "POST",
+      body: JSON.stringify({ role: "platform_admin" }),
+    }),
+
+  orgIdpMappings: (organizationId: string) =>
+    request<IdpGroupMapping[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/idp-group-mappings`,
+    ),
+
+  createOrgIdpMapping: (
+    organizationId: string,
+    body: {
+      idp_group_name: string;
+      match_type?: string;
+      huy_role: string;
+      priority?: number;
+      enabled?: boolean;
+    },
+  ) =>
+    request<IdpGroupMapping>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/idp-group-mappings`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  patchOrgIdpMapping: (
+    organizationId: string,
+    mappingId: string,
+    body: Partial<{
+      idp_group_name: string;
+      match_type: string;
+      huy_role: string;
+      priority: number;
+      enabled: boolean;
+    }>,
+  ) =>
+    request<IdpGroupMapping>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/idp-group-mappings/${encodeURIComponent(mappingId)}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+
+  deleteOrgIdpMapping: (organizationId: string, mappingId: string) =>
+    request<void>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/idp-group-mappings/${encodeURIComponent(mappingId)}`,
+      { method: "DELETE" },
+    ),
+
+  platformIdpMappings: () =>
+    request<IdpGroupMapping[]>("/api/v1/platform/idp-group-mappings"),
+
+  createPlatformIdpMapping: (body: {
+    idp_group_name: string;
+    match_type?: string;
+    huy_role: string;
+    priority?: number;
+    enabled?: boolean;
+  }) =>
+    request<IdpGroupMapping>("/api/v1/platform/idp-group-mappings", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  patchPlatformIdpMapping: (
+    mappingId: string,
+    body: Partial<{
+      idp_group_name: string;
+      match_type: string;
+      huy_role: string;
+      priority: number;
+      enabled: boolean;
+    }>,
+  ) =>
+    request<IdpGroupMapping>(
+      `/api/v1/platform/idp-group-mappings/${encodeURIComponent(mappingId)}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+
+  deletePlatformIdpMapping: (mappingId: string) =>
+    request<void>(`/api/v1/platform/idp-group-mappings/${encodeURIComponent(mappingId)}`, {
+      method: "DELETE",
+    }),
+
+  oidcAuthorizeUrl: (organizationId: string) =>
+    request<{ authorization_url: string }>(
+      `/api/v1/auth/oidc/authorize?organization_id=${encodeURIComponent(organizationId)}`,
+    ),
 
   dashboard: (orgId: string) =>
     request<OrganizationDashboard>(`/api/v1/inventory/organizations/${orgId}/dashboard`),
@@ -194,7 +329,18 @@ export const api = {
       method: "POST",
     }),
 
-  patchAgent: (agentId: string, body: { tls_verify?: boolean; base_url?: string }) =>
+  agentMetrics: (agentId: string) =>
+    request<HostMetricsSnapshot>(`/api/v1/agents/${encodeURIComponent(agentId)}/metrics`),
+
+  patchAgent: (
+    agentId: string,
+    body: {
+      tls_verify?: boolean;
+      base_url?: string;
+      region_id?: string;
+      infrastructure_provider_id?: string;
+    },
+  ) =>
     request<AgentOut>(`/api/v1/agents/${encodeURIComponent(agentId)}`, {
       method: "PATCH",
       body: JSON.stringify(body),
@@ -344,6 +490,33 @@ export const api = {
   deleteCloudInitProfile: (projectId: string, agentId: string, name: string) =>
     request<void>(
       `/api/v1/projects/${projectId}/agents/${agentId}/cloud-init/${encodeURIComponent(name)}`,
+      { method: "DELETE" },
+    ),
+
+  deleteOrgUser: (organizationId: string, userId: string) =>
+    request<void>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/users/${encodeURIComponent(userId)}`,
+      { method: "DELETE" },
+    ),
+
+  listImages: (projectId: string, agentId: string) =>
+    request<Record<string, unknown>[]>(
+      `/api/v1/projects/${projectId}/agents/${agentId}/images`,
+    ),
+
+  createImage: (
+    projectId: string,
+    agentId: string,
+    body: { name: string; source: string; sha256?: string; fetch?: boolean },
+  ) =>
+    request<Record<string, unknown>>(
+      `/api/v1/projects/${projectId}/agents/${agentId}/images`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  deleteImage: (projectId: string, agentId: string, name: string) =>
+    request<void>(
+      `/api/v1/projects/${projectId}/agents/${agentId}/images/${encodeURIComponent(name)}`,
       { method: "DELETE" },
     ),
 };

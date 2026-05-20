@@ -19,7 +19,7 @@ from huy_registry.schemas import (
     AgentTokenExport,
     AgentUpdate,
 )
-from huy_registry.services import agent_service, connection_probe
+from huy_registry.services import agent_metrics_client, agent_service, connection_probe
 from huy_registry.services.agent_service import agent_to_out
 
 router = APIRouter(prefix="/api/v1/agents", tags=["agents"])
@@ -136,6 +136,26 @@ async def rotate_agent_token(
         raise HTTPException(status_code=404, detail="Agent not found")
     token = await agent_service.rotate_token(session, settings, agent)
     return AgentTokenExport(agent_token=token)
+
+
+@router.get("/{agent_id}/metrics")
+async def get_agent_metrics(
+    agent_id: str,
+    user: CurrentUserDep,
+    session: SessionDep,
+    settings: SettingsDep,
+) -> dict:
+    if not user.has_permission(PERM_INVENTORY_READ):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    agent = await agent_service.get_agent(session, agent_id)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    if not user.is_platform_admin() and not user.can_access_org(agent.organization_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    token = decrypt_agent_token(agent.token_encrypted, settings.agent_token_encryption_key)
+    return await agent_metrics_client.fetch_agent_metrics(
+        agent.base_url, token, tls_verify=agent.tls_verify
+    )
 
 
 @router.post("/{agent_id}/test-connection", response_model=AgentOut)

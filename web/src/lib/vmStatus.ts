@@ -31,12 +31,17 @@ export function hypervisorPowerLabel(state: string | null | undefined): {
 } {
   const s = (state ?? "").toUpperCase();
   if (s === "RUNNING") {
-    return { label: "Running", className: "bg-emerald-900/50 text-emerald-300" };
+    return { label: "Running", className: "bg-emerald-900/50 text-emerald-700 dark:text-emerald-300" };
   }
   if (s === "SHUTOFF" || s === "NOSTATE" || s === "") {
-    return { label: "Stopped", className: "bg-slate-800 text-slate-400" };
+    return { label: "Stopped", className: "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400" };
   }
   return { label: state ?? "Unknown", className: "bg-amber-900/40 text-amber-200" };
+}
+
+/** Agent guest probe: TCP :22 on resolved guest IP. */
+export function isSshReachable(guestStatus: string | null | undefined): boolean {
+  return guestStatus === "on";
 }
 
 /** Secondary note when guest SSH disagrees with hypervisor (never shown as primary power state). */

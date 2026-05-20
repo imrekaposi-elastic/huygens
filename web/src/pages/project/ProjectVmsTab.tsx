@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
+import { VmIcon } from "@/components/icons/NavIcons";
+import { liveQueryOptions } from "@/lib/liveRefresh";
 import { useProjectWorkspace } from "@/pages/project/projectContext";
 import { VmDialog } from "@/pages/project/VmDialog";
 import { VmListTable, type VmRow } from "@/pages/project/VmListTable";
@@ -16,6 +18,7 @@ export function ProjectVmsTab({ projectId }: Props) {
     queryKey: ["vms", projectId, agentId],
     queryFn: () => api.listVms(projectId, agentId),
     enabled: !!agentId,
+    ...liveQueryOptions,
   });
 
   const invalidate = () => {
@@ -34,7 +37,7 @@ export function ProjectVmsTab({ projectId }: Props) {
   });
 
   if (!agentId) {
-    return <p className="text-slate-500">Select an agent in the project header to manage VMs.</p>;
+    return <p className="text-slate-500 dark:text-slate-500">Select an agent in the project header to manage VMs.</p>;
   }
 
   const vms = (data ?? []) as VmRow[];
@@ -44,9 +47,14 @@ export function ProjectVmsTab({ projectId }: Props) {
       <div className="space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-medium">Virtual machines</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Power state is from the hypervisor (libvirt). Guest SSH is shown only when it differs.
+            <h2 className="flex items-center gap-2 text-lg font-medium">
+              <span className="inline-flex h-5 w-5 shrink-0 text-emerald-600/90 dark:text-emerald-400/90">
+                <VmIcon />
+              </span>
+              Virtual machines
+            </h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">
+              Power is hypervisor state (libvirt). SSH checkbox is a read-only guest probe on port 22.
             </p>
           </div>
           <button
@@ -69,7 +77,7 @@ export function ProjectVmsTab({ projectId }: Props) {
                   <button
                     type="button"
                     onClick={() => setDialog({ edit: vm as Record<string, unknown> })}
-                    className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800"
+                    className="rounded border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-sm text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:bg-slate-800"
                   >
                     Edit
                   </button>
@@ -78,14 +86,14 @@ export function ProjectVmsTab({ projectId }: Props) {
                     onClick={() => {
                       if (window.confirm(`Delete VM "${name}" on the hypervisor?`)) remove.mutate(name);
                     }}
-                    className="rounded border border-red-900/80 px-3 py-1.5 text-sm text-red-300 hover:bg-red-950/40"
+                    className="rounded border border-red-300 dark:border-red-900/80 px-3 py-1.5 text-sm text-red-700 dark:text-red-300 hover:bg-red-50 dark:bg-red-950/40"
                   >
                     Delete
                   </button>
                 </div>
                 <button
                   type="button"
-                  className="text-xs text-slate-400 underline"
+                  className="text-xs text-slate-600 dark:text-slate-400 underline"
                   onClick={() => unassign.mutate(name)}
                 >
                   Unassign from project

@@ -33,7 +33,11 @@ export function useInventoryEvents(orgId: string | null, enabled: boolean) {
           const envelope = JSON.parse(ev.data) as InventoryCloudEvent;
           if (envelope.data?.organization_id !== orgId) return;
           void queryClient.invalidateQueries({ queryKey: ["dashboard", orgId] });
+          void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
           void queryClient.invalidateQueries({ queryKey: ["inventory-agents"] });
+          // Projects tabs proxy the agent directly — refresh VM/network lists too.
+          void queryClient.invalidateQueries({ queryKey: ["vms"] });
+          void queryClient.invalidateQueries({ queryKey: ["networks"] });
         } catch {
           /* ignore malformed */
         }

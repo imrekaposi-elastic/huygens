@@ -7,7 +7,13 @@ from fastapi.responses import PlainTextResponse
 
 from huy_libvirt_agent import __version__
 from huy_libvirt_agent.api.deps import StateDep, verify_token
-from huy_libvirt_agent.api.schemas.agent import AgentLabels, AgentSettingsResponse, AgentTlsInfo
+from huy_libvirt_agent.api.schemas.agent import (
+    AgentLabels,
+    AgentSettingsResponse,
+    AgentTlsInfo,
+    HostMetricsSnapshot,
+)
+from huy_libvirt_agent.services.host_metrics_service import collect_host_metrics_snapshot
 from huy_libvirt_agent.services.tls_manager import ca_fingerprint
 
 router = APIRouter(
@@ -45,6 +51,16 @@ async def get_agent(state: StateDep) -> AgentSettingsResponse:
         data_dir=str(state.settings.data_dir),
         tls=_tls_info(state),
     )
+
+
+@router.get(
+    "/metrics",
+    response_model=HostMetricsSnapshot,
+    summary="Host performance snapshot",
+    description="Point-in-time CPU, memory, disk, network, and VM counts for live dashboards.",
+)
+async def get_host_metrics(state: StateDep) -> HostMetricsSnapshot:
+    return HostMetricsSnapshot.model_validate(collect_host_metrics_snapshot(state))
 
 
 @router.get(

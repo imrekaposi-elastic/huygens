@@ -10,7 +10,15 @@ import uvicorn
 from fastapi import FastAPI
 
 from huy_projects import __version__
-from huy_projects.api.routes import cloud_init_proxy, health, internal, ipam, projects, proxy
+from huy_projects.api.routes import (
+    cloud_init_proxy,
+    health,
+    images_proxy,
+    internal,
+    ipam,
+    projects,
+    proxy,
+)
 from huy_projects.config import get_settings
 from huy_projects.db import dispose_db, get_engine, init_db
 from huy_projects.models import Base
@@ -45,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(ipam.router)
     app.include_router(proxy.router)
     app.include_router(cloud_init_proxy.router)
+    app.include_router(images_proxy.router)
     return app
 
 

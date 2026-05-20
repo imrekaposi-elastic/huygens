@@ -42,3 +42,16 @@ def test_operator_project_grant() -> None:
 def test_org_admin_can_create() -> None:
     user = _ctx(org_memberships=[OrgMembership(organization_id="org-1", roles=["admin"])])
     require_project_create(user, "org-1")
+
+
+def test_project_only_user_can_access_org_and_read_project() -> None:
+    user = _ctx(
+        project_roles=[
+            ProjectRoleGrant(
+                organization_id="org-1", project_id="proj-1", role="operator"
+            )
+        ]
+    )
+    assert user.can_access_org("org-1")
+    assert user.can_read_project("org-1", "proj-1")
+    assert not user.can_read_project("org-1", "proj-2")

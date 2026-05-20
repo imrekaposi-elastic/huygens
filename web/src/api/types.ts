@@ -9,12 +9,33 @@ export type OrgMembership = {
   roles: string[];
 };
 
+export type ProjectRoleOut = {
+  organization_id: string;
+  project_id: string;
+  role: string;
+};
+
 export type UserOut = {
   id: string;
   email: string;
   username: string;
+  display_name: string | null;
+  is_active: boolean;
   platform_roles: string[];
   org_memberships: OrgMembership[];
+  project_roles: ProjectRoleOut[];
+};
+
+export type IdpGroupMapping = {
+  id: string;
+  organization_id: string | null;
+  idp_group_name: string;
+  match_type: string;
+  huy_role: string;
+  priority: number;
+  enabled: boolean;
+  created_by: string | null;
+  created_at: string;
 };
 
 export type Organization = {
@@ -149,7 +170,9 @@ export type AgentOut = {
   name: string;
   organization_id: string;
   infrastructure_provider_id: string;
-  region_id: string;
+  region_id: string | null;
+  region_name?: string | null;
+  region_slug?: string | null;
   agent_technology_id: string;
   agent_technology_slug: string;
   base_url: string;
@@ -161,6 +184,41 @@ export type AgentOut = {
 
 export type AgentCreated = AgentOut & {
   agent_token: string;
+};
+
+export type HostMetricsSnapshot = {
+  collected_at: string;
+  libvirt_connected: boolean;
+  vms: {
+    running: number;
+    total: number;
+    by_libvirt_state: Record<string, number>;
+  };
+  cpu_percent: number;
+  memory: {
+    total_bytes: number;
+    used_bytes: number;
+    available_bytes: number;
+    usage_percent: number;
+    allocated_to_vms_bytes: number;
+  };
+  disk: {
+    mount: string;
+    total_bytes: number;
+    used_bytes: number;
+    free_bytes: number;
+    usage_percent: number;
+  } | null;
+  disk_io: {
+    read_bytes_total: number;
+    write_bytes_total: number;
+    read_ops_total: number;
+    write_ops_total: number;
+  } | null;
+  network: {
+    bytes_sent_total: number;
+    bytes_recv_total: number;
+  } | null;
 };
 
 export type InventoryCloudEvent = {

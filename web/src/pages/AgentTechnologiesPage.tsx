@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/api/client";
+import { AgentTechIcon, PageTitle } from "@/components/icons/NavIcons";
 
 export function AgentTechnologiesPage() {
   const qc = useQueryClient();
@@ -14,15 +15,15 @@ export function AgentTechnologiesPage() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["agent-technologies"] }),
   });
 
-  if (isLoading) return <p className="text-slate-400">Loading…</p>;
-  if (error) return <p className="text-red-400">{(error as Error).message}</p>;
+  if (isLoading) return <p className="text-slate-600 dark:text-slate-400">Loading…</p>;
+  if (error) return <p className="text-red-600 dark:text-red-400">{(error as Error).message}</p>;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Agent technologies</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Technical implementations that collect inventory (how agents talk to hypervisors). Disable
+        <PageTitle icon={<AgentTechIcon />}>Fabric</PageTitle>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          Fabric implementations that collect inventory (how agents talk to hypervisors). Disable
           platform-wide to block new enrollments. Per-project enablement is on each project page.
         </p>
       </div>
@@ -30,13 +31,13 @@ export function AgentTechnologiesPage() {
         {data?.map((tech) => (
           <li
             key={tech.id}
-            className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-800 bg-slate-900 p-5"
+            className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5"
           >
             <div>
-              <p className="font-medium text-white">{tech.name}</p>
-              <p className="font-mono text-sm text-slate-500">{tech.slug}</p>
+              <p className="font-medium text-slate-900 dark:text-white">{tech.name}</p>
+              <p className="font-mono text-sm text-slate-500 dark:text-slate-500">{tech.slug}</p>
               {tech.description && (
-                <p className="mt-1 text-sm text-slate-400">{tech.description}</p>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{tech.description}</p>
               )}
             </div>
             <label className="flex items-center gap-2 text-sm">

@@ -42,7 +42,7 @@ export function AssignToProjectControl({
   });
 
   if (isLoading) {
-    return <span className="text-xs text-slate-500">Loading projects…</span>;
+    return <span className="text-xs text-slate-500 dark:text-slate-500">Loading projects…</span>;
   }
 
   if (!projects?.length) {
@@ -57,7 +57,7 @@ export function AssignToProjectControl({
     <div className="flex flex-col items-end gap-1">
       <div className="flex flex-wrap items-center justify-end gap-1">
         <select
-          className="max-w-[10rem] rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs"
+          className="max-w-[10rem] rounded border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-2 py-1 text-xs"
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
           aria-label={`Project for ${resourceName}`}
@@ -78,7 +78,7 @@ export function AssignToProjectControl({
           {assign.isPending ? "Assigning…" : "Assign"}
         </button>
       </div>
-      {err && <p className="max-w-[14rem] text-right text-xs text-red-300">{err}</p>}
+      {err && <p className="max-w-[14rem] text-right text-xs text-red-700 dark:text-red-300">{err}</p>}
     </div>
   );
 }

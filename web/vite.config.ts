@@ -18,6 +18,7 @@ export default defineConfig({
       "/api/v1/auth": cp(8081),
       "/api/v1/organizations": cp(8081),
       "/api/v1/platform": cp(8081),
+      "/api/v1/users": cp(8081),
       "/api/v1/inventory": cp(8083),
       "/api/v1/projects": cp(8084),
       "/api/v1/agents": cp(8082),

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/auth/AuthContext";
 import { ApiError } from "@/api/client";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -26,20 +27,23 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="relative flex min-h-screen items-center justify-center p-4">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-lg"
+        className="w-full max-w-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-lg"
       >
-        <h1 className="text-xl font-semibold text-emerald-400">Huygens Console</h1>
-        <p className="mt-1 text-sm text-slate-400">Sign in with local credentials</p>
+        <h1 className="text-xl font-semibold text-emerald-600 dark:text-emerald-400">Huygens Console</h1>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Sign in with local credentials</p>
         {error && (
-          <p className="mt-3 rounded bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>
+          <p className="mt-3 rounded bg-red-50/90 dark:bg-red-950/50 px-3 py-2 text-sm text-red-700 dark:text-red-300">{error}</p>
         )}
         <label className="mt-4 block text-sm">
           Username
           <input
-            className="mt-1 w-full min-h-11 rounded border border-slate-700 bg-slate-800 px-3"
+            className="mt-1 w-full min-h-11 rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
@@ -49,7 +53,7 @@ export function LoginPage() {
           Password
           <input
             type="password"
-            className="mt-1 w-full min-h-11 rounded border border-slate-700 bg-slate-800 px-3"
+            className="mt-1 w-full min-h-11 rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"

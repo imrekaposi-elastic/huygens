@@ -9,7 +9,7 @@ const PUBLIC_PATHS = new Set(["/login", "/auth/callback"]);
 
 function LoadingScreen({ message = "Loading…" }: { message?: string }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-400">
+    <div className="flex min-h-screen items-center justify-center bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400">
       {message}
     </div>
   );

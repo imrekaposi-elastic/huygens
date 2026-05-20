@@ -51,7 +51,8 @@ def build_region_forest(
 ) -> list[RegionTreeNode]:
     agents_by_region: dict[str, list[Agent]] = defaultdict(list)
     for agent in agents:
-        agents_by_region[agent.region_id].append(agent)
+        if agent.region_id:
+            agents_by_region[agent.region_id].append(agent)
 
     nodes: dict[str, RegionTreeNode] = {}
     for region in regions:
@@ -77,19 +78,22 @@ def build_region_forest(
         else:
             roots.append(node)
 
-    def finalize(node: RegionTreeNode) -> tuple[bool, int]:
+    def finalize(node: RegionTreeNode, parent_operational: bool = False) -> tuple[bool, int]:
+        """Coverage: direct agent, inherited from parent agent, or upward from child agents."""
         child_operational = False
         descendant_count = len(node.agents)
         for child in node.children:
-            c_op, c_count = finalize(child)
+            c_op, c_count = finalize(child, parent_operational or node.has_direct_agent)
             child_operational = child_operational or c_op
             descendant_count += c_count
         node.descendant_agent_count = descendant_count
-        node.operational = node.has_direct_agent or child_operational
+        node.operational = (
+            node.has_direct_agent or parent_operational or child_operational
+        )
         return node.operational, descendant_count
 
     for root in roots:
-        finalize(root)
+        finalize(root, False)
     return roots
 
 

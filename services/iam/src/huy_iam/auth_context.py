@@ -45,7 +45,9 @@ class AuthContext:
     def can_access_org(self, organization_id: str) -> bool:
         if self.is_platform_admin():
             return True
-        return any(m.organization_id == organization_id for m in self.org_memberships)
+        if any(m.organization_id == organization_id for m in self.org_memberships):
+            return True
+        return any(g.organization_id == organization_id for g in self.project_roles)
 
     def has_permission(self, permission: str, organization_id: str | None = None) -> bool:
         if self.is_platform_admin():

@@ -17,7 +17,7 @@ Default login (from `compose.env.example`): `platform-admin` / `platform-admin-d
 
 **First login:** platform admins with no organizations are sent to `/setup` — a multi-step wizard to create an organization, optional first project, and review security notes (no default org is seeded).
 
-**Platform admin nav:** **Agent tech** (libvirt-agent, …) → **Infrastructure** (vendor + region tree) → **Agents** (enroll at a region) → Dashboard / Projects.
+**Platform admin nav:** **Fabric** (libvirt-agent, …) → **Infrastructure** (vendor + region tree) → **Agents** (enroll at a region) → Dashboard / Projects.
 
 **DB reset:** This release changes registry/projects schema (`infrastructure_providers`, hierarchical regions, `agent_technologies`). Run `docker compose down -v` before upgrading.
 

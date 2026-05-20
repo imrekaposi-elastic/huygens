@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from huy_registry.models import Agent, InfrastructureProvider, Region
@@ -96,24 +96,35 @@ async def get_region(
     return result.scalar_one_or_none()
 
 
-async def _agent_count_for_region(session: AsyncSession, region_id: str) -> int:
-    return int(
-        await session.scalar(
-            select(func.count()).select_from(Agent).where(Agent.region_id == region_id)
-        )
-        or 0
-    )
+def _collect_subtree_region_ids(
+    regions: list[Region], root_region_id: str
+) -> set[str]:
+    """Region id and all descendants."""
+    children_by_parent: dict[str | None, list[str]] = {}
+    for r in regions:
+        children_by_parent.setdefault(r.parent_region_id, []).append(r.id)
+    subtree: set[str] = set()
+    stack = [root_region_id]
+    while stack:
+        rid = stack.pop()
+        if rid in subtree:
+            continue
+        subtree.add(rid)
+        stack.extend(children_by_parent.get(rid, []))
+    return subtree
 
 
-async def _child_region_count(session: AsyncSession, region_id: str) -> int:
-    return int(
-        await session.scalar(
-            select(func.count())
-            .select_from(Region)
-            .where(Region.parent_region_id == region_id)
-        )
-        or 0
-    )
+def _subtree_delete_order(regions: list[Region], subtree_ids: set[str]) -> list[str]:
+    """Deepest regions first so parent deletes do not violate FK constraints."""
+    by_id = {r.id: r for r in regions if r.id in subtree_ids}
+
+    def depth(rid: str) -> int:
+        r = by_id[rid]
+        if r.parent_region_id is None or r.parent_region_id not in subtree_ids:
+            return 0
+        return 1 + depth(r.parent_region_id)
+
+    return sorted(subtree_ids, key=depth, reverse=True)
 
 
 async def delete_region(
@@ -122,17 +133,20 @@ async def delete_region(
     region = await get_region(session, infrastructure_provider_id, region_id)
     if region is None:
         return False
-    if await _agent_count_for_region(session, region_id) > 0:
-        raise HTTPException(
-            status_code=409,
-            detail="Cannot delete region while agents are enrolled on it",
-        )
-    if await _child_region_count(session, region_id) > 0:
-        raise HTTPException(
-            status_code=409,
-            detail="Cannot delete region while sub-regions exist",
-        )
-    await session.delete(region)
+    all_regions = await region_tree_service.list_all_regions_for_provider(
+        session, infrastructure_provider_id
+    )
+    subtree_ids = _collect_subtree_region_ids(all_regions, region_id)
+    delete_order = _subtree_delete_order(all_regions, subtree_ids)
+    await session.execute(
+        update(Agent)
+        .where(Agent.region_id.in_(delete_order))
+        .values(region_id=None)
+    )
+    for rid in delete_order:
+        row = await session.get(Region, rid)
+        if row is not None:
+            await session.delete(row)
     await session.commit()
     return True
 

@@ -104,6 +104,11 @@ class AgentCreate(BaseModel):
 class AgentUpdate(BaseModel):
     base_url: HttpUrl | None = None
     organization_id: str | None = None
+    infrastructure_provider_id: str | None = None
+    region_id: str | None = Field(
+        default=None,
+        description="Move agent to another region (one region per libvirt agent). Child regions inherit coverage from parent.",
+    )
     refresh_seconds: int | None = Field(default=None, ge=10, le=3600)
     tls_verify: bool | None = None
     connection_status: ConnectionStatus | None = None
@@ -117,7 +122,9 @@ class AgentOut(BaseModel):
     base_url: str
     organization_id: str
     infrastructure_provider_id: str
-    region_id: str
+    region_id: str | None
+    region_name: str | None = None
+    region_slug: str | None = None
     agent_technology_id: str
     agent_technology_slug: str
     refresh_seconds: int
@@ -142,7 +149,7 @@ class PollTargetOut(BaseModel):
     agent_id: str
     name: str
     organization_id: str
-    region_id: str
+    region_id: str | None
     agent_technology_id: str
     base_url: str
     agent_token: str

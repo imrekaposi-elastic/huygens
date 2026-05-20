@@ -27,7 +27,7 @@ export function SetupGatePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-400">
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400">
         Loading…
       </div>
     );
@@ -35,7 +35,7 @@ export function SetupGatePage() {
 
   if (!needsPlatformSetup(organizations)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-400">
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400">
         Loading…
       </div>
     );

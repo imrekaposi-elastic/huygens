@@ -18,10 +18,11 @@ from huy_auth.agent_tokens import (
 from huy_registry.config import Settings
 from huy_registry.models import Agent, InfrastructureProvider, Region
 from huy_registry.schemas import AgentConnectOut, AgentCreate, AgentOut, AgentUpdate, PollTargetOut
-from huy_registry.services import agent_technology_service
+from huy_registry.services import agent_technology_service, infrastructure_service
 
 
 def agent_to_out(agent: Agent) -> AgentOut:
+    region = agent.region
     return AgentOut(
         id=agent.id,
         name=agent.name,
@@ -29,6 +30,8 @@ def agent_to_out(agent: Agent) -> AgentOut:
         organization_id=agent.organization_id,
         infrastructure_provider_id=agent.infrastructure_provider_id,
         region_id=agent.region_id,
+        region_name=region.name if region else None,
+        region_slug=region.slug if region else None,
         agent_technology_id=agent.agent_technology_id,
         agent_technology_slug=agent.agent_technology.slug,
         refresh_seconds=agent.refresh_seconds,
@@ -55,7 +58,7 @@ async def list_agents(session: AsyncSession, organization_id: str | None = None)
     stmt = (
         select(Agent)
         .order_by(Agent.name)
-        .options(selectinload(Agent.agent_technology))
+        .options(selectinload(Agent.agent_technology), selectinload(Agent.region))
     )
     if organization_id is not None:
         stmt = stmt.where(Agent.organization_id == organization_id)
@@ -95,7 +98,7 @@ async def create_agent(session: AsyncSession, settings: Settings, body: AgentCre
     )
     session.add(agent)
     await session.commit()
-    await session.refresh(agent, attribute_names=["agent_technology"])
+    await session.refresh(agent, attribute_names=["agent_technology", "region"])
     return agent, token
 
 
@@ -113,6 +116,23 @@ async def update_agent(session: AsyncSession, agent: Agent, body: AgentUpdate) -
         agent.base_url = str(body.base_url).rstrip("/")
     if body.organization_id is not None:
         agent.organization_id = body.organization_id
+    if body.infrastructure_provider_id is not None:
+        agent.infrastructure_provider_id = body.infrastructure_provider_id
+    if body.region_id is not None:
+        provider_id = body.infrastructure_provider_id or agent.infrastructure_provider_id
+        region = await infrastructure_service.get_region(session, provider_id, body.region_id)
+        if region is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Unknown region_id for infrastructure provider",
+            )
+        agent.infrastructure_provider_id = provider_id
+        agent.region_id = body.region_id
+    elif body.infrastructure_provider_id is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="region_id is required when changing infrastructure_provider_id",
+        )
     if body.refresh_seconds is not None:
         agent.refresh_seconds = body.refresh_seconds
     if body.tls_verify is not None:
@@ -121,7 +141,7 @@ async def update_agent(session: AsyncSession, agent: Agent, body: AgentUpdate) -
         agent.connection_status = body.connection_status
     agent.updated_at = datetime.now(UTC)
     await session.commit()
-    await session.refresh(agent, attribute_names=["agent_technology"])
+    await session.refresh(agent, attribute_names=["agent_technology", "region"])
     return agent
 
 

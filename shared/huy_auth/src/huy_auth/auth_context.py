@@ -41,33 +41,36 @@ class AuthContext:
     def can_access_org(self, organization_id: str) -> bool:
         if self.is_platform_admin():
             return True
-        return any(m.organization_id == organization_id for m in self.org_memberships)
+        if any(m.organization_id == organization_id for m in self.org_memberships):
+            return True
+        return any(g.organization_id == organization_id for g in self.project_roles)
 
-    def project_role(self, organization_id: str, project_id: str) -> str | None:
-        for grant in self.project_roles:
-            if grant.organization_id == organization_id and grant.project_id == project_id:
-                return grant.role
-        return None
+    def project_roles_for(self, organization_id: str, project_id: str) -> list[str]:
+        return [
+            g.role
+            for g in self.project_roles
+            if g.organization_id == organization_id and g.project_id == project_id
+        ]
 
     def can_operate_project(self, organization_id: str, project_id: str) -> bool:
         if self.is_platform_admin():
             return True
         if "admin" in self.org_roles(organization_id):
             return True
-        role = self.project_role(organization_id, project_id)
-        return role in ("project_admin", "operator", "resource_manager")
+        roles = set(self.project_roles_for(organization_id, project_id))
+        return bool(roles & {"project_admin", "operator", "resource_manager"})
 
     def can_manage_project(self, organization_id: str, project_id: str) -> bool:
         if self.is_platform_admin():
             return True
         if "admin" in self.org_roles(organization_id):
             return True
-        return self.project_role(organization_id, project_id) == "project_admin"
+        return "project_admin" in self.project_roles_for(organization_id, project_id)
 
     def can_read_project(self, organization_id: str, project_id: str) -> bool:
         if self.is_platform_admin():
             return True
-        if self.project_role(organization_id, project_id) is not None:
+        if self.project_roles_for(organization_id, project_id):
             return True
         if self.can_access_org(organization_id):
             if "admin" in self.org_roles(organization_id):

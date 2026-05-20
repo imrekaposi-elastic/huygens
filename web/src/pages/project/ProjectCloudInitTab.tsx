@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/api/client";
+import { CogIcon } from "@/components/icons/NavIcons";
 import { CloudInitDialog, type CloudInitProfile } from "@/pages/project/CloudInitDialog";
 import { useProjectWorkspace } from "@/pages/project/projectContext";
 import { ResourceList, ResourceListEmpty, ResourceListItem } from "@/pages/project/ResourceList";
@@ -34,7 +35,7 @@ export function ProjectCloudInitTab({ projectId }: Props) {
   });
 
   if (!agentId) {
-    return <p className="text-slate-500">Select an agent in the project header to manage cloud-init.</p>;
+    return <p className="text-slate-500 dark:text-slate-500">Select an agent in the project header to manage cloud-init.</p>;
   }
 
   const profiles = (data ?? []).map((r) => toProfile(r as Record<string, unknown>));
@@ -43,6 +44,7 @@ export function ProjectCloudInitTab({ projectId }: Props) {
     <>
       <ResourceList
         title="Cloud-init profiles"
+        titleIcon={<CogIcon />}
         description="Reusable user-data, meta-data, and network-config templates on the agent."
         onNew={() => setDialog("create")}
         loading={isLoading}
@@ -74,7 +76,7 @@ export function ProjectCloudInitTab({ projectId }: Props) {
         onSaved={() => void qc.invalidateQueries({ queryKey: ["cloud-init", projectId, agentId] })}
       />
       {remove.isError && (
-        <p className="text-sm text-red-300">
+        <p className="text-sm text-red-700 dark:text-red-300">
           {remove.error instanceof ApiError ? remove.error.message : "Delete failed"}
         </p>
       )}
