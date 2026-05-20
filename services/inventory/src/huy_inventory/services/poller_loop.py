@@ -8,9 +8,12 @@ from datetime import UTC, datetime
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from huy_events import HuyKafkaProducer
+
 from huy_inventory.config import Settings
 from huy_inventory.services.agent_poller import poll_agent
 from huy_inventory.services.registry_client import RegistryClient
+from huy_inventory.services.snapshot_publish import publish_inventory_snapshot
 from huy_inventory.services.snapshot_service import upsert_snapshot
 
 logger = structlog.get_logger(__name__)
@@ -21,10 +24,13 @@ class InventoryPoller:
         self,
         settings: Settings,
         session_factory: async_sessionmaker[AsyncSession],
+        *,
+        kafka_producer: HuyKafkaProducer | None = None,
     ) -> None:
         self._settings = settings
         self._session_factory = session_factory
         self._registry = RegistryClient(settings)
+        self._kafka_producer = kafka_producer
         self._task: asyncio.Task | None = None
         self._stop = asyncio.Event()
 
@@ -84,3 +90,12 @@ class InventoryPoller:
                     agent_id=target["agent_id"],
                     error=str(exc),
                 )
+            if error is None and payload is not None and self._kafka_producer is not None:
+                try:
+                    await publish_inventory_snapshot(self._kafka_producer, payload)
+                except Exception as exc:
+                    logger.warning(
+                        "inventory_snapshot_publish_failed",
+                        agent_id=target["agent_id"],
+                        error=str(exc),
+                    )

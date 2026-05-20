@@ -109,7 +109,7 @@ Same thread as strategic doc (“self-hosted”, “disconnected environments”
 | **Bundled or BYO** dependencies: PostgreSQL, Kafka, Elasticsearch (optional for compliance views) | Documented matrix |
 | Agent runs with local `data_dir`, TLS, token — no external deps except libvirt/qemu on host | Existing `agents/libvirt` |
 | Control plane **inventory poller** works against internal agent URLs only | Phase 1 |
-| Kafka optional; file/DB buffer if broker unavailable (ADR) | Phase 0 / 11 |
+| Kafka required in default stack; air-gap degraded poll-only (ADR) | Phase 5 prep / 10 |
 | **Install guide:** `docs/install/air-gapped.md` | Phase 10 deliverable |
 
 Phase 11 K8s: document **disconnected clusters** (agents reach control plane via allowed egress only, or store-and-forward).
@@ -290,7 +290,7 @@ sequenceDiagram
 | Phase | Mechanism |
 |-------|-----------|
 | **0** | Topic contracts: `huy.agent.events`, `huy.inventory.snapshots`, `huy.audit.events`; Avro/JSON schema in repo |
-| **1 MVP** | Control-plane **InventoryPoller** HTTP-calls agent read endpoints every `refresh_seconds` (default 30, min 10); optional publish snapshot to Kafka |
+| **1 MVP** | Control-plane **InventoryPoller** HTTP-calls agent read endpoints every `refresh_seconds` (default 30, min 10); publishes snapshots to Kafka via `huy-events` |
 | **1+** | Agent publishes CloudEvents to Kafka (VM created, status changed, network changed) |
 | **5** | Console consumes Kafka for "instant" UI updates; poller remains backstop |
 
@@ -356,7 +356,7 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - InventoryPoller: `refresh_seconds` per agent or org default (**30**, min **10**)
 - Poll via read path: `/api/v1/agent`, `/api/v1/vms`, `/api/v1/networks`, `/metrics`
 - Desired vs actual in PostgreSQL; `detected.config_drift` on resources
-- Publish inventory snapshots to Kafka (optional in 1.0, required before Phase 5)
+- Publish inventory snapshots to Kafka via `shared/huy_events` (`KAFKA_BOOTSTRAP`, `KAFKA_PUBLISH_ENABLED`)
 - **Deliverable:** 2+ agents registered per org; dashboard API shows inventory — **done** (`services/registry`, `services/inventory`, `shared/huy_auth`). Operator mutations moved to Phase 3 projects proxy (agent Swagger remains break-glass).
 
 ### Phase 2 — External authentication (Keycloak + group mapping) ✅
@@ -388,9 +388,11 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - **Deliverable:** No ad-hoc CIDRs on create for operators — **done** (in `services/projects` v0.2)
 
 ### Phase 5 — Web console + Kafka live updates
-- SPA: org-scoped views; **console → IAM** (auth), **→ projects** (mutations), **→ inventory** (read); no direct agent URLs in browser
-- No delete on readonly networks (matches projects proxy rules)
-- Kafka consumer for status/events; inventory poller as fallback
+- SPA in `web/`: Vite + React + TanStack Router/Query; **console → IAM** (auth), **→ projects** (mutations), **→ inventory** (read); no direct agent URLs in browser
+- No delete on readonly networks (matches projects proxy rules); readonly badge in UI
+- Live UI: inventory SSE via **fetch + Bearer** (ADR 0011); Kafka broadcast consumer → SSE; poller as backstop
+- OIDC: IAM redirect uses URL **fragment** `#access_token=`, never `?access_token=` (ADR 0011)
+- Dev: `cd web && npm run dev` (Vite proxy); Compose: `web` on port **5173** (nginx → control plane)
 - **Deliverable:** Operators use console only (replaces curl/projects CLI for normal work)
 
 ### Phase 6 — Hybrid breakout and network linking
@@ -546,7 +548,7 @@ Phase **9** can ship before **11** (VM-only). Phase **12** requires **11** (clus
 | Libvirt read/write contention | Dual I/O ADR; never route GET/list/metrics through write queue |
 | Token leakage | Hash at rest; only `platform_admin` registers/connects; export API/CLI platform_admin-only; OOB provisioning |
 | Polling load | 30s default, min 10s; batch read endpoints where possible |
-| Kafka scope creep | Phase 1: schemas + optional publish; full UI consumption in Phase 5 |
+| Kafka scope creep | Phase 1: schemas + shared `huy-events` publish; SSE/console consume in Phase 5 |
 
 ---
 

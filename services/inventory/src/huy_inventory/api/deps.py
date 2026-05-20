@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, Security
+from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,8 +17,24 @@ from huy_inventory.db import get_db_session
 
 _bearer = HTTPBearer(auto_error=False)
 
+# JWT in query strings is forbidden (EventSource ?token= anti-pattern).
+_FORBIDDEN_QUERY_AUTH_PARAMS = frozenset({"token", "access_token", "jwt", "bearer"})
+
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
+
+
+async def reject_query_token_auth(request: Request) -> None:
+    """Block ?token= and similar — use Authorization: Bearer only."""
+    for key in request.query_params:
+        if key.lower() in _FORBIDDEN_QUERY_AUTH_PARAMS:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Do not pass JWT in query parameters. "
+                    "Use Authorization: Bearer header (fetch-based SSE, not EventSource ?token=)."
+                ),
+            )
 
 
 async def get_current_user(

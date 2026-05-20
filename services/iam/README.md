@@ -42,7 +42,7 @@ curl -s -X POST http://127.0.0.1:8081/api/v1/auth/login \
 See [docs/install/keycloak.md](../../docs/install/keycloak.md). Enable `OIDC_ENABLED=true` and use:
 
 - `GET /api/v1/auth/oidc/authorize?organization_id={org_uuid}`
-- `GET /api/v1/auth/oidc/callback?code=…&state=…`
+- `GET /api/v1/auth/oidc/callback?code=…&state=…` — JSON token, or `redirect=true` → SPA URL with `#access_token=` (never `?access_token=`)
 
 ## API summary
 
@@ -71,6 +71,7 @@ OpenAPI: http://127.0.0.1:8081/docs
 | `OIDC_ISSUER` | e.g. `http://127.0.0.1:8080/realms/huygens` |
 | `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | Keycloak client |
 | `OIDC_REDIRECT_URI` | Callback URL registered in Keycloak |
+| `OIDC_POST_LOGIN_REDIRECT` | Console URL for `redirect=true` (token in URL **fragment**, e.g. `http://localhost:5173/auth/callback`) |
 
 ## Tests
 

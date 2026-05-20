@@ -29,6 +29,12 @@ class Settings(BaseSettings):
         alias="IPAM_ENFORCE",
         description="Reject raw ipv4_cidr on network create unless platform_admin bypass",
     )
+    kafka_bootstrap: str = Field(
+        default="kafka:9092",
+        alias="KAFKA_BOOTSTRAP",
+        description="Comma-separated Kafka bootstrap brokers",
+    )
+    kafka_client_id: str | None = Field(default=None, alias="KAFKA_CLIENT_ID")
 
 
 @lru_cache

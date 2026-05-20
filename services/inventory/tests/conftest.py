@@ -14,6 +14,8 @@ os.environ.setdefault("INVENTORY_SERVICE_TOKEN", "test-inventory-service-token")
 os.environ.setdefault("REGISTRY_URL", "http://registry.test")
 os.environ.setdefault("POLL_INTERVAL_SECONDS", "3600")
 os.environ.setdefault("INVENTORY_POLLER_ENABLED", "false")
+os.environ.setdefault("KAFKA_PUBLISH_ENABLED", "false")
+os.environ.setdefault("KAFKA_SSE_CONSUMER_ENABLED", "false")
 
 
 @pytest.fixture

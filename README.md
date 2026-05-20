@@ -7,7 +7,8 @@ they are placed there. Apache License 2.0.
 |------|-------------|
 | [agents/libvirt](agents/libvirt/) | KVM hypervisor agent (REST API, libvirt, networking) |
 | [services/](services/) | Control plane: IAM, registry, inventory (scaffolds) |
-| [web/](web/) | Console SPA (Phase 5 placeholder) |
+| [web/](web/) | Console SPA (Phase 5) — `npm run dev` or Compose `:5173` |
+| [shared/huy_events](shared/huy_events/) | Shared Kafka / CloudEvents client (`huy-events`) |
 | [schemas/kafka/](schemas/kafka/) | CloudEvents JSON schemas |
 | [docs/architecture/](docs/architecture/) | ADRs, ERD, Excalidraw diagrams |
 | [docs/install/air-gapped.md](docs/install/air-gapped.md) | Offline installation guide |
@@ -30,7 +31,7 @@ See [agents/libvirt/README.md](agents/libvirt/README.md).
 ```bash
 cp compose.env.example .env
 docker compose up -d --build
-# IAM http://localhost:8081/docs  ·  registry :8082  ·  inventory :8083
+# IAM :8081 · registry :8082 · inventory :8083 · projects :8084 · Kafka :9092
 ```
 
 See [docs/install/docker-compose.md](docs/install/docker-compose.md).

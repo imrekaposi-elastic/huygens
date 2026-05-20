@@ -13,7 +13,8 @@ RUN apt-get update \
 WORKDIR /app
 
 COPY shared/huy_auth /deps/huy-auth
-RUN pip install --no-cache-dir /deps/huy-auth
+COPY shared/huy_events /deps/huy-events
+RUN pip install --no-cache-dir /deps/huy-auth /deps/huy-events
 
 COPY ${SERVICE_DIR}/pyproject.toml ${SERVICE_DIR}/README.md ./
 COPY ${SERVICE_DIR}/src ./src

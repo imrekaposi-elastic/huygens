@@ -30,6 +30,12 @@ class Settings(BaseSettings):
         alias="PROJECTS_SERVICE_TOKEN",
     )
     default_refresh_seconds: int = Field(default=30, ge=10, alias="DEFAULT_REFRESH_SECONDS")
+    kafka_bootstrap: str = Field(
+        default="kafka:9092",
+        alias="KAFKA_BOOTSTRAP",
+        description="Comma-separated Kafka bootstrap brokers",
+    )
+    kafka_client_id: str | None = Field(default=None, alias="KAFKA_CLIENT_ID")
     host: str = Field(default="127.0.0.1", alias="HUY_REGISTRY_HOST")
     port: int = Field(default=8082, alias="HUY_REGISTRY_PORT")
 

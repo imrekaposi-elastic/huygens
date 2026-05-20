@@ -12,7 +12,8 @@ Government and critical infrastructure require offline install — same strategi
 
 - No mandatory call-home to Elastic Cloud or Huygens SaaS.
 - Deliver **offline artifacts**: container images, Helm chart, tarball + `docs/install/air-gapped.md`.
-- **Bring-your-own** PostgreSQL, Kafka, Elasticsearch (optional).
+- **Bring-your-own** PostgreSQL and **Kafka** (required for standard control-plane stack per ADR 0004). Elasticsearch optional (audit/compliance).
+- **Degraded air-gap:** documented poll-only path without Kafka (not the default Compose stack).
 - Agent runs on hypervisor with local `data_dir`; TLS optional.
 - Inventory poller uses only internal agent URLs.
 

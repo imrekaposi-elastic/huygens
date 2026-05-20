@@ -57,6 +57,11 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
+# --- Node (web console) ---
+web/node_modules/
+web/dist/
+web/tsconfig.tsbuildinfo
+
 # --- Cursor ---
 .cursor/
 

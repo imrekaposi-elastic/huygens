@@ -5,7 +5,7 @@ Run the control plane and PostgreSQL with one command. The libvirt agent stays o
 ## Prerequisites
 
 - Docker Engine 24+ with Compose v2
-- Ports free: `5432`, `8081`–`8083` (and `9092` if using Kafka profile)
+- Ports free: `5432`, `8081`–`8084`, `9092` (PostgreSQL, control plane, Kafka)
 
 ## Start
 
@@ -26,7 +26,9 @@ docker compose ps
 |---------|-----|--------|
 | IAM | http://localhost:8081/docs | Login, orgs, RBAC |
 | Registry | http://localhost:8082/docs | Scaffold (Phase 1) |
-| Inventory | http://localhost:8083/docs | Scaffold (Phase 1) |
+| Inventory | http://localhost:8083/docs | Poller + SSE |
+| Projects | http://localhost:8084/docs | Project CRUD + agent proxy |
+| **Console** | http://localhost:5173 | Phase 5 web UI (nginx) |
 | PostgreSQL | `localhost:5432` | user/db/password: `huy` |
 
 ### Bootstrap login (IAM)
@@ -39,13 +41,11 @@ curl -s -X POST http://localhost:8081/api/v1/auth/login \
   -d '{"username":"platform-admin","password":"platform-admin-dev"}' | jq .
 ```
 
-## Optional: Kafka
+## Kafka
 
-```bash
-docker compose --profile kafka up -d --build
-```
+Kafka starts with the default stack (`KAFKA_BOOTSTRAP=kafka:9092`). Override in `.env` for external or clustered brokers (comma-separated list).
 
-Sets `KAFKA_BOOTSTRAP=kafka:9092` for registry/inventory env (used in Phase 1+).
+First boot may take ~30–60s while the broker passes its healthcheck before app services start.
 
 ## Stop
 

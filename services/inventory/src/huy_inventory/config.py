@@ -24,7 +24,18 @@ class Settings(BaseSettings):
     jwt_issuer: str = Field(default="huy-iam", alias="JWT_ISSUER")
     poll_interval_seconds: int = Field(default=30, ge=10, alias="POLL_INTERVAL_SECONDS")
     poller_enabled: bool = Field(default=True, alias="INVENTORY_POLLER_ENABLED")
-    kafka_bootstrap: str | None = Field(default=None, alias="KAFKA_BOOTSTRAP")
+    kafka_bootstrap: str = Field(
+        default="kafka:9092",
+        alias="KAFKA_BOOTSTRAP",
+        description="Comma-separated Kafka bootstrap brokers",
+    )
+    kafka_client_id: str | None = Field(default=None, alias="KAFKA_CLIENT_ID")
+    kafka_publish_enabled: bool = Field(default=True, alias="KAFKA_PUBLISH_ENABLED")
+    kafka_sse_consumer_enabled: bool = Field(
+        default=True,
+        alias="KAFKA_SSE_CONSUMER_ENABLED",
+        description="Broadcast-consume inventory snapshots for SSE (requires KAFKA_PUBLISH_ENABLED stack)",
+    )
     host: str = Field(default="127.0.0.1", alias="HUY_INVENTORY_HOST")
     port: int = Field(default=8083, alias="HUY_INVENTORY_PORT")
 

@@ -3,10 +3,7 @@
 #   cp compose.env.example .env
 #   docker compose up -d --build
 #
-# With Kafka (Phase 1+ event bus):
-#   docker compose --profile kafka up -d --build
-#
-# With Keycloak SSO (Phase 2):
+# Stack includes PostgreSQL + Kafka (required). Keycloak SSO (Phase 2):
 #   docker compose --profile sso up -d --build
 
 name: huygens
@@ -55,6 +52,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health')\""]
       interval: 10s
@@ -83,6 +82,8 @@ services:
       HUY_REGISTRY_PORT: "8082"
     depends_on:
       postgres:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
       iam:
         condition: service_healthy
@@ -115,6 +116,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
       registry:
         condition: service_healthy
     healthcheck:
@@ -139,10 +142,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me-minimum-32-chars}
       JWT_ISSUER: ${JWT_ISSUER:-huy-iam}
       PROJECTS_SERVICE_TOKEN: ${PROJECTS_SERVICE_TOKEN:-dev-projects-service-token}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
       HUY_PROJECTS_HOST: 0.0.0.0
       HUY_PROJECTS_PORT: "8084"
     depends_on:
       postgres:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
       registry:
         condition: service_healthy
@@ -152,6 +158,22 @@ services:
       timeout: 5s
       retries: 6
       start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    ports:
+      - "5173:80"
+    depends_on:
+      iam:
+        condition: service_healthy
+      registry:
+        condition: service_healthy
+      inventory:
+        condition: service_healthy
+      projects:
+        condition: service_healthy
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
@@ -174,7 +196,6 @@ services:
 
   kafka:
     image: apache/kafka:3.7.0
-    profiles: [kafka]
     ports:
       - "9092:9092"
     environment:

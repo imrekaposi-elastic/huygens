@@ -16,7 +16,7 @@ C_UI = "#d0bfff"
 C_SVC = "#a5d8ff"
 C_DATA = "#b2f2bb"
 C_INFRA = "#ffec99"
-C_DONE = "#ffec99"  # completed phases (roadmap)
+C_DONE = "#ffd43b"  # completed phases (roadmap) — distinct from planned blue #a5d8ff
 C_AGENT = "#ffd8a8"
 C_BUS = "#e599f7"
 C_BORDER = "#1e1e1e"
@@ -467,7 +467,7 @@ def diagram_phases() -> Diagram:
         ("p2", "2\nSSO", True),
         ("p3", "3\nProjects", True),
         ("p4", "4\nIPAM", True),
-        ("p5", "5\nConsole", False),
+        ("p5", "5\nConsole", True),
         ("p6", "6\nBreakout", False),
         ("p7", "7\nCompliance", False),
         ("p8", "8\nOTel", False),

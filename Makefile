@@ -1,4 +1,4 @@
-.PHONY: compose-up compose-down compose-logs compose-ps test test-unit test-iam test-registry test-inventory test-projects
+.PHONY: compose-up compose-down compose-logs compose-ps test test-unit test-huy-events test-iam test-registry test-inventory test-projects test-web
 
 compose-up:
 	docker compose up -d --build
@@ -12,12 +12,12 @@ compose-logs:
 compose-ps:
 	docker compose ps
 
-compose-kafka:
-	docker compose --profile kafka up -d --build
-
 test: test-unit
 
-test-unit: test-iam test-registry test-inventory test-projects
+test-unit: test-huy-events test-iam test-registry test-inventory test-projects test-web
+
+test-huy-events:
+	cd shared/huy_events && pip install -q -e . && pytest -q
 
 test-iam:
 	$(MAKE) -C services/iam test
@@ -30,3 +30,6 @@ test-inventory:
 
 test-projects:
 	$(MAKE) -C services/projects test
+
+test-web:
+	cd web && npm install && npm test

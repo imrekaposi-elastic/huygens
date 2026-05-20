@@ -13,8 +13,8 @@ covers Phase 0–1 expectations; full Helm/offline bundles ship in Phase 10.
 
 | Component | Required | Notes |
 |-----------|----------|--------|
-| PostgreSQL 15+ | Yes | IAM, registry, inventory SoR |
-| Kafka 3.x | Phase 1+ | Optional for poll-only MVP |
+| PostgreSQL 15+ | Yes | IAM, registry, inventory, projects SoR |
+| Kafka 3.x | Yes (standard stack) | Event bus; inventory snapshots + console SSE. **Degraded:** poll-only without Kafka (explicit operator config — see ADR 0004) |
 | Elasticsearch 8.x | Optional | Audit/compliance views (ECS) |
 | Container runtime or Python 3.11+ | Yes | Per component README |
 
