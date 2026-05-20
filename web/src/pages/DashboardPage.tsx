@@ -6,7 +6,7 @@ import { AssignToProjectControl } from "@/components/AssignToProjectControl";
 import { useInventoryEvents } from "@/hooks/useInventoryEvents";
 import type { AgentInventorySummary, NetworkInventoryItem, VmInventoryItem } from "@/api/types";
 import { filterManagedNetworks } from "@/lib/systemNetwork";
-import { formatVmStatusLine, guestStatusHint } from "@/lib/vmStatus";
+import { formatVmStatusLine, guestReachabilityNote } from "@/lib/vmStatus";
 
 export function DashboardPage() {
   const { selectedOrgId } = useAuth();
@@ -256,7 +256,7 @@ function VmRow({
   ]
     .filter(Boolean)
     .join(" · ");
-  const hint = guestStatusHint(vm.guest_status);
+  const hint = guestReachabilityNote(vm.guest_status, vm.libvirt_state ?? vm.state);
 
   return (
     <li

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Any
 
 from jinja2 import Template
 
@@ -94,3 +95,46 @@ def update_domain_xml_resources(
         if elem is not None:
             elem.text = str(vcpu)
     return ET.tostring(root, encoding="unicode")
+
+
+def parse_domain_resources(xml: str) -> dict[str, int | None]:
+    """Read vCPU and memory (MiB) from domain XML."""
+    root = ET.fromstring(xml)
+    memory_mib: int | None = None
+    mem = root.find("memory")
+    if mem is not None and mem.text:
+        unit = (mem.get("unit") or "KiB").lower()
+        value = int(mem.text)
+        if unit in ("mib", "m"):
+            memory_mib = value
+        elif unit in ("gib", "g"):
+            memory_mib = value * 1024
+        elif unit in ("kib", "k"):
+            memory_mib = max(1, value // 1024)
+        else:
+            memory_mib = max(1, value // 1024)
+    vcpu: int | None = None
+    vcpu_elem = root.find("vcpu")
+    if vcpu_elem is not None and vcpu_elem.text:
+        vcpu = int(vcpu_elem.text.split()[0])
+    return {"memory_mib": memory_mib, "vcpu": vcpu}
+
+
+def parse_domain_disks(xml: str) -> list[dict[str, Any]]:
+    """List data disks (exclude cloud-init cdrom) from domain XML."""
+    root = ET.fromstring(xml)
+    disks: list[dict[str, Any]] = []
+    for disk in root.findall("./devices/disk"):
+        if disk.get("device") == "cdrom":
+            continue
+        source = disk.find("source")
+        path = source.get("file") if source is not None else None
+        target = disk.find("target")
+        device = target.get("dev") if target is not None else "disk"
+        size_bytes: int | None = None
+        if path:
+            p = Path(path)
+            if p.exists():
+                size_bytes = p.stat().st_size
+        disks.append({"device": device, "path": path, "size_bytes": size_bytes})
+    return disks

@@ -57,6 +57,16 @@ class VMPatchRequest(BaseModel):
     vcpu: int | None = Field(default=None, ge=1, le=128)
     memory_mib: int | None = Field(default=None, ge=256)
     autostart: bool | None = None
+    confirm_reboot: bool = Field(
+        default=False,
+        description="Required when changing vCPU/memory on a running VM (stop → resize → start).",
+    )
+
+
+class VMDiskInfo(BaseModel):
+    device: str
+    path: str | None = None
+    size_bytes: int | None = None
 
 
 VmStatus = Literal["off", "on", "degraded"]
@@ -64,12 +74,14 @@ VmStatus = Literal["off", "on", "degraded"]
 
 class VMResponse(BaseModel):
     name: str
+    server_name: str = Field(description="Guest/server hostname (defaults to VM name)")
     labels: AgentLabels
     status: VmStatus
     libvirt_state: str
     guest_ip: str | None = None
     vcpu: int
     memory_mib: int
+    disks: list[VMDiskInfo] = Field(default_factory=list)
     network: str
     autostart: bool = False
     last_checked_at: str | None = None

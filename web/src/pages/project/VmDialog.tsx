@@ -57,7 +57,7 @@ export function VmDialog({ open, mode, projectId, agentId, initial, onClose, onS
   }, [open, mode, initial]);
 
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (confirmReboot: boolean) => {
       if (mode === "create") {
         return api.createVm(projectId, agentId, {
           name: name.trim(),
@@ -73,6 +73,7 @@ export function VmDialog({ open, mode, projectId, agentId, initial, onClose, onS
         vcpu: parseInt(vcpu, 10) || undefined,
         memory_mib: parseInt(memoryMib, 10) || undefined,
         autostart,
+        confirm_reboot: confirmReboot,
       });
     },
     onSuccess: () => {
@@ -81,6 +82,26 @@ export function VmDialog({ open, mode, projectId, agentId, initial, onClose, onS
     },
     onError: (e) => setErr(e instanceof ApiError ? e.message : "Save failed"),
   });
+
+  const handleSave = () => {
+    if (mode === "edit" && initial) {
+      const vcpuChanged = parseInt(vcpu, 10) !== Number(initial.vcpu);
+      const memChanged = parseInt(memoryMib, 10) !== Number(initial.memory_mib);
+      const hardwareChanged = vcpuChanged || memChanged;
+      const isRunning = String(initial.libvirt_state ?? "").toUpperCase() === "RUNNING";
+      if (hardwareChanged && isRunning) {
+        const ok = window.confirm(
+          `Changing memory or vCPUs on "${name}" requires stopping and starting the VM on the hypervisor.\n\nProceed with reboot?`,
+        );
+        if (!ok) return;
+        save.mutate(true);
+        return;
+      }
+      save.mutate(false);
+      return;
+    }
+    save.mutate(false);
+  };
 
   return (
     <Modal
@@ -95,7 +116,7 @@ export function VmDialog({ open, mode, projectId, agentId, initial, onClose, onS
           <button
             type="button"
             disabled={save.isPending}
-            onClick={() => save.mutate()}
+            onClick={handleSave}
             className="min-h-10 rounded-lg bg-emerald-600 px-5 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
           >
             {save.isPending ? "Saving…" : "Save"}
@@ -161,7 +182,7 @@ export function VmDialog({ open, mode, projectId, agentId, initial, onClose, onS
                 />
               </label>
               <label className="block text-sm">
-                Memory (MiB)
+                Memory (MB)
                 <input
                   type="number"
                   min={256}
@@ -178,9 +199,9 @@ export function VmDialog({ open, mode, projectId, agentId, initial, onClose, onS
           </>
         ) : (
           <>
-            <p className="rounded bg-amber-950/30 px-3 py-2 text-xs text-amber-200">
-              Memory and vCPU are written to libvirt. If the VM is running, it is stopped, resized,
-              and started again so changes take effect on the hypervisor.
+            <p className="text-xs text-slate-500">
+              Power: {String(initial?.libvirt_state ?? "unknown")}. Hardware changes on a running VM
+              need your confirmation before the agent reboots the guest.
             </p>
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-sm">
@@ -194,7 +215,7 @@ export function VmDialog({ open, mode, projectId, agentId, initial, onClose, onS
                 />
               </label>
               <label className="block text-sm">
-                Memory (MiB)
+                Memory (MB)
                 <input
                   type="number"
                   min={256}

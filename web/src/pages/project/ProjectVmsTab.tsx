@@ -2,9 +2,8 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { useProjectWorkspace } from "@/pages/project/projectContext";
-import { ResourceList, ResourceListEmpty, ResourceListItem } from "@/pages/project/ResourceList";
 import { VmDialog } from "@/pages/project/VmDialog";
-import { formatVmStatusLine, guestStatusHint } from "@/lib/vmStatus";
+import { VmListTable, type VmRow } from "@/pages/project/VmListTable";
 
 type Props = { projectId: string };
 
@@ -38,54 +37,64 @@ export function ProjectVmsTab({ projectId }: Props) {
     return <p className="text-slate-500">Select an agent in the project header to manage VMs.</p>;
   }
 
-  const vms = data ?? [];
+  const vms = (data ?? []) as VmRow[];
 
   return (
     <>
-      <ResourceList
-        title="Virtual machines"
-        description="Create on the agent or assign orphaned VMs from the inventory dashboard."
-        onNew={() => setDialog("create")}
-        loading={isLoading}
-      >
-        {vms.length === 0 && !isLoading ? (
-          <ResourceListEmpty message="No VMs listed for this agent." />
-        ) : (
-          vms.map((vm) => {
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-medium">Virtual machines</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Power state is from the hypervisor (libvirt). Guest SSH is shown only when it differs.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDialog("create")}
+            className="min-h-10 rounded-lg bg-emerald-600 px-4 text-sm font-medium hover:bg-emerald-500"
+          >
+            New
+          </button>
+        </div>
+        <VmListTable
+          vms={vms}
+          loading={isLoading}
+          emptyMessage="No VMs listed for this agent."
+          actions={(vm) => {
             const name = String(vm.name ?? "");
-            const subtitle = formatVmStatusLine({
-              libvirt_state: String(vm.libvirt_state ?? ""),
-              guest_status: String(vm.status ?? ""),
-              memory_mib: typeof vm.memory_mib === "number" ? vm.memory_mib : null,
-            });
-            const hint = guestStatusHint(String(vm.status ?? ""));
             return (
-              <ResourceListItem
-                key={name}
-                name={name}
-                subtitle={subtitle || undefined}
-                onEdit={() => setDialog({ edit: vm })}
-                onDelete={() => {
-                  if (window.confirm(`Delete VM "${name}" on the hypervisor?`)) remove.mutate(name);
-                }}
-                deleteLabel="Delete on agent"
-                extra={
-                  <>
-                    {hint && <p className="text-xs text-amber-400/90">{hint}</p>}
-                    <button
-                      type="button"
-                      className="mt-1 block text-xs text-slate-400 underline"
-                      onClick={() => unassign.mutate(name)}
-                    >
-                      Unassign from project
-                    </button>
-                  </>
-                }
-              />
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDialog({ edit: vm as Record<string, unknown> })}
+                    className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm(`Delete VM "${name}" on the hypervisor?`)) remove.mutate(name);
+                    }}
+                    className="rounded border border-red-900/80 px-3 py-1.5 text-sm text-red-300 hover:bg-red-950/40"
+                  >
+                    Delete
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="text-xs text-slate-400 underline"
+                  onClick={() => unassign.mutate(name)}
+                >
+                  Unassign from project
+                </button>
+              </div>
             );
-          })
-        )}
-      </ResourceList>
+          }}
+        />
+      </div>
 
       <VmDialog
         open={dialog !== null}

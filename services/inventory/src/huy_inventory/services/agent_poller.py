@@ -16,11 +16,14 @@ def _normalize_vm(vm: dict) -> dict:
     guest_status = vm.get("status")
     return {
         "name": vm.get("name"),
+        "server_name": vm.get("server_name") or vm.get("name"),
         "uuid": vm.get("uuid"),
-        "state": libvirt_state or guest_status,
+        "state": libvirt_state,
         "libvirt_state": libvirt_state,
         "guest_status": guest_status,
+        "vcpu": vm.get("vcpu"),
         "memory_mib": vm.get("memory_mib"),
+        "disks": vm.get("disks") or [],
         "ips": [vm["guest_ip"]] if vm.get("guest_ip") else [],
         "networks": [vm["network"]] if vm.get("network") else [],
     }

@@ -7,11 +7,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from huy_libvirt_agent.api.schemas.agent import AgentLabels
-from huy_libvirt_agent.api.schemas.vm import VMCreateRequest, VMPatchRequest, VMResponse
+from huy_libvirt_agent.api.schemas.vm import VMDiskInfo, VMCreateRequest, VMPatchRequest, VMResponse
 from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.services.cloudinit import CloudInitBuilder
 from huy_libvirt_agent.services.cloudinit_profile_service import CloudInitProfileService
-from huy_libvirt_agent.services.domain_xml import render_domain_xml, update_domain_xml_resources
+from huy_libvirt_agent.services.domain_xml import (
+    parse_domain_disks,
+    parse_domain_resources,
+    render_domain_xml,
+    update_domain_xml_resources,
+)
 from huy_libvirt_agent.services.image_service import ImageService
 from huy_libvirt_agent.services.image_store import ImageStore
 from huy_libvirt_agent.services.libvirt_client import LibvirtError
@@ -44,18 +49,38 @@ class VMService:
         labels = AgentLabels(**meta.get("labels", self._state.settings.agent_labels))
         st = self._state.monitor.get_status(name)
         libvirt_state = st.get("libvirt_state", "SHUTOFF")
+        vcpu = meta.get("vcpu", 1)
+        memory_mib = meta.get("memory_mib", 1024)
+        disks: list[VMDiskInfo] = []
         try:
             _, libvirt_state = self._state.libvirt.domain_state(name)
+            xml = self._state.libvirt.domain_xml(name)
+            resources = parse_domain_resources(xml)
+            if resources.get("vcpu") is not None:
+                vcpu = resources["vcpu"]  # type: ignore[assignment]
+            if resources.get("memory_mib") is not None:
+                memory_mib = resources["memory_mib"]  # type: ignore[assignment]
+            disks = [VMDiskInfo(**d) for d in parse_domain_disks(xml)]
         except LibvirtError:
-            pass
+            disk_path = self._instance_dir(name) / "disk.qcow2"
+            if disk_path.exists():
+                disks = [
+                    VMDiskInfo(
+                        device="vda",
+                        path=str(disk_path),
+                        size_bytes=disk_path.stat().st_size,
+                    )
+                ]
         return VMResponse(
             name=name,
+            server_name=str(meta.get("server_name") or name),
             labels=labels,
             status=st.get("status", "off"),
             libvirt_state=libvirt_state,
             guest_ip=st.get("guest_ip"),
-            vcpu=meta.get("vcpu", 1),
-            memory_mib=meta.get("memory_mib", 1024),
+            vcpu=vcpu,
+            memory_mib=memory_mib,
+            disks=disks,
             network=meta.get("network", "default"),
             autostart=meta.get("autostart", False),
             last_checked_at=st.get("last_checked_at"),
@@ -119,6 +144,7 @@ class VMService:
             inst / "metadata.json",
             {
                 "labels": labels,
+                "server_name": body.name,
                 "vcpu": body.vcpu,
                 "memory_mib": body.memory_mib,
                 "network": body.network,
@@ -150,6 +176,12 @@ class VMService:
                 was_running = state_name == "RUNNING"
             except LibvirtError:
                 was_running = False
+            if was_running and not body.confirm_reboot:
+                raise LibvirtError(
+                    "VM is running. Set confirm_reboot=true after operator approval to apply "
+                    "memory/vCPU changes (the VM will be stopped and started again).",
+                    "OPERATION_INVALID",
+                )
             if was_running:
                 self._state.libvirt.destroy_domain(name)
             xml = self._state.libvirt.domain_xml(name)
