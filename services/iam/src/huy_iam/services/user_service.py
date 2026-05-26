@@ -17,7 +17,7 @@ from huy_iam.models import (
     UserPlatformRole,
 )
 from huy_iam.services import idp_mapping_service
-from huy_iam.security import hash_api_key, hash_password
+from huy_iam.security import hash_api_key, hash_password, verify_api_key
 
 
 async def get_user_by_username(session: AsyncSession, username: str) -> User | None:
@@ -137,14 +137,20 @@ async def authenticate_password(session: AsyncSession, username: str, password: 
 async def authenticate_api_key(session: AsyncSession, full_key: str) -> User | None:
     from datetime import UTC, datetime
 
-    key_hash = hash_api_key(full_key)
+    prefix = full_key[:12]
     result = await session.execute(
         select(ApiKey)
-        .where(ApiKey.key_hash == key_hash)
+        .where(ApiKey.key_prefix == prefix)
         .options(selectinload(ApiKey.user))
     )
-    api_key = result.scalar_one_or_none()
-    if api_key is None or api_key.is_expired():
+    api_key = None
+    for candidate in result.scalars():
+        if candidate.is_expired():
+            continue
+        if verify_api_key(full_key, candidate.key_hash):
+            api_key = candidate
+            break
+    if api_key is None:
         return None
     user = api_key.user
     if not user.is_active:

@@ -17,6 +17,12 @@ from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.services.image_store import ImageStore
 from huy_libvirt_agent.services.libvirt_client import LibvirtError
 from huy_libvirt_agent.services.metadata import read_metadata, write_metadata
+from huy_libvirt_agent.services.path_safety import (
+    PathSafetyError,
+    resolve_cached_disk_path,
+    resolve_local_image_source,
+    safe_registry_name,
+)
 
 
 class ImageService:
@@ -30,7 +36,18 @@ class ImageService:
         )
 
     def _image_dir(self, name: str) -> Path:
-        return self._registry_dir / name
+        return self._registry_dir / safe_registry_name(name)
+
+    def _local_import_roots(self) -> list[Path]:
+        data = self._state.settings.data_dir
+        roots = [
+            data / "images" / "import",
+            data / "images" / "cache",
+            self._registry_dir,
+            Path("/var/lib/libvirt/images"),
+        ]
+        roots.extend(self._state.settings.image_import_roots)
+        return roots
 
     def _meta_path(self, name: str) -> Path:
         return self._image_dir(name) / "metadata.json"
@@ -125,7 +142,13 @@ class ImageService:
             raise LibvirtError(f"Image {name} not found", "NOT_FOUND")
         if meta.get("status") != "ready":
             raise LibvirtError(f"Image {name} is not ready (status={meta.get('status')})", "IMAGE_NOT_READY")
-        path = Path(meta.get("cached_path", self._disk_path(name)))
+        cached = meta.get("cached_path")
+        if cached:
+            try:
+                return resolve_cached_disk_path(cached, self._registry_dir, name)
+            except (PathSafetyError, OSError) as exc:
+                raise LibvirtError(f"Image file missing for {name}", "IMAGE_NOT_READY") from exc
+        path = self._disk_path(name)
         if not path.is_file():
             raise LibvirtError(f"Image file missing for {name}", "IMAGE_NOT_READY")
         return path
@@ -137,10 +160,11 @@ class ImageService:
             if meta["source_type"] == "url":
                 self._store.download_url_to_path(source, dest, expected_sha256=meta.get("sha256"))
             else:
-                src = Path(source)
-                if not src.is_file():
-                    raise FileNotFoundError(f"Source not found: {source}")
-                if src.resolve() != dest.resolve():
+                try:
+                    src = resolve_local_image_source(source, self._local_import_roots())
+                except PathSafetyError as exc:
+                    raise LibvirtError(str(exc), "INVALID_SOURCE") from exc
+                if src != dest.resolve():
                     shutil.copy2(src, dest)
                 if meta.get("sha256"):
                     self._store.verify_sha256(dest, meta["sha256"])

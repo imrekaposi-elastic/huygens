@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     )
     ssh_probe_timeout_seconds: float = 2.0
     image_download_timeout_seconds: int = 600
+    image_import_roots: list[Path] = Field(
+        default_factory=list,
+        description="Extra allowed roots for local-path image import (comma-separated env)",
+    )
     cloud_init_validation: Literal["off", "basic", "schema"] = Field(
         default="schema",
         description="Validate cloud-init on create: off, basic (YAML/structure), schema (cloud-init)",
@@ -123,6 +127,17 @@ class Settings(BaseSettings):
     @classmethod
     def path_from_str(cls, v: str | Path) -> Path:
         return Path(v) if isinstance(v, str) else v
+
+    @field_validator("image_import_roots", mode="before")
+    @classmethod
+    def parse_image_import_roots(cls, v: object) -> list[Path]:
+        if v is None or v == "":
+            return []
+        if isinstance(v, list):
+            return [Path(p) if not isinstance(p, Path) else p for p in v]
+        if isinstance(v, str):
+            return [Path(p.strip()) for p in v.split(",") if p.strip()]
+        return []
 
     @staticmethod
     def _parse_token_blob(blob: str) -> set[str]:

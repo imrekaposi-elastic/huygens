@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -48,13 +47,19 @@ def decode_access_token(settings: Settings, token: str) -> dict[str, Any]:
 
 
 def generate_api_key_material() -> tuple[str, str, str]:
-    """Return (full_key, prefix, sha256_hex_hash)."""
+    """Return (full_key, prefix, bcrypt_hash)."""
     secret = secrets.token_urlsafe(32)
     full_key = f"{API_KEY_PREFIX}{secret}"
     prefix = full_key[:12]
-    key_hash = hashlib.sha256(full_key.encode()).hexdigest()
-    return full_key, prefix, key_hash
+    return full_key, prefix, hash_api_key(full_key)
 
 
 def hash_api_key(full_key: str) -> str:
-    return hashlib.sha256(full_key.encode()).hexdigest()
+    return bcrypt.hashpw(full_key.encode(), bcrypt.gensalt()).decode()
+
+
+def verify_api_key(full_key: str, key_hash: str) -> bool:
+    try:
+        return bcrypt.checkpw(full_key.encode(), key_hash.encode())
+    except ValueError:
+        return False

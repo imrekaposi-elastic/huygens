@@ -10,8 +10,10 @@ from fastapi.testclient import TestClient
 
 
 @pytest.fixture
-def sample_disk(tmp_path: Path) -> Path:
-    disk = tmp_path / "base.qcow2"
+def sample_disk(tmp_data_dir: Path) -> Path:
+    import_dir = tmp_data_dir / "images" / "import"
+    import_dir.mkdir(parents=True, exist_ok=True)
+    disk = import_dir / "base.qcow2"
     disk.write_bytes(b"fake-qcow2-content")
     return disk
 
