@@ -1,10 +1,12 @@
 .PHONY: install test run lint
 
+PYTHON ?= python3
+
 install:
-	pip install -e ".[dev]"
+	$(PYTHON) -m pip install -e ".[dev]"
 
 test:
-	pytest -q
+	$(PYTHON) -m pytest -q
 
 run:
 	huy-iam

@@ -1,6 +1,6 @@
 # Huygens console
 
-Phase 5 web UI — React SPA for operators.
+Phase 5 web UI — React SPA for operators (**complete**; see [PHASED_PLAN.md](../docs/PHASED_PLAN.md)).
 
 ## Development
 

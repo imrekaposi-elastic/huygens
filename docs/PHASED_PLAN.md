@@ -33,7 +33,8 @@ The strategic proposal and the build plan share one delivery model: **Huygens is
 | Area | Strategic doc | FRAMEWORK_PLAN | Phased plan v3 | Gap |
 |------|---------------|----------------|----------------|-----|
 | Workload inventory | Yes | Via console/agents | Phase 1 + agent | **Done** (Phase 1) |
-| Operator VM/network CRUD | Yes | Via console | **Phase 3** projects proxy | **Done** (Phase 3); console in Phase 5 |
+| Operator VM/network CRUD | Yes | Via console | **Phases 3 + 5** | **Done** (projects proxy + web console) |
+| Web console + live inventory | Yes | Instant status | **Phase 5** | **Done** (SSE + Kafka; poller backstop) |
 | Asset **criticality** | Implied (risk-aware) | **NEW:** `compliance_engineer`, org compliance picker | **Phase 7** | Not in Phases 0–1 |
 | Org compliance standards | Yes | Provider/region traits, MoSCoW | Phase 7 | Planned |
 | Config drift | Yes (Elastic narrative) | `config_drift` API flag | Phase 1 + 7 UI | Agent/control plane partial |
@@ -63,7 +64,7 @@ Based on [FRAMEWORK_PLAN.md](../FRAMEWORK_PLAN.md) and your iteration:
 | **Events** | **Kafka** (event-driven target); HTTP poll acceptable for Phase 1 MVP |
 | **PostgreSQL** | System of record (orgs, projects, desired state, RBAC, registry) |
 | **Elasticsearch ECS** | Audit logs, compliance search/views, operator/auditor queries — not primary transactional store |
-| MVP | Registry + inventory + **projects proxy** (Phase 3); console in Phase 5 |
+| MVP | Registry + inventory + **projects proxy** (Phase 3) + **console** (Phase 5) — **done** |
 | **Open source** | Entire monorepo OSS; Phase 0 **license ADR** (align Elastic: Apache 2.0 vs AGPLv3 — see below) |
 | **Air-gapped install** | No mandatory cloud; offline bundles (containers/Helm/packages); Phase 0 ADR + Phase 10 runbook — **strategic link** alongside OSS self-hosted |
 | **Observability** | **OpenTelemetry throughout**, **EDOT-friendly** (FRAMEWORK_PLAN); ECS logs + OTLP to Elastic Observability or any OTLP backend |
@@ -280,7 +281,7 @@ sequenceDiagram
 |-------|----------|
 | **Agent** | Networks named `default` (and optionally other system names) expose `readonly: true`, `deletable: false` in API schema |
 | **Control plane** | Registry inventory marks `default` readonly; **projects proxy** rejects DELETE on readonly networks; desired-state rows in PG |
-| **GUI (Phase 5+)** | No delete button; greyed card with tooltip "system network" |
+| **GUI (Phase 5 ✅)** | No delete button; greyed card with tooltip "system network" |
 | **Operators** | Create project vnets via IPAM (`lab0`, etc.); do not manage host `default` through console |
 
 ---
@@ -292,7 +293,7 @@ sequenceDiagram
 | **0** | Topic contracts: `huy.agent.events`, `huy.inventory.snapshots`, `huy.audit.events`; Avro/JSON schema in repo |
 | **1 MVP** | Control-plane **InventoryPoller** HTTP-calls agent read endpoints every `refresh_seconds` (default 30, min 10); publishes snapshots to Kafka via `huy-events` |
 | **1+** | Agent publishes CloudEvents to Kafka (VM created, status changed, network changed) |
-| **5** | Console consumes Kafka for "instant" UI updates; poller remains backstop |
+| **5 ✅** | Inventory Kafka broadcast → SSE hub → console (`fetch` + Bearer); poller remains backstop |
 
 PostgreSQL holds **latest snapshot** per agent; Kafka holds **event stream** for UI and audit pipeline.
 
@@ -387,13 +388,14 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - Allocations tracked in PostgreSQL; bound to vnet name on successful agent create; released on proxied delete
 - **Deliverable:** No ad-hoc CIDRs on create for operators — **done** (in `services/projects` v0.2)
 
-### Phase 5 — Web console + Kafka live updates
+### Phase 5 — Web console + Kafka live updates ✅
 - SPA in `web/`: Vite + React + TanStack Router/Query; **console → IAM** (auth), **→ projects** (mutations), **→ inventory** (read); no direct agent URLs in browser
 - No delete on readonly networks (matches projects proxy rules); readonly badge in UI
 - Live UI: inventory SSE via **fetch + Bearer** (ADR 0011); Kafka broadcast consumer → SSE; poller as backstop
 - OIDC: IAM redirect uses URL **fragment** `#access_token=`, never `?access_token=` (ADR 0011)
 - Dev: `cd web && npm run dev` (Vite proxy); Compose: `web` on port **5173** (nginx → control plane)
-- **Deliverable:** Operators use console only (replaces curl/projects CLI for normal work)
+- Cross-service tests: `make test-integration` (`tests/integration/`, `HUY_E2E=1`) — see [docs/testing.md](testing.md)
+- **Deliverable:** Operators use console only (replaces curl/projects CLI for normal work) — **done** (`web/`, Compose `web` service, inventory SSE)
 
 ### Phase 6 — Hybrid breakout and network linking
 - Central `breakout-controller` + per-agent breakout
@@ -534,7 +536,7 @@ Phase **9** can ship before **11** (VM-only). Phase **12** requires **11** (clus
 | `compliance` | Python | Org catalog, asset criticality, traits, checks; PG + ES views |
 | `breakout-controller` | Go | Central WG |
 | `api-gateway` | Go/Kong | Auth, routing |
-| `web` | React/TS | Phase 5 console → IAM, projects, inventory |
+| `web` | React/TS | **Phase 5 ✅** Console SPA → IAM, projects, inventory (nginx in Compose) |
 | `ssh-gateway` | Go | Phase 9 — audited VM SSH, PTY recording → ES |
 | `k8s-access` | Go | Phase 12 — K8s API proxy, exec recording, k9s-compatible |
 | `agents/libvirt` | Python | Write queue + read path |
@@ -548,7 +550,7 @@ Phase **9** can ship before **11** (VM-only). Phase **12** requires **11** (clus
 | Libvirt read/write contention | Dual I/O ADR; never route GET/list/metrics through write queue |
 | Token leakage | Hash at rest; only `platform_admin` registers/connects; export API/CLI platform_admin-only; OOB provisioning |
 | Polling load | 30s default, min 10s; batch read endpoints where possible |
-| Kafka scope creep | Phase 1: schemas + shared `huy-events` publish; SSE/console consume in Phase 5 |
+| Kafka scope creep | Phase 1: schemas + `huy-events` publish; Phase 5 ✅: inventory SSE consumer + console live refresh |
 
 ---
 
@@ -568,7 +570,7 @@ Phase **9** can ship before **11** (VM-only). Phase **12** requires **11** (clus
 
 1. **`platform_admin`** registers the hypervisor, assigns it to a customer org, exports the token, and performs **technical connection** OOB. **Org admin** never registers or connects; they only consume inventory for their org.
 2. **`default` libvirt network** is system readonly at agent, API, and GUI layers.
-3. **Real-time** in MVP means poller-driven snapshots (30s default), not sub-second streaming; Kafka enables faster UI in Phase 5.
+3. **Real-time** UI uses Kafka → inventory SSE (Phase 5 ✅) with poller as backstop (30s default); not sub-second agent push for every field yet.
 4. **Compliance transactional data** in PostgreSQL; **searchable audit/compliance views** in Elasticsearch ECS.
 5. **Open source** is the delivery model for the whole monorepo (Phase 0), matching the strategic proposal.
 6. **`compliance_engineer`** maps org compliance items to per-resource **asset criticality** (Phase 7) — core to “know why.”

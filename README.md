@@ -83,6 +83,12 @@ service README under `services/`.
 make -C agents/libvirt test
 ```
 
+**Integration tests** (requires `docker compose up`):
+
+```bash
+make test-integration
+```
+
 ## Contributing
 
 [CONTRIBUTING.md](CONTRIBUTING.md) · [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) · [LICENSE](LICENSE)

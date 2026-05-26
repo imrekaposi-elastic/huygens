@@ -1,11 +1,13 @@
 .PHONY: install test run
 
+PYTHON ?= python3
+
 install:
-	pip install -e ../../shared/huy_auth
-	pip install -e ".[dev]"
+	$(PYTHON) -m pip install -e ../../shared/huy_auth
+	$(PYTHON) -m pip install -e ".[dev]"
 
 test:
-	pytest -q
+	$(PYTHON) -m pytest -q
 
 run:
 	huy-registry

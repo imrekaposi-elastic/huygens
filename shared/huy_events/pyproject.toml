@@ -15,8 +15,17 @@ dependencies = [
     "structlog>=24.4.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/huy_events"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
 
 [tool.ruff]
 line-length = 110

@@ -269,7 +269,7 @@ def diagram_system_context() -> Diagram:
         "flow",
         40,
         52,
-        "PG = system of record · ES = audit & session search (ECS) · dashed Kafka = WIP",
+        "PG = system of record · ES = audit/search · inventory snapshots → Kafka → SSE (Phase 5 ✅)",
         size=14,
     )
 
@@ -293,7 +293,7 @@ def diagram_system_context() -> Diagram:
     d.arrow("a1", "operator", "console")
     d.arrow("a2", "console", "iam", src_side="bottom", dst_side="top", label="auth")
     d.arrow("a3", "console", "projects", src_side="bottom", dst_side="top", label="mutate")
-    d.arrow("a4", "console", "inventory-api", src_side="bottom", dst_side="top", label="read")
+    d.arrow("a4", "console", "inventory-api", src_side="bottom", dst_side="top", label="read + SSE")
 
     # Projects → registry for agent connect (not inventory)
     d.arrow("a5", "projects", "registry", src_side="bottom", dst_side="top", label="connect")
@@ -328,15 +328,18 @@ def diagram_deployment() -> Diagram:
     d.box("vms", 210, 300, 130, 72, "VMs + vnets\n(lab0, …)", bg=C_DATA)
     d.label("cluster-lbl", 410, 88, "Control plane (K8s or VMs, Phase 10+)", size=16)
     d.box("cluster", 400, 80, 400, 380, "", bg="#f8f9fa", stroke_style="dashed", underlay=True)
-    d.box("iam", 420, 130, 115, 56, "huy-iam", bg=C_SVC)
-    d.box("reg", 550, 130, 115, 56, "huy-registry", bg=C_SVC)
-    d.box("proj", 680, 130, 100, 56, "huy-projects", bg=C_SVC)
-    d.box("inv", 420, 210, 115, 56, "huy-inventory", bg=C_SVC)
-    d.box("pg", 550, 210, 115, 56, "PostgreSQL", bg=C_DATA)
+    d.box("web", 420, 130, 115, 56, "web\n(nginx)", bg=C_UI)
+    d.box("iam", 550, 130, 115, 56, "huy-iam", bg=C_SVC)
+    d.box("reg", 680, 130, 100, 56, "huy-registry", bg=C_SVC)
+    d.box("proj", 420, 210, 115, 56, "huy-projects", bg=C_SVC)
+    d.box("inv", 550, 210, 115, 56, "huy-inventory", bg=C_SVC)
+    d.box("pg", 680, 210, 100, 56, "PostgreSQL", bg=C_DATA)
     d.box("kafka", 420, 290, 115, 56, "Kafka", bg=C_BUS)
     d.box("otel", 550, 290, 115, 56, "OTel / EDOT\n(optional)", bg=C_INFRA)
     d.box("es", 680, 290, 100, 56, "Elasticsearch\n(optional)", bg=C_DATA)
 
+    d.arrow("d0", "web", "iam", label="proxy")
+    d.arrow("d0b", "web", "proj", src_side="bottom", dst_side="top")
     d.arrow("d1", "agent-api", "libvirt", label="write queue")
     d.arrow("d2", "agent-api", "vms", src_side="right", dst_side="left", label="read path")
     d.arrow("d3", "systemd", "agent-api")
@@ -448,7 +451,7 @@ def diagram_event_flow() -> Diagram:
     d.arrow("e3b", "proj", "t-audit", **side)
     d.arrow("e4", "t-agent", "reg", label="consume", **side)
     d.arrow("e5", "t-inv", "pg", **side)
-    d.arrow("e6", "t-inv", "console", **side)
+    d.arrow("e6", "t-inv", "console", label="SSE hub", **side)
     d.arrow("e7", "t-audit", "es", **side)
     return d
 

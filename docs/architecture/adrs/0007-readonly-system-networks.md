@@ -12,7 +12,7 @@ Libvirt `default` network on hosts is infrastructure; operators should not delet
 
 - Agent API exposes `readonly: true` and `deletable: false` on network objects for system names (`default` minimum).
 - Control plane inventory preserves flags; proxy rejects DELETE on readonly networks.
-- GUI (Phase 5): no delete control; tooltip "system network".
+- GUI (Phase 5 ✅): no delete control; readonly badge; `default` hidden from project network list.
 
 ## Consequences
 

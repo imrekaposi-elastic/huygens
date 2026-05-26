@@ -18,7 +18,7 @@ Components include hypervisor agents, control-plane microservices, web console, 
 ```
 agents/          # Hypervisor agents (libvirt today)
 services/        # Control plane microservices
-web/             # Console SPA (Phase 5)
+web/             # Console SPA (Phase 5 ✅)
 schemas/         # Kafka and shared JSON schemas
 docs/            # Architecture, install guides
 ```

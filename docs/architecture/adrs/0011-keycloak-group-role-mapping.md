@@ -95,7 +95,7 @@ IAM does **not** call LDAP directly. Optional future: Admin API to list Keycloak
 2. Keycloak in Compose; example realm + group mapper
 3. IAM: OIDC routes, `idp_group_mappings` model + CRUD, login role resolution, audit events
 4. `docs/install/keycloak.md` — realm, mapper, example mappings
-5. Console (Phase 5) consumes mapping APIs; until then Swagger/admin curl
+5. Console (Phase 5 ✅) consumes mapping APIs via IAM-authenticated admin UI
 
 ### Positive
 

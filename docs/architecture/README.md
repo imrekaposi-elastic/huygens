@@ -34,4 +34,6 @@ See [../PHASED_PLAN.md](../PHASED_PLAN.md) for delivery phases 0–13.
 
 **Projects service** (`services/projects`, port 8084) is the operator-facing control-plane API: project CRUD, RBAC, and proxied libvirt agent mutations. It appears on [diagrams/01-system-context.excalidraw](diagrams/01-system-context.excalidraw) and related deployment/tenancy drawings.
 
-**Elasticsearch** is part of the target architecture for **audit logs (ECS)**, compliance dashboards, and **SSH session recording search** (Phase 9). Events flow **Kafka → ES ingest**; PostgreSQL stays the system of record. Inventory publishes snapshots via **`shared/huy_events`**; agent→Kafka and SSE consumers are **work in progress** — see [adrs/0004-kafka-event-bus.md](adrs/0004-kafka-event-bus.md).
+**Web console** (`web/`, Phase 5 ✅) proxies to IAM, projects, inventory, and registry via nginx in Compose. Live inventory uses **Kafka → inventory SSE hub → console** ([ADR 0011](adrs/0011-sse-auth-via-authorization-header.md)).
+
+**Elasticsearch** is part of the target architecture for **audit logs (ECS)**, compliance dashboards, and **SSH session recording search** (Phase 9). Events flow **Kafka → ES ingest**; PostgreSQL stays the system of record. Inventory publishes snapshots via **`shared/huy_events`**; agent→Kafka publish remains partial — see [adrs/0004-kafka-event-bus.md](adrs/0004-kafka-event-bus.md).

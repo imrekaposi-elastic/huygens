@@ -1,6 +1,6 @@
 # Testing strategy
 
-## Unit tests (CI today)
+## Unit tests (default CI)
 
 Run all control-plane unit tests from the repo root:
 
@@ -8,39 +8,44 @@ Run all control-plane unit tests from the repo root:
 make test
 ```
 
+Requires **Python 3.11+** with `python3` on `PATH`. The Makefile creates a repo-local `.venv` automatically (PEP 668–safe on macOS/Homebrew).
+
 This executes pytest in each service:
 
-| Service | Directory |
+| Package | Directory |
 |---------|-----------|
+| huy-events | `shared/huy_events` |
 | IAM | `services/iam` |
 | Registry | `services/registry` |
 | Inventory | `services/inventory` |
 | Projects | `services/projects` |
+| Console | `web` (`npm test`) |
 
-Agent unit tests: `make -C agents/libvirt test`.
+Shared packages `huy_auth` and `huy_events` are installed once via `make test-deps` before services that depend on them.
 
 Each service uses in-memory SQLite, mocked HTTP (respx where needed), and synthetic JWTs signed with a test secret.
 
-## Integration tests (future pipeline)
+Agent unit tests: `make -C agents/libvirt test`.
 
-Full **cross-phase** tests (IAM → registry → projects → agent, or inventory poller against a real agent) are **not** part of the default `make test` job yet.
+## Integration tests (compose stack)
 
-Planned layout:
+Cross-service tests live under `tests/integration/`. They are **not** part of `make test`.
 
+```bash
+docker compose up -d --build
+make test-integration
 ```
-tests/integration/
-  README.md          # prerequisites, compose profile
-  conftest.py        # shared fixtures, pytest marker integration
-  test_phase0_3.py   # smoke: auth, register agent, create project, proxy list vms
-```
+
+See [tests/integration/README.md](../tests/integration/README.md) for environment variables and module layout.
 
 Conventions:
 
 - Mark tests with `@pytest.mark.integration`
-- Run via `pytest -m integration` only when `docker compose` stack (or `HUY_E2E=1`) is up
-- Keep unit and integration jobs separate in GitHub Actions so PRs stay fast
+- Require `HUY_E2E=1` (set automatically by `make test-integration`)
+- Use ephemeral organizations where possible; tests clean up org + projects after mutation
+- `@pytest.mark.requires_agent` skips when no connected libvirt agent exists
 
-Example future workflow job:
+Example GitHub Actions job:
 
 ```yaml
 jobs:
@@ -48,11 +53,13 @@ jobs:
     run: make test
   integration:
     if: github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'run-integration')
-    run: docker compose up -d --build && pytest -m integration tests/integration
+    run: |
+      docker compose up -d --build
+      make test-integration
 ```
 
 ## Adding tests for a new phase
 
 1. Add service unit tests under `services/<name>/tests/`.
-2. Extend `Makefile` `test-unit` target.
-3. When the phase needs multiple running services, add a skipped-by-default integration module under `tests/integration/`.
+2. Extend the root `Makefile` `test-unit` target if a new package is added.
+3. When the phase needs multiple running services, extend `tests/integration/` and document any new env vars in `tests/integration/README.md`.

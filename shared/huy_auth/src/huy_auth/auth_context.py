@@ -72,9 +72,11 @@ class AuthContext:
             return True
         if self.project_roles_for(organization_id, project_id):
             return True
-        if self.can_access_org(organization_id):
-            if "admin" in self.org_roles(organization_id):
-                return True
+        if "admin" in self.org_roles(organization_id):
+            return True
+        # Org-wide read (auditor, compliance_reader, …) requires org membership,
+        # not project-only grants — otherwise operator on proj-A could read proj-B.
+        if any(m.organization_id == organization_id for m in self.org_memberships):
             if self.has_permission(PERM_PROJECT_READ, organization_id):
                 return True
         return False
