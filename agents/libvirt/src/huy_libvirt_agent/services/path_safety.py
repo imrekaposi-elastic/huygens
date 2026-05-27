@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 from pathlib import Path
@@ -38,53 +39,74 @@ def _is_under_root(path: Path, root: Path) -> bool:
         return False
 
 
-def _resolved_under_allowed_roots(resolved: Path, allowed_roots: list[Path]) -> bool:
-    roots = [r.resolve() for r in allowed_roots]
-    return any(_is_under_root(resolved, root) for root in roots)
+def _allowed_roots_realpath(allowed_roots: list[Path]) -> list[str]:
+    return [os.path.realpath(str(root)) for root in allowed_roots]
 
 
-def resolve_local_image_source(source: str, allowed_roots: list[Path]) -> Path:
+def resolve_local_image_source(source: str, allowed_roots: list[Path]) -> str:
     """
     Resolve a local disk image path for copy/import.
 
-    Rejects relative paths, traversal outside allowed roots, and non-files.
+    Uses os.path.realpath plus prefix checks (CodeQL path-injection pattern) before any
+    filesystem access. Returns the validated absolute path string.
     """
     if not source or "\0" in source:
         raise PathSafetyError("Invalid local image path")
-    candidate = Path(source)
-    if not candidate.is_absolute():
+    if not os.path.isabs(source):
         raise PathSafetyError("Local image source must be an absolute path")
 
-    resolved = candidate.resolve()
-    if not _resolved_under_allowed_roots(resolved, allowed_roots):
-        allowed = ", ".join(str(r.resolve()) for r in allowed_roots)
-        raise PathSafetyError(
-            f"Local image path must be under an allowed directory ({allowed})"
-        )
-    if not resolved.is_file():
-        raise FileNotFoundError(f"Source not found: {source}")
-    return resolved
+    resolved = os.path.realpath(source)
+    for root_real in _allowed_roots_realpath(allowed_roots):
+        if resolved == root_real or resolved.startswith(root_real + os.sep):
+            if not os.path.isfile(resolved):
+                raise FileNotFoundError(f"Source not found: {source}")
+            return resolved
+
+    allowed = ", ".join(_allowed_roots_realpath(allowed_roots))
+    raise PathSafetyError(
+        f"Local image path must be under an allowed directory ({allowed})"
+    )
 
 
 def copy_validated_local_image(source: str, dest: Path, allowed_roots: list[Path]) -> None:
-    """Copy a validated local image file into dest (no-op when source and dest are the same)."""
-    validated_src = resolve_local_image_source(source, allowed_roots)
-    dest_resolved = dest.resolve()
-    if validated_src == dest_resolved:
-        return
-    if not validated_src.is_file():
-        raise FileNotFoundError(f"Source not found: {source}")
-    dest_resolved.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(validated_src, dest_resolved)
+    """
+    Copy a validated local image file into dest (no-op when source and dest are the same).
+
+    Validation and copy occur in the same guarded block so CodeQL sees realpath + startswith
+    before shutil.copyfile.
+    """
+    if not source or "\0" in source:
+        raise PathSafetyError("Invalid local image path")
+    if not os.path.isabs(source):
+        raise PathSafetyError("Local image source must be an absolute path")
+
+    resolved = os.path.realpath(source)
+    dest_resolved = os.path.realpath(str(dest))
+
+    for root_real in _allowed_roots_realpath(allowed_roots):
+        if resolved == root_real or resolved.startswith(root_real + os.sep):
+            if resolved == dest_resolved:
+                return
+            if not os.path.isfile(resolved):
+                raise FileNotFoundError(f"Source not found: {source}")
+            os.makedirs(os.path.dirname(dest_resolved), exist_ok=True)
+            shutil.copyfile(resolved, dest_resolved)
+            return
+
+    allowed = ", ".join(_allowed_roots_realpath(allowed_roots))
+    raise PathSafetyError(
+        f"Local image path must be under an allowed directory ({allowed})"
+    )
 
 
 def resolve_cached_disk_path(cached_path: str, registry_dir: Path, image_name: str) -> Path:
     """Ensure metadata cached_path points inside this image's registry directory."""
     safe_registry_name(image_name)
 
-    expected = (registry_dir / image_name / "disk.qcow2").resolve()
-    if Path(cached_path).resolve() != expected:
+    expected = os.path.realpath(str((registry_dir / image_name / "disk.qcow2").resolve()))
+    resolved = os.path.realpath(cached_path)
+    if resolved != expected:
         raise PathSafetyError("Cached image path does not match expected location")
-    if not expected.is_file():
+    if not os.path.isfile(expected):
         raise PathSafetyError("Cached image file missing")
-    return expected
+    return Path(expected)

@@ -29,7 +29,7 @@ def test_allows_file_under_allowed_root(tmp_path: Path) -> None:
     disk = root / "base.qcow2"
     disk.write_bytes(b"x")
     resolved = resolve_local_image_source(str(disk), [root])
-    assert resolved == disk.resolve()
+    assert Path(resolved) == disk.resolve()
 
 
 def test_copy_validated_local_image(tmp_path: Path) -> None:
