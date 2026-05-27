@@ -1,5 +1,5 @@
-.PHONY: compose-up compose-down compose-logs compose-ps test test-unit test-integration test-deps venv \
-	test-huy-events test-iam test-registry test-inventory test-projects test-web
+.PHONY: compose-up compose-down compose-logs compose-ps test test-unit test-integration test-ci test-deps venv \
+	test-huy-events test-iam test-registry test-inventory test-projects test-web wait-stack
 
 VENV ?= $(CURDIR)/.venv
 PYTHON ?= $(VENV)/bin/python
@@ -26,7 +26,13 @@ $(VENV)/bin/python:
 
 test: test-unit
 
+# Matches default GitHub Actions CI (unit + integration).
+test-ci: test-unit test-integration
+
 test-unit: venv test-deps test-huy-events test-iam test-registry test-inventory test-projects test-web
+
+wait-stack:
+	bash scripts/wait-for-stack.sh
 
 test-deps: venv
 	$(PIP) install -q -e shared/huy_auth

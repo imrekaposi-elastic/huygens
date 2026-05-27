@@ -1,0 +1,59 @@
+# Default CI: unit tests + integration tests against Docker Compose.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Run unit tests
+        run: make test
+
+  integration:
+    name: Integration tests (Compose)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Prepare Compose env
+        run: cp compose.env.example .env
+
+      - name: Start stack
+        run: docker compose up -d --build
+
+      - name: Wait for healthy services
+        run: bash scripts/wait-for-stack.sh
+
+      - name: Run integration tests
+        run: make test-integration
+
+      - name: Compose logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail=200

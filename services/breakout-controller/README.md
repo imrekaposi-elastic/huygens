@@ -9,7 +9,7 @@ Go service (port **8085**) for **WireGuard link planning** in Phase 6. Called on
 |----------|---------|
 | `GET /health` | Liveness |
 | `POST /v1/links/plan` | Build WG peer configs for a pairwise link (keys supplied by projects) |
-| `POST /v1/links/revoke` | Reserved; **not used** by projects reconciler today (delete disables breakout via agent proxy) |
+| `POST /v1/links/revoke` | Called by projects when deleting **WireGuard** links (before agent breakout is disabled) |
 
 Does **not** touch libvirt, JWT, or iptables. Same-hypervisor **`local`** links bypass
 this service entirely.

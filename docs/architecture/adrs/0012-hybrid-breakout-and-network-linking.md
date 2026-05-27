@@ -36,7 +36,7 @@ Operators need to connect libvirt virtual networks on different hypervisors (FRA
 - JWT: `GET/POST/DELETE /api/v1/organizations/{org_id}/network-links`, `GET .../topology`
 - Proxy: `GET/PUT .../projects/{pid}/agents/{aid}/networks/{name}/breakout(/wireguard|/flat)`
 - Internal: breakout-controller `POST /v1/links/plan` (`X-Huy-Service-Token`)
-- Internal: `POST /v1/links/revoke` — **implemented, unused**; delete path disables WG/flat via agent proxy instead
+- Internal: `POST /v1/links/revoke` — called for **WireGuard** link delete before agent breakout is disabled; **local** links skip revoke
 
 ### RBAC
 

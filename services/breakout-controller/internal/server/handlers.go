@@ -94,7 +94,21 @@ func (s *Server) handlePlan(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRevoke(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]bool{"disabled": true})
+	var req RevokeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "invalid JSON"})
+		return
+	}
+	if req.LeftNetwork == "" || req.RightNetwork == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "left_network and right_network required"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"disabled":       true,
+		"link_id":        req.LinkID,
+		"left_network":   req.LeftNetwork,
+		"right_network":  req.RightNetwork,
+	})
 }
 
 func sanitize(name string) string {

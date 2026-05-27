@@ -26,7 +26,7 @@ python3 -m pip install -e ".[dev]"
 HUY_E2E=1 python3 -m pytest -q
 ```
 
-Unit tests (`make test`) **do not** run these; they stay fast for PR CI.
+Unit tests (`make test`) **do not** run these. Default **GitHub Actions CI** runs them in a separate job after `docker compose up` (see [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)).
 
 ## Environment
 
@@ -89,6 +89,6 @@ Requires **one connected agent** with two vnets on **different projects** (or sa
 3. After inventory poll (~30s), the vnet must **not** appear as unassigned/orphaned on the dashboard.
 4. Topology must not list the vnet after assignment row is cleared.
 
-## CI recommendation
+## CI
 
-Keep `make test` on every PR. Run `make test-integration` on a schedule or when the PR has label `run-integration`, after `docker compose up -d --build`.
+Every PR and push to `main` runs `make test-integration` after the Compose stack is healthy (`scripts/wait-for-stack.sh`). See [docs/testing.md](../docs/testing.md).

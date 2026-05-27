@@ -80,7 +80,6 @@ automatically on `docker compose up`. No manual `kafka-topics.sh` step for the d
 
 These are **not** fixed by documentation alone; tracked for product planning:
 
-- **`POST /v1/links/revoke`** on breakout-controller is implemented but unused; delete path disables breakout via agent proxy only.
 - **Flat L2** `bridge_uplink` / `macvlan` per-vnet breakout has no console UI (Phase 6.1+); same-hypervisor routing uses link type `local` only.
 - **Integration tests** do not POST links or assert reconcile-to-`connected` (smoke only).
 

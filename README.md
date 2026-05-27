@@ -87,11 +87,15 @@ service README under `services/`.
 make -C agents/libvirt test
 ```
 
-**Integration tests** (requires `docker compose up`):
+**Tests:** `make test` (unit). **CI** also runs integration tests against Compose; locally:
 
 ```bash
+docker compose up -d --build
+bash scripts/wait-for-stack.sh
 make test-integration
 ```
+
+See [docs/testing.md](docs/testing.md).
 
 ## Contributing
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import structlog
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -41,7 +42,9 @@ async def reconcile_link(
     kafka: HuyKafkaProducer | None = None,
 ) -> NetworkLink:
     if link.status == "deleting":
-        return await _reconcile_delete(session, link, proxy=proxy, kafka=kafka)
+        return await _reconcile_delete(
+            session, link, proxy=proxy, breakout=breakout, kafka=kafka
+        )
     if link.link_type == "local":
         return await _reconcile_apply_local(session, link, proxy=proxy, settings=settings, kafka=kafka)
     return await _reconcile_apply(
@@ -190,14 +193,36 @@ async def _reconcile_apply(
     return link
 
 
+async def _revoke_wireguard_link(link: NetworkLink, breakout: BreakoutControllerClient) -> None:
+    """Notify breakout-controller before tearing down agent-side WG config."""
+    try:
+        await breakout.revoke_link(
+            {
+                "link_id": link.id,
+                "left_network": link.left_network_name,
+                "right_network": link.right_network_name,
+            }
+        )
+    except HTTPException as exc:
+        logger.warning(
+            "breakout_revoke_failed",
+            link_id=link.id,
+            status=exc.status_code,
+            detail=str(exc.detail)[:500],
+        )
+
+
 async def _reconcile_delete(
     session: AsyncSession,
     link: NetworkLink,
     *,
     proxy: AgentProxy,
+    breakout: BreakoutControllerClient,
     kafka: HuyKafkaProducer | None,
 ) -> NetworkLink:
     try:
+        if link.link_type == "wireguard":
+            await _revoke_wireguard_link(link, breakout)
         endpoints = (
             (link.left_agent_id, link.left_network_name),
             (link.right_agent_id, link.right_network_name),

@@ -39,6 +39,7 @@ type PlanResponse struct {
 }
 
 type RevokeRequest struct {
+	LinkID       string `json:"link_id,omitempty"`
 	LeftNetwork  string `json:"left_network"`
 	RightNetwork string `json:"right_network"`
 }
