@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import shutil
 from datetime import UTC, datetime
-import os
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -20,8 +19,8 @@ from huy_libvirt_agent.services.libvirt_client import LibvirtError
 from huy_libvirt_agent.services.metadata import read_metadata, write_metadata
 from huy_libvirt_agent.services.path_safety import (
     PathSafetyError,
+    copy_validated_local_image,
     resolve_cached_disk_path,
-    resolve_local_image_source,
     safe_child_dir,
     safe_registry_name,
 )
@@ -163,16 +162,11 @@ class ImageService:
                 self._store.download_url_to_path(source, dest, expected_sha256=meta.get("sha256"))
             else:
                 try:
-                    src = resolve_local_image_source(source, self._local_import_roots())
+                    copy_validated_local_image(source, dest, self._local_import_roots())
                 except PathSafetyError as exc:
                     raise LibvirtError(str(exc), "INVALID_SOURCE") from exc
-                # Re-check before file copy so CodeQL sees the guard at the sink.
-                resolved_src = os.path.realpath(str(src))
-                roots = [os.path.realpath(str(r)) for r in self._local_import_roots()]
-                if not any(resolved_src == root or resolved_src.startswith(root + os.sep) for root in roots):
-                    raise LibvirtError("Local image path must be under an allowed directory", "INVALID_SOURCE")
-                if src != dest.resolve():
-                    shutil.copy2(src, dest)
+                except FileNotFoundError as exc:
+                    raise LibvirtError(str(exc), "INVALID_SOURCE") from exc
                 if meta.get("sha256"):
                     self._store.verify_sha256(dest, meta["sha256"])
             meta["status"] = "ready"
