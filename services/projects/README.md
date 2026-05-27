@@ -52,7 +52,7 @@ Or use a pre-reserved `allocation_id` from the wizard.
 - **Cross-hypervisor:** `link_type: wireguard`, requires `overlay_pool_id` and two agents.
 - **Same hypervisor:** `link_type: local`, no overlay pool; requires both vnets to have CIDRs.
 
-Reconciler runs when `LINK_RECONCILE_ENABLED=true` (default). Publishes to Kafka topic `huy.network.links` when `KAFKA_PUBLISH_ENABLED=true` — create the topic on the broker (see [docker-compose.md](../../docs/install/docker-compose.md)).
+Reconciler runs when `LINK_RECONCILE_ENABLED=true` (default). Publishes to Kafka topic `huy.network.links` when `KAFKA_PUBLISH_ENABLED=true` (topic created by Compose `kafka-init`; see [docker-compose.md](../../docs/install/docker-compose.md)).
 
 Operational guide: [docs/operations/phase6-release-and-validation.md](../../docs/operations/phase6-release-and-validation.md).
 

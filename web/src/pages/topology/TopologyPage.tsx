@@ -103,10 +103,14 @@ function TopologyCanvas({ organizationId }: Props) {
           id: link.id,
           source: endpointId(link.left),
           target: endpointId(link.right),
-          label,
+          label: link.config_drift ? `${label} · drift` : label,
           animated: link.status === "applying" || link.status === "pending",
           style: {
-            stroke: link.status === "connected" ? "#10b981" : "#f59e0b",
+            stroke: link.config_drift
+              ? "#f97316"
+              : link.status === "connected"
+                ? "#10b981"
+                : "#f59e0b",
             strokeDasharray: link.link_type === "local" ? "6 4" : undefined,
           },
         };
@@ -185,6 +189,21 @@ function TopologyCanvas({ organizationId }: Props) {
     const right = topology.vnets.find((v) => vnetNodeId(v) === pendingConnection.target);
     return !!(left && right && left.agent_id === right.agent_id);
   }, [pendingConnection, topology]);
+
+  const distinctAgentIds = useMemo(
+    () => new Set((topology?.vnets ?? []).map((v) => v.agent_id)),
+    [topology],
+  );
+
+  const pendingNeedsSecondAgent = useMemo(() => {
+    if (!pendingConnection?.source || !pendingConnection.target || !topology || pendingLocalLink) {
+      return false;
+    }
+    const left = topology.vnets.find((v) => vnetNodeId(v) === pendingConnection.source);
+    const right = topology.vnets.find((v) => vnetNodeId(v) === pendingConnection.target);
+    if (!left || !right) return false;
+    return left.agent_id !== right.agent_id && distinctAgentIds.size < 2;
+  }, [pendingConnection, topology, pendingLocalLink, distinctAgentIds]);
 
   async function confirmCreateLink() {
     if (!pendingConnection?.source || !pendingConnection.target || !topology) {
@@ -267,9 +286,10 @@ function TopologyCanvas({ organizationId }: Props) {
         </p>
       )}
 
-      {overlayPools.length === 0 && (
+      {overlayPools.length === 0 && distinctAgentIds.size >= 2 && (
         <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
-          No overlay pool yet. In IPAM, create an overlay pool (e.g. 10.255.0.0/24) before linking vnets.
+          No overlay pool yet. In IPAM, create an overlay pool (e.g. 10.255.0.0/24) before cross-hypervisor
+          WireGuard links.
         </p>
       )}
 
@@ -339,6 +359,12 @@ function TopologyCanvas({ organizationId }: Props) {
               <> via WireGuard breakout.</>
             )}
           </p>
+          {pendingNeedsSecondAgent && (
+            <p className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+              Cross-hypervisor links need a <strong>second enrolled agent</strong> in this organization.
+              The link may stay in <strong>error</strong> until another hypervisor is connected.
+            </p>
+          )}
           {!pendingLocalLink && (
             <>
               <label className="block text-sm font-medium">Overlay pool</label>
@@ -381,6 +407,14 @@ function TopologyCanvas({ organizationId }: Props) {
               <dt className="text-slate-500">Type</dt>
               <dd className="capitalize">{linkDetail.link_type}</dd>
             </div>
+            {linkDetail.config_drift && (
+              <div>
+                <dt className="text-slate-500">Config drift</dt>
+                <dd className="text-amber-700 dark:text-amber-300">
+                  Agent breakout differs from desired state
+                </dd>
+              </div>
+            )}
             <div>
               <dt className="text-slate-500">
                 {linkDetail.link_type === "local" ? "Routed networks" : "Tunnel"}

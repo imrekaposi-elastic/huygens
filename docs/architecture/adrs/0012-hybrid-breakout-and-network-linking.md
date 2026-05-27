@@ -45,7 +45,7 @@ Operators need to connect libvirt virtual networks on different hypervisors (FRA
 
 ### Events
 
-- CloudEvents type `com.huygens.network.link.v1` on Kafka topic **`huy.network.links`** when link status changes ([ADR 0004](0004-kafka-event-bus.md)). Topic must be created on the cluster (not auto-created in Compose).
+- CloudEvents type `com.huygens.network.link.v1` on Kafka topic **`huy.network.links`** when link status changes ([ADR 0004](0004-kafka-event-bus.md)). Created by Compose `kafka-init` in the default stack; external clusters use [init-topics.sh](../../../docker/kafka/init-topics.sh).
 - Console live refresh: inventory SSE + HTTP invalidation on projects mutations; **no** link-topic consumer in MVP.
 
 ### Deployment boundary

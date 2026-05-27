@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from huy_projects.api.deps import CurrentUserDep, SessionDep, SettingsDep
+from huy_projects.api.deps import AgentProxyDep, CurrentUserDep, SessionDep, SettingsDep
 from huy_projects.schemas import NetworkLinkCreate, NetworkLinkOut, TopologyOut
 from huy_projects.services import authorization, link_service, project_service
 
@@ -33,6 +33,7 @@ async def create_network_link(
     user: CurrentUserDep,
     session: SessionDep,
     settings: SettingsDep,
+    proxy: AgentProxyDep,
 ) -> NetworkLinkOut:
     _check_org_access(user, organization_id)
     left_project = await project_service.get_project(session, body.left.project_id)
@@ -42,7 +43,9 @@ async def create_network_link(
     if left_project.organization_id != organization_id or right_project.organization_id != organization_id:
         raise HTTPException(status_code=400, detail="Projects must belong to organization")
     authorization.require_link_manage(user, organization_id, left_project, right_project)
-    link = await link_service.create_link(session, organization_id, body, settings)
+    link = await link_service.create_link(
+        session, organization_id, body, settings, proxy=proxy
+    )
     return link_service.link_to_out(link)
 
 

@@ -21,6 +21,16 @@ from huy_projects.services.link_secrets import decrypt_private_key
 logger = structlog.get_logger(__name__)
 
 
+def _format_reconcile_error(exc: Exception) -> str:
+    err = str(exc)[:2000]
+    if "local_peer" in err and ("422" in err or "literal_error" in err):
+        return (
+            "Agent rejected local_peer flat breakout (upgrade libvirt agent on this "
+            f"hypervisor). Details: {err}"
+        )
+    return err
+
+
 async def reconcile_link(
     session: AsyncSession,
     link: NetworkLink,
@@ -94,7 +104,7 @@ async def _reconcile_apply_local(
     except Exception as exc:
         logger.warning("local_link_reconcile_failed", link_id=link.id, error=str(exc))
         link.status = "error"
-        link.last_error = str(exc)[:2000]
+        link.last_error = _format_reconcile_error(exc)
 
     await session.commit()
     await session.refresh(link)
@@ -168,7 +178,7 @@ async def _reconcile_apply(
     except Exception as exc:
         logger.warning("link_reconcile_failed", link_id=link.id, error=str(exc))
         link.status = "error"
-        link.last_error = str(exc)[:2000]
+        link.last_error = _format_reconcile_error(exc)
 
     await session.commit()
     await session.refresh(link)

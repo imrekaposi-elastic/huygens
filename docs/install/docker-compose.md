@@ -46,19 +46,15 @@ curl -s -X POST http://localhost:8081/api/v1/auth/login \
 
 Kafka starts with the default stack (`KAFKA_BOOTSTRAP=kafka:9092`). Override in `.env` for external or clustered brokers (comma-separated list).
 
-First boot may take ~30–60s while the broker passes its healthcheck before app services start.
+First boot may take ~30–60s while the broker passes its healthcheck. A one-shot **`kafka-init`** service then creates application topics (`huy.agent.events`, `huy.inventory.snapshots`, `huy.audit.events`, `huy.network.links`) before control-plane producers start. See [ADR 0004](../architecture/adrs/0004-kafka-event-bus.md) and [`docker/kafka/init-topics.sh`](../../docker/kafka/init-topics.sh).
 
-**Application topics are not auto-created.** After the broker is healthy, create the Phase 6 link topic (once per cluster):
+Verify topics after `docker compose up`:
 
 ```bash
-docker compose exec kafka /opt/kafka/bin/kafka-topics.sh \
-  --bootstrap-server localhost:9092 \
-  --create --if-not-exists \
-  --topic huy.network.links \
-  --partitions 1 --replication-factor 1
+docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list | grep '^huy\.'
 ```
 
-Without it, `projects` logs publish warnings; link CRUD and topology still work. See [ADR 0004](../architecture/adrs/0004-kafka-event-bus.md).
+For **external** Kafka (not the Compose broker), run `init-topics.sh` with `KAFKA_BOOTSTRAP` pointing at your cluster.
 
 ## Stop
 

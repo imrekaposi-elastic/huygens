@@ -57,6 +57,14 @@ class Settings(BaseSettings):
         default=15,
         alias="LINK_RECONCILE_INTERVAL_SECONDS",
     )
+    assignment_reconcile_enabled: bool = Field(
+        default=True,
+        alias="ASSIGNMENT_RECONCILE_ENABLED",
+    )
+    assignment_reconcile_interval_seconds: int = Field(
+        default=60,
+        alias="ASSIGNMENT_RECONCILE_INTERVAL_SECONDS",
+    )
 
 
 @lru_cache

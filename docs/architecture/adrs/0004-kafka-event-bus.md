@@ -34,21 +34,20 @@ Explicit operator choice only: poll-only inventory without Kafka publish, audit 
 
 ### Topic provisioning (Compose and production)
 
-Apache Kafka in the default Compose file does **not** auto-create application topics.
-Operators must create topics explicitly (or use cluster tooling / Helm hooks). Minimum for
-Phase 6 link publish without broker warnings:
+**Docker Compose (default stack):** a one-shot **`kafka-init`** service runs
+[`docker/kafka/init-topics.sh`](../../../docker/kafka/init-topics.sh) after the broker is
+healthy and creates all application topics (including `huy.network.links`) before IAM,
+registry, inventory, and projects start. Idempotent (`--if-not-exists`).
 
-```bash
-docker compose exec kafka /opt/kafka/bin/kafka-topics.sh \
-  --bootstrap-server localhost:9092 \
-  --create --if-not-exists \
-  --topic huy.network.links \
-  --partitions 1 --replication-factor 1
-```
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `KAFKA_BOOTSTRAP` | `kafka:9092` | Broker for init and producers |
+| `KAFKA_TOPIC_PARTITIONS` | `1` | Partitions per application topic |
+| `KAFKA_TOPIC_REPLICATION_FACTOR` | `1` | Replication (single-broker dev stack) |
 
-If the topic is missing, projects logs a warning and continues; PostgreSQL remains source
-of truth for link state. Console refresh for topology uses inventory SSE and HTTP polling,
-not a link-event consumer.
+**External or production clusters:** run the same script against your bootstrap servers,
+or equivalent Helm/job automation. If topics are missing, producers log warnings and
+continue; PostgreSQL remains source of truth for link state.
 
 ## Consequences
 

@@ -25,6 +25,10 @@ class AgentSettingsResponse(BaseModel):
     libvirt_uri: str
     data_dir: str
     tls: AgentTlsInfo
+    capabilities: list[str] = Field(
+        default_factory=list,
+        description="Feature flags advertised by this agent build",
+    )
 
 
 class VmCountMetrics(BaseModel):

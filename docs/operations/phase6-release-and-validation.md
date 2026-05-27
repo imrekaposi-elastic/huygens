@@ -12,9 +12,9 @@ libvirt hypervisor**. Treat both as one release.
 | Layer | MVP (shipped) | GA (not yet — see backlog) |
 |-------|----------------|----------------------------|
 | **Compose stack** | `projects`, `breakout-controller`, `web`, Kafka, overlay IPAM, topology UI, link reconciler | Automated link-reconcile integration test in CI |
-| **Hypervisor agent** | WG + `local_peer` breakout when agent matches control-plane version | Capability negotiation; zero-touch upgrade |
+| **Hypervisor agent** | WG + `local_peer` breakout; projects preflight via `GET /api/v1/agent` capabilities | Zero-touch upgrade |
 | **Validation** | Unit tests + integration **API smoke**; manual two-agent WG runbook | Automated cross-host data-plane proof |
-| **Events** | Publish to `huy.network.links` when topic exists | Topic auto-provisioned in Compose; ES consumer |
+| **Events** | Publish to `huy.network.links` via `kafka-init` in Compose | ES consumer (future) |
 
 ## Control plane vs hypervisor agent
 
@@ -62,19 +62,11 @@ Existing PostgreSQL volumes: `projects` runs `apply_schema_upgrades` on startup 
 Projects publishes link lifecycle events to **`huy.network.links`** (not `huy.audit.events`).
 See [ADR 0004](../architecture/adrs/0004-kafka-event-bus.md).
 
-Apache Kafka in Compose does **not** auto-create application topics. Create once per cluster:
+**Docker Compose:** the `kafka-init` service creates this topic (and other `huy.*` topics)
+automatically on `docker compose up`. No manual `kafka-topics.sh` step for the default stack.
 
-```bash
-docker compose exec kafka /opt/kafka/bin/kafka-topics.sh \
-  --bootstrap-server localhost:9092 \
-  --create --if-not-exists \
-  --topic huy.network.links \
-  --partitions 1 \
-  --replication-factor 1
-```
-
-Without this topic, projects logs `Topic huy.network.links not found`; link CRUD still works;
-console refresh uses inventory SSE / polling, not link Kafka consumers.
+**External Kafka:** run [`docker/kafka/init-topics.sh`](../../docker/kafka/init-topics.sh) with
+`KAFKA_BOOTSTRAP` set to your brokers.
 
 ## Manual validation
 
@@ -82,16 +74,13 @@ console refresh uses inventory SSE / polling, not link Kafka consumers.
 |----------|---------|
 | Cross-hypervisor WireGuard link | [tests/integration/README.md](../../tests/integration/README.md#manual-two-agent-wireguard-link-test-phase-6) |
 | Same-hypervisor local link | [tests/integration/README.md](../../tests/integration/README.md#manual-same-hypervisor-local-link-test-phase-6) |
-| Network delete / inventory orphan | Delete via **Projects → networks**; agent removes libvirt + metadata; dashboard should not list ghost vnets after poll (~30s) |
+| Network delete / inventory orphan | Delete via **Projects → networks** (default `purge=true`); related links enter `deleting`; assignment reconciler (~60s) prunes OOB-deleted vnets from topology |
 
 ## Known limitations (documented backlog)
 
 These are **not** fixed by documentation alone; tracked for product planning:
 
-- **Network delete** does not auto-delete `network_links` referencing that vnet (topology may show stale edges).
-- **Out-of-band** hypervisor deletes do not prune `project_resources` (topology may show ghost nodes until unassign/delete in API).
 - **`POST /v1/links/revoke`** on breakout-controller is implemented but unused; delete path disables breakout via agent proxy only.
-- **Console** does not yet show link `config_drift` on the topology page (API field exists).
 - **Flat L2** `bridge_uplink` / `macvlan` per-vnet breakout has no console UI (Phase 6.1+); same-hypervisor routing uses link type `local` only.
 - **Integration tests** do not POST links or assert reconcile-to-`connected` (smoke only).
 

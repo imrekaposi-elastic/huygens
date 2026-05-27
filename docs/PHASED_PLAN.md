@@ -402,7 +402,7 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 **Shipped in control plane (Compose):**
 
 - Central `breakout-controller` (Go, `:8085`) + projects link reconciler + per-agent WG/flat apply
-- Org overlay IPAM (`pool_kind: overlay`), `network_links` desired state, Kafka publish to `huy.network.links` ([ADR 0004](architecture/adrs/0004-kafka-event-bus.md) — topic must be created on broker)
+- Org overlay IPAM (`pool_kind: overlay`), `network_links` desired state, Kafka publish to `huy.network.links` ([ADR 0004](architecture/adrs/0004-kafka-event-bus.md); Compose `kafka-init` creates topics)
 - Console **Topology** (React Flow): drag or click-to-connect vnets; link status, tunnel or vnet CIDRs on edges
 - **Same-hypervisor `local` links** (`local_peer` iptables) — requires matching libvirt agent on hypervisor
 - ADR [0012](architecture/adrs/0012-hybrid-breakout-and-network-linking.md)
@@ -421,7 +421,7 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 
 - Cross-hypervisor link visible in UI and reconciler — **done** when two agents connected and overlay pool exists
 - Cross-host **traffic** (ping across WG) — **manual proof only**, not CI
-- **GA / production pilot** — not closed: agent release discipline, link/vnet lifecycle cleanup, Kafka topic provisioning, integration reconcile test (see operations doc backlog)
+- **GA / production pilot** — not closed: agent release discipline, link/vnet lifecycle cleanup, integration reconcile test (see operations doc backlog)
 
 ### Phase 7 — Compliance, asset criticality, and “know why”
 - **Org compliance catalog:** standards with description, URL, MoSCoW, org target level (FRAMEWORK_PLAN)

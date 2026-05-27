@@ -25,16 +25,18 @@ from huy_projects.api.routes import (
 from huy_projects.config import get_settings
 from huy_projects.db import dispose_db, get_engine, get_session_factory, init_db
 from huy_projects.db_schema import apply_schema_upgrades
+from huy_projects.services.assignment_reconciler_loop import AssignmentReconcilerLoop
 from huy_projects.services.link_reconciler_loop import LinkReconcilerLoop
 
 logger = structlog.get_logger(__name__)
 _link_reconciler: LinkReconcilerLoop | None = None
+_assignment_reconciler: AssignmentReconcilerLoop | None = None
 _kafka_producer: HuyKafkaProducer | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _link_reconciler, _kafka_producer
+    global _link_reconciler, _assignment_reconciler, _kafka_producer
     settings = get_settings()
     if settings.database_url.startswith("sqlite"):
         db_path = settings.database_url.split("///")[-1]
@@ -56,16 +58,26 @@ async def lifespan(app: FastAPI):
             kafka_producer=_kafka_producer,
         )
         await _link_reconciler.start()
+    if settings.assignment_reconcile_enabled:
+        _assignment_reconciler = AssignmentReconcilerLoop(
+            settings,
+            get_session_factory(),
+        )
+        await _assignment_reconciler.start()
     logger.info(
         "huy_projects_started",
         version=__version__,
         link_reconcile_enabled=settings.link_reconcile_enabled,
+        assignment_reconcile_enabled=settings.assignment_reconcile_enabled,
         kafka_publish_enabled=settings.kafka_publish_enabled,
     )
     yield
     if _link_reconciler is not None:
         await _link_reconciler.stop()
         _link_reconciler = None
+    if _assignment_reconciler is not None:
+        await _assignment_reconciler.stop()
+        _assignment_reconciler = None
     if _kafka_producer is not None:
         await _kafka_producer.stop()
         _kafka_producer = None

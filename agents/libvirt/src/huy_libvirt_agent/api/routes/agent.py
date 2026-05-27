@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
 
 from huy_libvirt_agent import __version__
+from huy_libvirt_agent.capabilities import AGENT_CAPABILITIES
 from huy_libvirt_agent.api.deps import StateDep, verify_token
 from huy_libvirt_agent.api.schemas.agent import (
     AgentLabels,
@@ -50,6 +51,7 @@ async def get_agent(state: StateDep) -> AgentSettingsResponse:
         libvirt_uri=state.settings.libvirt_uri,
         data_dir=str(state.settings.data_dir),
         tls=_tls_info(state),
+        capabilities=list(AGENT_CAPABILITIES),
     )
 
 

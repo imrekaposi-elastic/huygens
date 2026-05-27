@@ -80,6 +80,11 @@ class AgentProxy:
         info = await self._connect(agent_id, organization_id)
         await self._request(info, "DELETE", f"/api/v1/vms/{name}")
 
+    async def get_agent(self, agent_id: str, organization_id: str) -> dict[str, Any]:
+        info = await self._connect(agent_id, organization_id)
+        response = await self._request(info, "GET", "/api/v1/agent")
+        return response.json()
+
     async def list_networks(self, agent_id: str, organization_id: str) -> list[dict[str, Any]]:
         info = await self._connect(agent_id, organization_id)
         response = await self._request(info, "GET", "/api/v1/networks")

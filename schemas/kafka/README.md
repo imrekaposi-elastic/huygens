@@ -19,7 +19,7 @@ CloudEvents 1.0 envelope with JSON `data` payloads. Producers set:
 | `huy.network.links` | [com.huygens.network.link.v1.json](com.huygens.network.link.v1.json) |
 | `huy.audit.events` | [audit-event.schema.json](audit-event.schema.json) |
 
-Create topics explicitly on the broker (Compose does not auto-create them). See [docs/install/docker-compose.md](../../docs/install/docker-compose.md#kafka).
+Compose runs `kafka-init` to create all topics on startup. External clusters: [docker/kafka/init-topics.sh](../../docker/kafka/init-topics.sh). See [docs/install/docker-compose.md](../../docs/install/docker-compose.md#kafka).
 
 ## Versioning
 

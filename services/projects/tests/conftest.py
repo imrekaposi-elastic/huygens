@@ -18,6 +18,7 @@ os.environ.setdefault("AGENT_TOKEN_ENCRYPTION_KEY", "test-agent-token-encryption
 os.environ.setdefault("BREAKOUT_CONTROLLER_URL", "http://breakout.test")
 os.environ.setdefault("BREAKOUT_SERVICE_TOKEN", "test-breakout-service-token")
 os.environ.setdefault("LINK_RECONCILE_ENABLED", "false")
+os.environ.setdefault("ASSIGNMENT_RECONCILE_ENABLED", "false")
 os.environ.setdefault("KAFKA_PUBLISH_ENABLED", "false")
 
 

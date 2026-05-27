@@ -17,10 +17,13 @@ from huy_projects.schemas import (
     TopologyVnetNode,
 )
 from huy_projects.services import ipam_service, link_secrets, project_service, wireguard_keys
+from huy_projects.services.agent_proxy import AgentProxy
 from huy_projects.services.link_local import LOCAL_LINK_POOL_ID
 from huy_projects.config import Settings
 
 _LOCAL_TUNNEL_LABEL = "direct"
+CAP_FLAT_LOCAL_PEER = "flat_breakout.local_peer"
+CAP_WIREGUARD_BREAKOUT = "wireguard.breakout"
 
 
 def _endpoint_key(agent_id: str, project_id: str, network_name: str) -> tuple[str, str, str]:
@@ -147,11 +150,72 @@ async def _validate_endpoint(
     return project
 
 
+async def _require_agent_capability(
+    proxy: AgentProxy,
+    agent_id: str,
+    organization_id: str,
+    capability: str,
+) -> None:
+    try:
+        agent = await proxy.get_agent(agent_id, organization_id)
+    except HTTPException as exc:
+        if exc.status_code in (404, 502):
+            raise HTTPException(
+                status_code=502,
+                detail="Cannot reach hypervisor agent to verify capabilities",
+            ) from exc
+        raise
+    capabilities = agent.get("capabilities") or []
+    if capability not in capabilities:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Hypervisor agent does not support '{capability}'. "
+                "Upgrade the libvirt agent on this host (see agents/libvirt README)."
+            ),
+        )
+
+
+async def delete_links_for_network(
+    session: AsyncSession,
+    organization_id: str,
+    *,
+    agent_id: str,
+    project_id: str,
+    network_name: str,
+) -> int:
+    """Mark network links touching this endpoint as deleting (reconciler tears down breakout)."""
+    result = await session.execute(
+        select(NetworkLink).where(
+            NetworkLink.organization_id == organization_id,
+            NetworkLink.status != "deleting",
+            or_(
+                (
+                    (NetworkLink.left_agent_id == agent_id)
+                    & (NetworkLink.left_project_id == project_id)
+                    & (NetworkLink.left_network_name == network_name)
+                ),
+                (
+                    (NetworkLink.right_agent_id == agent_id)
+                    & (NetworkLink.right_project_id == project_id)
+                    & (NetworkLink.right_network_name == network_name)
+                ),
+            ),
+        )
+    )
+    links = list(result.scalars().all())
+    for link in links:
+        await delete_link(session, link)
+    return len(links)
+
+
 async def create_link(
     session: AsyncSession,
     organization_id: str,
     body: NetworkLinkCreate,
     settings: Settings,
+    *,
+    proxy: AgentProxy | None = None,
 ) -> NetworkLink:
     if (
         body.left.agent_id == body.right.agent_id
@@ -175,6 +239,10 @@ async def create_link(
 
     same_agent = body.left.agent_id == body.right.agent_id
     if same_agent:
+        if proxy is not None:
+            await _require_agent_capability(
+                proxy, body.left.agent_id, organization_id, CAP_FLAT_LOCAL_PEER
+            )
         if not left_vnet_cidr or not right_vnet_cidr:
             raise HTTPException(
                 status_code=400,
@@ -211,6 +279,12 @@ async def create_link(
                 status_code=400,
                 detail="overlay_pool_id is required for links between different hypervisors",
             )
+        if proxy is not None:
+            agent_ids = {body.left.agent_id, body.right.agent_id}
+            for aid in agent_ids:
+                await _require_agent_capability(
+                    proxy, aid, organization_id, CAP_WIREGUARD_BREAKOUT
+                )
         pool = await ipam_service.get_pool(session, body.overlay_pool_id)
         if pool is None or pool.organization_id != organization_id:
             raise HTTPException(status_code=404, detail="Overlay pool not found")
