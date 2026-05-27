@@ -80,7 +80,7 @@ automatically on `docker compose up`. No manual `kafka-topics.sh` step for the d
 
 These are **not** fixed by documentation alone; tracked for product planning:
 
-- **Flat L2** `bridge_uplink` / `macvlan` per-vnet breakout has no console UI (Phase 6.1+); same-hypervisor routing uses link type `local` only.
+- **Flat L2** `bridge_uplink` / `macvlan`: configure per vnet in the console (**Networks → Flat breakout**, Phase 6.1). Same-hypervisor routing between vnets still uses topology link type `local` (`local_peer`).
 - **Integration tests** do not POST links or assert reconcile-to-`connected` (smoke only).
 
 ## Related docs

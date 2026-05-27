@@ -16,7 +16,9 @@ import type {
   ProjectAgentTechnology,
   RegionTreeNode,
   WizardPlanResponse,
+  FlatBreakoutConfig,
   IdpGroupMapping,
+  NetworkBreakout,
   TokenResponse,
   UserOut,
 } from "@/api/types";
@@ -492,6 +494,22 @@ export const api = {
     request<void>(
       `/api/v1/projects/${projectId}/agents/${agentId}/networks/${encodeURIComponent(name)}`,
       { method: "DELETE" },
+    ),
+
+  getNetworkBreakout: (projectId: string, agentId: string, name: string) =>
+    request<NetworkBreakout>(
+      `/api/v1/projects/${projectId}/agents/${agentId}/networks/${encodeURIComponent(name)}/breakout`,
+    ),
+
+  putFlatBreakout: (
+    projectId: string,
+    agentId: string,
+    name: string,
+    body: FlatBreakoutConfig,
+  ) =>
+    request<NetworkBreakout>(
+      `/api/v1/projects/${projectId}/agents/${agentId}/networks/${encodeURIComponent(name)}/breakout/flat`,
+      { method: "PUT", body: JSON.stringify(body) },
     ),
 
   assignResourceToProject: (

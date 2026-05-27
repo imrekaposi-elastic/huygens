@@ -31,7 +31,7 @@ Architecture decisions, diagrams, and contracts for the Huygens platform.
 
 ## Phase map
 
-See [../PHASED_PLAN.md](../PHASED_PLAN.md) for delivery phases 0–13.
+See [../PHASED_PLAN.md](../PHASED_PLAN.md) for delivery phases 0–17.
 
 **Projects service** (`services/projects`, port 8084) is the operator-facing control-plane API: project CRUD, RBAC, and proxied libvirt agent mutations. It appears on [diagrams/01-system-context.excalidraw](diagrams/01-system-context.excalidraw) and related deployment/tenancy drawings.
 

@@ -8,4 +8,4 @@
 matches the control plane (`projects` / `breakout-controller`). Upgrade agents after every
 control-plane deploy — [upgrade checklist](libvirt/README.md#upgrading-the-agent-phase-6).
 
-Future: additional agents may live here under the same monorepo layout.
+**Phases 14–17 (lowest priority, adoption track):** **14** Proxmox · **15** AWS (RO) · **16** GCP (RO) · **17** Azure (RO) — see [docs/PHASED_PLAN.md](../docs/PHASED_PLAN.md#phases-1417--platform-adoption-track-lowest-priority). Libvirt remains the only CRUD and Phase 6 breakout path until a later phase.

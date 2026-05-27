@@ -53,9 +53,13 @@ Operators need to connect libvirt virtual networks on different hypervisors (FRA
 - Control plane (Compose): `projects`, `breakout-controller`, `web`, PostgreSQL, Kafka.
 - **Libvirt agent is not in Compose** — must be installed and upgraded on each hypervisor with the same release as control plane for local links and metadata purge on network delete.
 
+### Phase 6.1 — Per-vnet flat L2 console UI (shipped)
+
+- Console: **Flat breakout** on project virtual networks (`bridge_uplink`, `macvlan`) via projects proxy → agent `PUT .../breakout/flat`.
+- `local_peer` flat mode remains topology-managed only (read-only in UI when a `local` link is active).
+
 ### Out of scope (Phase 6 MVP)
 
-- Per-vnet flat L2 `bridge_uplink` / `macvlan` console UI (agent API exists; deferred Phase 6.1+).
 - Cross-host **data-plane** automated test (control-plane reconcile is covered by unit tests; see [operations doc](../../operations/phase6-release-and-validation.md)).
 - Elasticsearch / audit consumer for `huy.network.links` (topic is publish-only in MVP).
 

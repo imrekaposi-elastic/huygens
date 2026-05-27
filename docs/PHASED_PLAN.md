@@ -1,6 +1,6 @@
 # Huygens platform — phased subprojects (v3)
 
-Canonical delivery roadmap for the monorepo (phases 0–13). For requirements detail see
+Canonical delivery roadmap for the monorepo (phases 0–17). For requirements detail see
 [FRAMEWORK_PLAN.md](../FRAMEWORK_PLAN.md); for ADRs and diagrams see
 [architecture/](architecture/README.md).
 
@@ -16,7 +16,7 @@ The strategic proposal and the build plan share one delivery model: **Huygens is
 
 | Strategic promise | Technical expression in phases |
 |-------------------|-------------------------------|
-| Know **where** workloads run | Phase 1 inventory; provider/region/agent/project; Phase 11 K8s node placement |
+| Know **where** workloads run | Phase 1 inventory; provider/region/agent/project; Phase 11 K8s node placement; Phases 14–17 optional adoption (Proxmox, AWS/GCP/Azure RO) |
 | Know **why** | Phase 7: org compliance catalog + **asset criticality** on resources + inherited provider/region traits |
 | **Compliant** | Phase 7 checks, owners, validity periods; drift flags from Phase 1 |
 | **Who changed** | ECS audit (ES); RBAC including `auditor`, `compliance_engineer` |
@@ -44,6 +44,7 @@ The strategic proposal and the build plan share one delivery model: **Huygens is
 | Kubernetes | **Explicit section** | — | **Phase 11** | Was missing; now crucial |
 | OSS + existing infra | Yes | Agents subdirectory | `agents/` + `services/` | Aligned |
 | Ticketing | — | — | Out of scope (SNOW/Jira plugin later) | Aligned |
+| Multi-technology inventory (cloud + other hypervisors) | Implied (multi-provider estates) | Agents subdirectory | **Phases 14–17** | **Lowest priority** — adoption track after 0–13 |
 
 ---
 
@@ -322,7 +323,7 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 | `03-tenancy.excalidraw` | Org → provider → region → agent; project → vnet/VM |
 | `04-agent-dual-io.excalidraw` | Write queue vs read path |
 | `05-event-flow.excalidraw` | Kafka topics and consumers |
-| `06-phase-roadmap.excalidraw` | Delivery phases 0–13 |
+| `06-phase-roadmap.excalidraw` | Delivery phases 0–17 (yellow through Phase 6; grey 14–17 adoption track) |
 | `07-air-gapped.excalidraw` | Offline / customer-network topology |
 
 ---
@@ -423,6 +424,11 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - Cross-host **traffic** (ping across WG) — **manual proof only**, not CI
 - **GA / production pilot** — not closed: agent release discipline, link/vnet lifecycle cleanup, integration reconcile test (see operations doc backlog)
 
+### Phase 6.1 — Per-vnet flat L2 console UI (✅)
+- Console **Flat breakout** on project networks: `bridge_uplink`, `macvlan` via projects proxy → agent `PUT .../breakout/flat`
+- `local_peer` remains topology-managed (read-only in UI when a `local` link is active)
+- Agent validates uplink interface names; tests in `test_flat_breakout_schema.py`, `test_breakout_proxy.py`
+
 ### Phase 7 — Compliance, asset criticality, and “know why”
 - **Org compliance catalog:** standards with description, URL, MoSCoW, org target level (FRAMEWORK_PLAN)
 - **Provider / region traits** with inheritance to projects/VMs
@@ -488,6 +494,39 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - Console or API to launch playbook-bound sessions
 - **Deliverable:** Playbook catalog, enforced commands on gateway/proxy, playbook-linked sessions searchable in ES
 
+### Phases 14–17 — Platform adoption track (lowest priority)
+*After Phases 0–13. **Not** chained from Phase 13 on the roadmap diagram — a separate adoption track. **Read-only (RO)** inventory for public cloud; libvirt remains the only mutation and Phase 6 breakout path until a later phase.*
+
+**Shared prerequisites:** Phase 1 registry (`agent_technologies`), Phase 1 inventory poller, Phase 5 console (capability gating).
+
+**Shared foundation (before or with Phase 14):** ADR 0013 (multi-technology agents), inventory snapshot v2, technology-aware poller dispatch, platform capability tokens (`inventory.read` only on this track). Hypervisor connect: `base_url` + bearer; cloud connect: IAM/role + vault (extends ADR 0005).
+
+**Explicitly out of scope (Phases 14–17):**
+
+- Public-cloud **CRUD** from Huygens UI
+- Phase 6 **network links** across cloud ↔ libvirt (peering/TGW/VPN is a separate ADR)
+- Full **proxmox-agent** parity with libvirt write queue + breakout
+
+### Phase 14 — Proxmox adoption
+- `proxmox-inventory` (or proxmox-agent read path): Proxmox VE API — VMs, SDNs, cluster nodes
+- Console inventory under provider/region; **no** create/delete VM or network from Huygens
+- **Deliverable:** Proxmox estate visible in registry + inventory; capability-gated UI
+
+### Phase 15 — AWS adoption (read-only)
+- `aws-inventory` connector: EC2 + VPC/subnet describe per account/region (boto3)
+- **Deliverable:** AWS workloads in inventory console; RO only
+
+### Phase 16 — GCP adoption (read-only)
+- `gcp-inventory` connector: Compute Engine + VPC describe (per project/region)
+- Reuses snapshot v2 + poller dispatch established in Phases 14–15
+- **Deliverable:** GCP workloads in inventory console; RO only
+
+### Phase 17 — Azure adoption (read-only)
+- `azure-inventory` connector: VMs + VNet/subnet describe (per subscription/region)
+- **Deliverable:** Azure workloads in inventory console; RO only
+
+**Detail:** [agents/README.md](../agents/README.md); ADR 0013 (to be written).
+
 ---
 
 ## Build order
@@ -527,11 +566,18 @@ flowchart LR
   P5 --> P12
   P9 --> P13[Phase13_Playbooks]
   P12 --> P13
+  P1 --> P14[Phase14_Proxmox]
+  P5 --> P14
+  P14 --> P15[Phase15_AWS_RO]
+  P15 --> P16[Phase16_GCP_RO]
+  P16 --> P17[Phase17_Azure_RO]
 ```
 
 **MVP critical path:** Phase 0 → 1a + 1b (parallel) → Phase 1 → **Phase 3** (operator API). Phases 2 (SSO) and 5 (console) can follow in parallel where useful.
 
-**Strategic completeness path:** Phases 0–10 deliver FRAMEWORK_PLAN + OSS platform; **Phase 11** K8s inventory/placement; **Phases 12–13** audited K8s/k9s access and playbooks.
+**Strategic completeness path:** Phases 0–10 deliver FRAMEWORK_PLAN + OSS platform; **Phase 11** K8s inventory/placement; **Phases 12–13** audited K8s/k9s access and playbooks; **Phases 14–17** optional adoption track (lowest priority).
+
+**Lowest priority:** Phases **14–17** (adoption track) — do not start until Phases **0–13** (or an explicit PO cut-down of 11–13) are accepted; order **14 → 15 → 16 → 17**; libvirt operator path remains canonical for CRUD and breakout.
 
 ### Access-plane phases (9, 12, 13)
 
@@ -561,6 +607,10 @@ Phase **9** can ship before **11** (VM-only). Phase **12** requires **11** (clus
 | `ssh-gateway` | Go | Phase 9 — audited VM SSH, PTY recording → ES |
 | `k8s-access` | Go | Phase 12 — K8s API proxy, exec recording, k9s-compatible |
 | `agents/libvirt` | Python | Write queue + read path |
+| `connectors/proxmox` | Python | Phase 14 — Proxmox adoption (inventory RO) |
+| `connectors/aws` | Python | Phase 15 — AWS adoption (inventory RO) |
+| `connectors/gcp` | Python | Phase 16 — GCP adoption (inventory RO) |
+| `connectors/azure` | Python | Phase 17 — Azure adoption (inventory RO) |
 
 ---
 
@@ -584,6 +634,7 @@ Phase **9** can ship before **11** (VM-only). Phase **12** requires **11** (clus
 - **Ticketing** — SNOW/Jira plugin only if needed later
 - **Asset criticality UI** — Phase 7 (role exists in FRAMEWORK_PLAN from day one in IAM stubs only)
 - **Kubernetes inventory** — Phase 11 (not deferred indefinitely; **crucial** after core platform)
+- **Proxmox / AWS / GCP / Azure adoption** — Phases 14–17 (inventory RO; **lowest priority**; not before Phase 13)
 
 ---
 
@@ -601,3 +652,4 @@ Phase **9** can ship before **11** (VM-only). Phase **12** requires **11** (clus
 9. **Air-gapped install** is a first-class deliverable (Phase 0 ADR + Phase 10 docs), not an afterthought.
 10. **Kibana compliance node** replaces “SIEM index templates” as the Elastic UX integration path (Phase 7/8 optional pack).
 11. **OTel + EDOT-friendly** across platform (Phase 0 ADR, Phase 8 full rollout; agent has partial OTel today).
+13. **Phases 14–17** = adoption track: **14 Proxmox**, **15 AWS (RO)**, **16 GCP (RO)**, **17 Azure (RO)**; libvirt-only for CRUD and Phase 6 links; **lowest roadmap priority**; not dependent on Phase 13 completion (separate track).

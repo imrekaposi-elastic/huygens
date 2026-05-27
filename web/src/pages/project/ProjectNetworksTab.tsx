@@ -7,6 +7,7 @@ import { liveQueryOptions } from "@/lib/liveRefresh";
 import { filterManagedNetworks, LIBVIRT_SYSTEM_NETWORK } from "@/lib/systemNetwork";
 import { useProjectWorkspace } from "@/pages/project/projectContext";
 import { ResourceList, ResourceListEmpty, ResourceListItem } from "@/pages/project/ResourceList";
+import { FlatBreakoutDialog } from "@/pages/project/FlatBreakoutDialog";
 import { NetworkDialog } from "@/pages/project/NetworkDialog";
 
 type Props = { projectId: string };
@@ -16,6 +17,7 @@ export function ProjectNetworksTab({ projectId }: Props) {
   const qc = useQueryClient();
   const [showAvailable, setShowAvailable] = useState(false);
   const [dialog, setDialog] = useState<"create" | { edit: Record<string, unknown> } | null>(null);
+  const [flatBreakoutNet, setFlatBreakoutNet] = useState<string | null>(null);
 
   const project = useQuery({
     queryKey: ["project", projectId],
@@ -176,6 +178,9 @@ export function ProjectNetworksTab({ projectId }: Props) {
                 name={name}
                 subtitle={subtitle}
                 onEdit={() => setDialog({ edit: net })}
+                onFlatBreakout={
+                  readonly ? undefined : () => setFlatBreakoutNet(name)
+                }
                 onDelete={
                   readonly
                     ? undefined
@@ -206,6 +211,15 @@ export function ProjectNetworksTab({ projectId }: Props) {
           })
         )}
       </ResourceList>
+
+      <FlatBreakoutDialog
+        open={flatBreakoutNet !== null}
+        projectId={projectId}
+        agentId={agentId}
+        networkName={flatBreakoutNet ?? ""}
+        onClose={() => setFlatBreakoutNet(null)}
+        onSaved={invalidate}
+      />
 
       <NetworkDialog
         open={dialog !== null}

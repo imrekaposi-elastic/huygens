@@ -52,6 +52,7 @@ export function ResourceListItem({
   name,
   subtitle,
   onEdit,
+  onFlatBreakout,
   onDelete,
   deleteLabel = "Delete",
   extra,
@@ -59,6 +60,7 @@ export function ResourceListItem({
   name: string;
   subtitle?: string;
   onEdit?: () => void;
+  onFlatBreakout?: () => void;
   onDelete?: () => void;
   deleteLabel?: string;
   extra?: ReactNode;
@@ -78,6 +80,15 @@ export function ResourceListItem({
             className="rounded border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-sm text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:bg-slate-800"
           >
             Edit
+          </button>
+        )}
+        {onFlatBreakout && (
+          <button
+            type="button"
+            onClick={onFlatBreakout}
+            className="rounded border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-sm text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:bg-slate-800"
+          >
+            Flat breakout
           </button>
         )}
         {onDelete && (

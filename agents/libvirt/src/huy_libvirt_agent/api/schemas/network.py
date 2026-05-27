@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from huy_libvirt_agent.api.schemas.agent import AgentLabels
 
@@ -39,12 +40,24 @@ class WireGuardBreakoutConfig(BaseModel):
     nat_exempt_cidrs: list[str] = Field(default_factory=list)
 
 
+_UPLINK_RE = re.compile(r"^[a-zA-Z0-9._-]{1,15}$")
+
+
 class FlatBreakoutConfig(BaseModel):
     enabled: bool = False
     mode: Literal["bridge_uplink", "macvlan", "local_peer"] = "bridge_uplink"
     uplink: str = ""
     remote_hypervisor_cidrs: list[str] = Field(default_factory=list)
     nat_exempt_cidrs: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_flat(self) -> FlatBreakoutConfig:
+        uplink = self.uplink.strip()
+        if uplink and not _UPLINK_RE.match(uplink):
+            raise ValueError("uplink must be 1–15 alphanumeric/.-_ characters")
+        if self.enabled and self.mode in ("bridge_uplink", "macvlan") and not uplink:
+            raise ValueError("uplink is required when flat breakout is enabled")
+        return self
 
 
 class BreakoutResponse(BaseModel):

@@ -163,6 +163,21 @@ export type LinkStatus = "pending" | "applying" | "connected" | "error" | "delet
 
 export type LinkType = "wireguard" | "local";
 
+export type FlatBreakoutMode = "bridge_uplink" | "macvlan" | "local_peer";
+
+export type FlatBreakoutConfig = {
+  enabled: boolean;
+  mode: FlatBreakoutMode;
+  uplink: string;
+  remote_hypervisor_cidrs: string[];
+  nat_exempt_cidrs: string[];
+};
+
+export type NetworkBreakout = {
+  wireguard: Record<string, unknown>;
+  flat: FlatBreakoutConfig;
+};
+
 export type NetworkLinkEndpoint = {
   agent_id: string;
   project_id: string;

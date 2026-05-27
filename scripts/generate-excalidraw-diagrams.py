@@ -17,6 +17,7 @@ C_SVC = "#a5d8ff"
 C_DATA = "#b2f2bb"
 C_INFRA = "#ffec99"
 C_DONE = "#ffd43b"  # completed phases (roadmap) — distinct from planned blue #a5d8ff
+C_LOW = "#e9ecef"  # lowest-priority planned phase (14)
 C_AGENT = "#ffd8a8"
 C_BUS = "#e599f7"
 C_BORDER = "#1e1e1e"
@@ -471,35 +472,50 @@ def diagram_event_flow() -> Diagram:
 
 def diagram_phases() -> Diagram:
     d = Diagram()
-    d.label("title", 40, 20, "Huygens — Delivery phases 0–13", size=28)
-    d.label("legend", 40, 52, "Yellow = complete  ·  Blue = planned  ·  Two rows, left→right", size=14)
+    d.label("title", 40, 20, "Huygens — Delivery phases 0–17", size=28)
+    d.label(
+        "legend",
+        40,
+        52,
+        "Yellow = complete  ·  Blue = planned  ·  Grey = adoption track 14–17 (lowest priority, RO)",
+        size=14,
+    )
 
-    # (id, label, done)
-    phases_spec = [
-        ("p0", "0\nFoundation", True),
-        ("p1a", "1a\nIAM", True),
-        ("p1b", "1b\nAgent I/O", True),
-        ("p1", "1\nRegistry", True),
-        ("p2", "2\nSSO", True),
-        ("p3", "3\nProjects", True),
-        ("p4", "4\nIPAM", True),
-        ("p5", "5\nConsole", True),
-        ("p6", "6\nBreakout", False),
-        ("p7", "7\nCompliance", False),
-        ("p8", "8\nOTel", False),
-        ("p9", "9\nSSH VM", False),
-        ("p10", "10\nHardening", False),
-        ("p11", "11\nK8s inv", False),
-        ("p12", "12\nK8s access", False),
-        ("p13", "13\nPlaybooks", False),
+    # (id, label, status) — status: done | planned | low
+    phases_spec: list[tuple[str, str, str]] = [
+        ("p0", "0\nFoundation", "done"),
+        ("p1a", "1a\nIAM", "done"),
+        ("p1b", "1b\nAgent I/O", "done"),
+        ("p1", "1\nRegistry", "done"),
+        ("p2", "2\nSSO", "done"),
+        ("p3", "3\nProjects", "done"),
+        ("p4", "4\nIPAM", "done"),
+        ("p5", "5\nConsole", "done"),
+        ("p6", "6\nBreakout", "done"),
+        ("p7", "7\nCompliance", "planned"),
+        ("p8", "8\nOTel", "planned"),
+        ("p9", "9\nSSH VM", "planned"),
+        ("p10", "10\nHardening", "planned"),
+        ("p11", "11\nK8s inv", "planned"),
+        ("p12", "12\nK8s access", "planned"),
+        ("p13", "13\nPlaybooks", "planned"),
+        ("p14", "14\nProxmox", "low"),
+        ("p15", "15\nAWS (RO)", "low"),
+        ("p16", "16\nGCP (RO)", "low"),
+        ("p17", "17\nAzure (RO)", "low"),
     ]
 
-    box_w, box_h, gap = 80, 58, 8
-    x0, y0_row1, y0_row2 = 40, 95, 195
-    row1 = phases_spec[:8]
-    row2 = phases_spec[8:]
+    status_bg = {"done": C_DONE, "planned": C_SVC, "low": C_LOW}
 
-    def _draw_row(spec: list, y0: float) -> list[str]:
+    box_w, box_h, gap = 80, 58, 8
+    x0, y0_row1, y0_row2, y0_row3 = 40, 95, 195, 295
+    row1 = phases_spec[:8]
+    row2 = phases_spec[8:16]
+    row3 = phases_spec[16:]
+
+    def _draw_row(
+        spec: list[tuple[str, str, str]], y0: float, *, chain: bool = True
+    ) -> list[str]:
         track_w = len(spec) * box_w + (len(spec) - 1) * gap + 24
         d.box(
             f"track-{y0}",
@@ -513,16 +529,51 @@ def diagram_phases() -> Diagram:
             underlay=True,
         )
         ids: list[str] = []
-        for i, (eid, lbl, done) in enumerate(spec):
+        for i, (eid, lbl, status) in enumerate(spec):
             x = x0 + i * (box_w + gap)
-            d.box(eid, x, y0, box_w, box_h, lbl, bg=C_DONE if done else C_SVC, font_size=13)
+            stroke = "dashed" if status == "low" else "solid"
+            d.box(
+                eid,
+                x,
+                y0,
+                box_w,
+                box_h,
+                lbl,
+                bg=status_bg[status],
+                font_size=13,
+                stroke_style=stroke,
+            )
             ids.append(eid)
-        for i in range(len(ids) - 1):
-            d.arrow(f"ph-{ids[i]}-{ids[i + 1]}", ids[i], ids[i + 1], src_side="right", dst_side="left")
+        if chain:
+            for i in range(len(ids) - 1):
+                d.arrow(
+                    f"ph-{ids[i]}-{ids[i + 1]}",
+                    ids[i],
+                    ids[i + 1],
+                    src_side="right",
+                    dst_side="left",
+                )
         return ids
 
     _draw_row(row1, y0_row1)
     _draw_row(row2, y0_row2)
+    _draw_row(row3, y0_row3)
+    d.label(
+        "row3-lbl",
+        x0,
+        y0_row3 - 22,
+        "Adoption track (after 0–13) — inventory read-only; no arrow from Phase 13",
+        size=12,
+    )
+
+    d.label(
+        "adr-note",
+        40,
+        y0_row3 + box_h + 28,
+        "ADR-linked: 0006/1b Agent I/O · 0010→7 know-why · 0011→2 SSO · 0012→6+6.1 links/flat UI · 0013→14–17 adoption",
+        size=13,
+    )
+    d.label("p6-defer", x0 + 6 * (box_w + gap) + 4, y0_row2 + box_h + 6, "6.1 flat L2 UI", size=11)
     return d
 
 
