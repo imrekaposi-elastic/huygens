@@ -33,10 +33,13 @@ Cross-service tests live under `tests/integration/`. They are **not** part of `m
 
 ```bash
 docker compose up -d --build
+# Optional: create Kafka link topic (see docs/install/docker-compose.md)
 make test-integration
 ```
 
 See [tests/integration/README.md](../tests/integration/README.md) for environment variables and module layout.
+
+**Phase 6 scope:** `test_network_links.py` is API smoke only (overlay pool, empty topology). Link reconcile, breakout apply, and cross-host traffic require [manual runbooks](../tests/integration/README.md#manual-two-agent-wireguard-link-test-phase-6).
 
 Conventions:
 
@@ -44,6 +47,10 @@ Conventions:
 - Require `HUY_E2E=1` (set automatically by `make test-integration`)
 - Use ephemeral organizations where possible; tests clean up org + projects after mutation
 - `@pytest.mark.requires_agent` skips when no connected libvirt agent exists
+
+### PostgreSQL schema upgrades
+
+Projects unit tests use **SQLite**; production Compose uses **PostgreSQL**. Column additions (e.g. `ip_pools.pool_kind`) are applied via `apply_schema_upgrades` on projects startup. After pulling schema changes, restart `projects` against existing volumes — or use `docker compose down -v` for a clean dev DB.
 
 Example GitHub Actions job:
 

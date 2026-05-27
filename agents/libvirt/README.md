@@ -84,6 +84,33 @@ huy-libvirt-agent
 
 API documentation: `http://127.0.0.1:8765/docs` (or `https://...` when TLS is enabled)
 
+## Upgrading the agent (Phase 6+)
+
+The control plane (Compose) and the libvirt agent **release together** for breakout and
+topology features. After `git pull` on the control plane host, upgrade every hypervisor
+that participates in network links.
+
+```bash
+# On the hypervisor (e.g. /opt/huygens)
+cd /opt/huygens/agents/libvirt
+python3 -m pip install -e ".[libvirt]"
+sudo systemctl restart huy-libvirt-agent
+```
+
+Verify `local_peer` is supported (required for same-hypervisor links):
+
+```bash
+python3 -c "from huy_libvirt_agent.api.schemas.network import FlatBreakoutConfig; \
+print(FlatBreakoutConfig.model_json_schema()['properties']['mode'])"
+```
+
+Expected: enum includes `bridge_uplink`, `macvlan`, **`local_peer`**.
+
+Full checklist: [docs/operations/phase6-release-and-validation.md](../../docs/operations/phase6-release-and-validation.md).
+
+**Network delete:** operator delete via projects removes libvirt definition and agent-managed
+metadata under `data_dir/vnets/{name}/` so inventory does not list ghost vnets.
+
 ## systemd
 
 From the hypervisor (repo at `/opt/huygens`):

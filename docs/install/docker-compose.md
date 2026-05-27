@@ -48,6 +48,18 @@ Kafka starts with the default stack (`KAFKA_BOOTSTRAP=kafka:9092`). Override in 
 
 First boot may take ~30–60s while the broker passes its healthcheck before app services start.
 
+**Application topics are not auto-created.** After the broker is healthy, create the Phase 6 link topic (once per cluster):
+
+```bash
+docker compose exec kafka /opt/kafka/bin/kafka-topics.sh \
+  --bootstrap-server localhost:9092 \
+  --create --if-not-exists \
+  --topic huy.network.links \
+  --partitions 1 --replication-factor 1
+```
+
+Without it, `projects` logs publish warnings; link CRUD and topology still work. See [ADR 0004](../architecture/adrs/0004-kafka-event-bus.md).
+
 ## Stop
 
 ```bash
@@ -58,10 +70,14 @@ docker compose down -v
 
 ## Libvirt agent
 
-Not included in Compose (requires host libvirt/KVM). On dommel or your laptop:
+Not included in Compose (requires host libvirt/KVM). Topology links and breakout apply run on the hypervisor agent — **upgrade agents whenever you upgrade `projects` / `breakout-controller`**.
+
+On dommel or your laptop:
 
 ```bash
 cd agents/libvirt && make run
 ```
+
+Production hypervisors: [agents/libvirt/README.md](../../agents/libvirt/README.md#upgrading-the-agent-phase-6) and [Phase 6 operations](../operations/phase6-release-and-validation.md).
 
 Point the agent at registry when Phase 1 enrollment exists.

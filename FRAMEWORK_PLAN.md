@@ -11,7 +11,7 @@ Non func:
 - instant updates of status changes 
 - per vm see performance overview in graph (cpu/mem/disk/net)
 - per hypervisor see performance overview in graph if available like with libvirt (cpu/mem/disk/net)
-- linking networks should be drag and drop
+- linking networks should be drag and drop — **Phase 6 MVP:** console Topology + control-plane reconciler; cross-host traffic validated manually; see [docs/PHASED_PLAN.md](docs/PHASED_PLAN.md) and [docs/operations/phase6-release-and-validation.md](docs/operations/phase6-release-and-validation.md)
 - log in ECS format
 - use opentelemetry throughout the application. be edot friendly.
 

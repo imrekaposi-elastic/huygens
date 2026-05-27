@@ -16,7 +16,10 @@ CloudEvents 1.0 envelope with JSON `data` payloads. Producers set:
 |-------|--------|
 | `huy.agent.events` | [agent-event.schema.json](agent-event.schema.json) |
 | `huy.inventory.snapshots` | [inventory-snapshot.schema.json](inventory-snapshot.schema.json) |
+| `huy.network.links` | [com.huygens.network.link.v1.json](com.huygens.network.link.v1.json) |
 | `huy.audit.events` | [audit-event.schema.json](audit-event.schema.json) |
+
+Create topics explicitly on the broker (Compose does not auto-create them). See [docs/install/docker-compose.md](../../docs/install/docker-compose.md#kafka).
 
 ## Versioning
 

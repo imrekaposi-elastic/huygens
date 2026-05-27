@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (Phase 6)
+Accepted (Phase 6) — **MVP shipped**; GA criteria in [Phase 6 operations](../../operations/phase6-release-and-validation.md)
 
 ## Context
 
@@ -14,27 +14,29 @@ Operators need to connect libvirt virtual networks on different hypervisors (FRA
 
 | Component | Responsibility |
 |-----------|----------------|
-| **breakout-controller** (Go) | Generate WG key pairs; build peer configs for a pairwise link; no libvirt or JWT |
+| **breakout-controller** (Go) | Build WG peer configs for a pairwise link from keys supplied by projects; no libvirt or JWT |
 | **projects** (Python) | Desired state: `network_links`, overlay IPAM, RBAC, agent breakout proxy, reconcile loop |
-| **libvirt agent** | Enforce breakout via existing `PUT .../breakout/wireguard` |
+| **libvirt agent** | Enforce breakout via `PUT .../breakout/wireguard` and `PUT .../breakout/flat` |
 | **web** | Topology graph (React Flow); create/delete links; no private keys in browser |
 
 ### Link = one edge between two vnets
 
 - Endpoints: `(agent_id, project_id, network_name)` × 2, same organization.
-- **link_type:** `wireguard` when endpoints are on **different** hypervisors (overlay `/30`, breakout-controller plan). **`local`** when both vnets share the same `agent_id`: no WireGuard, no overlay allocation; reconciler applies flat breakout `mode=local_peer` (iptables NAT exempt + FORWARD between peer vnet CIDRs on that agent).
-- **Overlay:** org `IpPool` with `pool_kind=overlay`; each link consumes one `/30`; tunnel addresses visible in API/UI.
-- **Secrets:** WG private keys encrypted at rest (`huy_auth.agent_tokens` Fernet); never returned to clients.
+- **link_type `wireguard`:** different `agent_id` — overlay `/30` from `pool_kind=overlay`, breakout-controller `plan`, reconciler applies WG on both agents.
+- **link_type `local`:** same `agent_id` — no WireGuard, no overlay allocation; reconciler applies flat `mode=local_peer` (iptables NAT exempt + FORWARD between peer vnet CIDRs). Requires agent build that accepts `local_peer` (see [operations doc](../../operations/phase6-release-and-validation.md)).
+- **Overlay:** org `IpPool` with `pool_kind=overlay`; each wireguard link consumes one `/30`; tunnel addresses visible in API/UI.
+- **Secrets:** WG private keys encrypted at rest (Fernet); never returned to clients.
 
 ### Lifecycle
 
-`pending` → `applying` → `connected` | `error`; delete → `deleting` → removed. Reconciler runs in projects lifespan (interval ~10s). Drift: compare agent breakout peers to expected; set `config_drift` on link.
+`pending` → `applying` → `connected` | `error`; delete → `deleting` → removed. Reconciler runs in projects lifespan (default interval ~15s). Drift: compare agent breakout to expected; set `config_drift` on link (API only; topology UI drift badge not yet implemented).
 
 ### APIs
 
 - JWT: `GET/POST/DELETE /api/v1/organizations/{org_id}/network-links`, `GET .../topology`
 - Proxy: `GET/PUT .../projects/{pid}/agents/{aid}/networks/{name}/breakout(/wireguard|/flat)`
-- Internal: breakout-controller `POST /v1/links/plan`, `POST /v1/links/revoke` (`X-Huy-Service-Token`)
+- Internal: breakout-controller `POST /v1/links/plan` (`X-Huy-Service-Token`)
+- Internal: `POST /v1/links/revoke` — **implemented, unused**; delete path disables WG/flat via agent proxy instead
 
 ### RBAC
 
@@ -43,15 +45,31 @@ Operators need to connect libvirt virtual networks on different hypervisors (FRA
 
 ### Events
 
-- CloudEvents type `com.huygens.network.link.v1` on topic `huy.audit.events` (MVP) when link status changes; console refreshes via existing inventory SSE invalidation on projects mutations.
+- CloudEvents type `com.huygens.network.link.v1` on Kafka topic **`huy.network.links`** when link status changes ([ADR 0004](0004-kafka-event-bus.md)). Topic must be created on the cluster (not auto-created in Compose).
+- Console live refresh: inventory SSE + HTTP invalidation on projects mutations; **no** link-topic consumer in MVP.
+
+### Deployment boundary
+
+- Control plane (Compose): `projects`, `breakout-controller`, `web`, PostgreSQL, Kafka.
+- **Libvirt agent is not in Compose** — must be installed and upgraded on each hypervisor with the same release as control plane for local links and metadata purge on network delete.
+
+### Out of scope (Phase 6 MVP)
+
+- Per-vnet flat L2 `bridge_uplink` / `macvlan` console UI (agent API exists; deferred Phase 6.1+).
+- Cascading delete of `network_links` when a vnet is deleted from a project.
+- Pruning `project_resources` when a vnet is removed only on the hypervisor (out-of-band).
+- Automated integration test that asserts reconcile-to-`connected` with a real or mock agent.
 
 ## Consequences
 
-- Requires overlay pool per org before **cross-hypervisor** linking (UI guides creation). Same-hypervisor links need only routable vnet CIDRs on both networks.
-- Second hypervisor agent needed for real cross-host validation.
+- Requires overlay pool per org before **cross-hypervisor** linking (UI guides creation). Same-hypervisor links need routable vnet CIDRs on both networks only.
+- Second hypervisor agent needed for cross-host **data-plane** validation (manual runbook).
+- Single-agent environments: cross-agent links remain `error` until a peer agent exists — expected, not a reconciler bug.
 - Full mesh is emergent (many links), not auto-wired.
+- Network delete via projects purges agent-managed metadata and clears assignment; see agent `delete_network` and [operations doc](../../operations/phase6-release-and-validation.md).
 
 ## Alternatives considered
 
 - **Projects-only keygen (no Go service):** Rejected; roadmap specifies `breakout-controller` and separates crypto from Python CRUD.
 - **Browser → agent breakout:** Rejected; violates Phase 5 control-plane-only console rule.
+- **Publishing link events to `huy.audit.events`:** Rejected for MVP; dedicated topic keeps audit vs operational link streams separable.

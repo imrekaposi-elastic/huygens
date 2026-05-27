@@ -21,4 +21,6 @@ await producer.send(TOPIC_INVENTORY_SNAPSHOTS, build_envelope(...))
 await producer.stop()
 ```
 
+Topic constants include `TOPIC_NETWORK_LINKS` (`huy.network.links`) for Phase 6 link lifecycle events from projects.
+
 See [ADR 0004](../../docs/architecture/adrs/0004-kafka-event-bus.md).

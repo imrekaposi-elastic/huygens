@@ -1,6 +1,6 @@
 # Huygens console
 
-Phase 5 web UI — React SPA for operators (**complete**; see [PHASED_PLAN.md](../docs/PHASED_PLAN.md)).
+React SPA for operators. Phase 5 (projects, inventory, IPAM) and Phase 6 (**Topology** — network linking) are in the console; see [PHASED_PLAN.md](../docs/PHASED_PLAN.md).
 
 ## Development
 
@@ -17,7 +17,9 @@ Default login (from `compose.env.example`): `platform-admin` / `platform-admin-d
 
 **First login:** platform admins with no organizations are sent to `/setup` — a multi-step wizard to create an organization, optional first project, and review security notes (no default org is seeded).
 
-**Platform admin nav:** **Fabric** (libvirt-agent, …) → **Infrastructure** (vendor + region tree) → **Agents** (enroll at a region) → Dashboard / Projects.
+**Platform admin nav:** **Fabric** (libvirt-agent, …) → **Infrastructure** (vendor + region tree) → **Agents** (enroll at a region) → Dashboard / Projects / **Topology** / IPAM.
+
+**Topology (Phase 6):** connect vnets on the graph (drag or click source then target). Cross-hypervisor links need an overlay IPAM pool; same-hypervisor links use direct routing (`local`). Link detail shows `last_error` when reconcile fails — often outdated libvirt agent; see [Phase 6 operations](../docs/operations/phase6-release-and-validation.md).
 
 **DB reset:** This release changes registry/projects schema (`infrastructure_providers`, hierarchical regions, `agent_technologies`). Run `docker compose down -v` before upgrading.
 

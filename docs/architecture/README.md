@@ -27,6 +27,7 @@ Architecture decisions, diagrams, and contracts for the Huygens platform.
 | [0010](adrs/0010-know-why-and-asset-criticality.md) | Know why: compliance and asset criticality |
 | [0011](adrs/0011-sse-auth-via-authorization-header.md) | SSE: Bearer header only; no `EventSource ?token=` |
 | [0011](adrs/0011-keycloak-group-role-mapping.md) | Keycloak SSO and IdP group → role mapping |
+| [0012](adrs/0012-hybrid-breakout-and-network-linking.md) | Phase 6: hybrid breakout, network links, topology |
 
 ## Phase map
 
@@ -36,4 +37,6 @@ See [../PHASED_PLAN.md](../PHASED_PLAN.md) for delivery phases 0–13.
 
 **Web console** (`web/`, Phase 5 ✅) proxies to IAM, projects, inventory, and registry via nginx in Compose. Live inventory uses **Kafka → inventory SSE hub → console** ([ADR 0011](adrs/0011-sse-auth-via-authorization-header.md)).
 
-**Elasticsearch** is part of the target architecture for **audit logs (ECS)**, compliance dashboards, and **SSH session recording search** (Phase 9). Events flow **Kafka → ES ingest**; PostgreSQL stays the system of record. Inventory publishes snapshots via **`shared/huy_events`**; agent→Kafka publish remains partial — see [adrs/0004-kafka-event-bus.md](adrs/0004-kafka-event-bus.md).
+**Phase 6 (network linking):** `projects` + `breakout-controller` + topology UI in Compose; libvirt agent on each hypervisor. Operational release and validation: [operations/phase6-release-and-validation.md](../operations/phase6-release-and-validation.md).
+
+**Elasticsearch** is part of the target architecture for **audit logs (ECS)**, compliance dashboards, and **SSH session recording search** (Phase 9). Events flow **Kafka → ES ingest**; PostgreSQL stays the system of record. Inventory publishes snapshots via **`shared/huy_events`**; link lifecycle publishes to **`huy.network.links`**; agent→Kafka publish remains partial — see [adrs/0004-kafka-event-bus.md](adrs/0004-kafka-event-bus.md).

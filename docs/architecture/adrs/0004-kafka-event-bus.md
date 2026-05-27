@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (Phase 0); amended Phase 5 prep (Kafka required in default stack)
+Accepted (Phase 0); amended Phase 5 prep (Kafka required in default stack); amended Phase 6 (network link topic)
 
 ## Context
 
@@ -20,15 +20,35 @@ Event-driven architecture for inventory updates, audit fan-out, and console live
 |-------|----------|----------|
 | `huy.agent.events` | Agents | Registry, inventory, console |
 | `huy.inventory.snapshots` | Inventory poller | Registry DB, console (SSE via broadcast consumer) |
-| `huy.audit.events` | All services | ES ingest (audit-ingest / Logstash) |
+| `huy.network.links` | Projects (link reconciler) | None in MVP (future: audit/ES, automation) |
+| `huy.audit.events` | All services (audit mutations) | ES ingest (audit-ingest / Logstash) |
 
 - Payload: **CloudEvents 1.0** envelope + JSON `data` (schemas in `schemas/kafka/`).
+- **Link events** use type `com.huygens.network.link.v1` on topic **`huy.network.links`** only — not `huy.audit.events`. Schema: [`schemas/kafka/com.huygens.network.link.v1.json`](../../../schemas/kafka/com.huygens.network.link.v1.json).
 - Inventory poller **publishes** successful snapshots to `huy.inventory.snapshots` when `KAFKA_PUBLISH_ENABLED=true` (default in Compose).
 - **Elasticsearch** is the long-term search and analytics store for **audit ECS**, **compliance views**, and **SSH gateway session recordings** (Phase 9) — not a disposable sidecar. PostgreSQL remains system of record; ES is the query plane at scale.
 
 ### Degraded mode (air-gap exception)
 
 Explicit operator choice only: poll-only inventory without Kafka publish, audit retained in PostgreSQL until ES is available. **Not** the default `docker compose up` stack.
+
+### Topic provisioning (Compose and production)
+
+Apache Kafka in the default Compose file does **not** auto-create application topics.
+Operators must create topics explicitly (or use cluster tooling / Helm hooks). Minimum for
+Phase 6 link publish without broker warnings:
+
+```bash
+docker compose exec kafka /opt/kafka/bin/kafka-topics.sh \
+  --bootstrap-server localhost:9092 \
+  --create --if-not-exists \
+  --topic huy.network.links \
+  --partitions 1 --replication-factor 1
+```
+
+If the topic is missing, projects logs a warning and continues; PostgreSQL remains source
+of truth for link state. Console refresh for topology uses inventory SSE and HTTP polling,
+not a link-event consumer.
 
 ## Consequences
 
