@@ -8,7 +8,7 @@ Excalidraw source files for Huygens. Open in [excalidraw.com](https://excalidraw
 | [02-deployment.excalidraw](02-deployment.excalidraw) | Physical / K8s deployment |
 | [03-tenancy.excalidraw](03-tenancy.excalidraw) | Org, project, agent hierarchy |
 | [04-agent-dual-io.excalidraw](04-agent-dual-io.excalidraw) | Libvirt write queue vs read path |
-| [05-event-flow.excalidraw](05-event-flow.excalidraw) | Kafka topics and producers |
+| [05-event-flow.excalidraw](05-event-flow.excalidraw) | Kafka topics, producers, and consumers (incl. `huy.network.links`) |
 | [06-phase-roadmap.excalidraw](06-phase-roadmap.excalidraw) | Delivery phases 0–13 (yellow = complete through **Phase 5**) |
 | [07-air-gapped.excalidraw](07-air-gapped.excalidraw) | Offline install topology |
 

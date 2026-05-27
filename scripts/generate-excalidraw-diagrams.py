@@ -427,32 +427,45 @@ def diagram_event_flow() -> Diagram:
     d.label("ce", 40, 52, "Left → right · CloudEvents 1.0 + JSON (schemas/kafka/)", size=14)
 
     row_h = 56
-    y1, y2, y3, y4 = 110, 190, 270, 350
+    y1, y2, y3, y4, y5 = 110, 190, 270, 350, 430
     side = {"src_side": "right", "dst_side": "left", "curved": False}
 
     # Column 1 — publishers
     d.box("agent", 40, y1, 130, row_h, "Libvirt\nagent", bg=C_AGENT)
     d.box("inv", 40, y2, 130, row_h, "Inventory\npoller", bg=C_SVC)
-    d.box("proj", 40, y3, 130, row_h, "Projects\n(proxy)", bg=C_SVC)
+    d.box("proj-link", 40, y3, 130, row_h, "Projects\nlink recon.", bg=C_SVC)
     d.box("svc", 40, y4, 130, row_h, "All services\n(audit)", bg=C_SVC)
     # Column 2 — Kafka topics
     d.box("t-agent", 220, y1, 230, 52, "huy.agent.events", bg=C_BUS)
     d.box("t-inv", 220, y2, 230, 52, "huy.inventory.snapshots", bg=C_BUS)
-    d.box("t-audit", 220, y3, 230, 52, "huy.audit.events", bg=C_BUS)
-    # Column 3 — consumers (PG then Console: both from topic, no link between them)
+    d.box("t-links", 220, y3, 230, 52, "huy.network.links", bg=C_BUS)
+    d.box("t-audit", 220, y4, 230, 52, "huy.audit.events", bg=C_BUS)
+    # Column 3 — consumers
     d.box("reg", 520, y1, 130, 52, "Registry", bg=C_SVC)
     d.box("pg", 520, y2, 130, 52, "PostgreSQL", bg=C_DATA)
     d.box("console", 690, y2, 130, 52, "Console", bg=C_UI)
-    d.box("es", 520, y4, 130, 52, "ES ingest", bg=C_DATA)
+    d.box(
+        "links-mvp",
+        520,
+        y3,
+        300,
+        52,
+        "No topic consumer (MVP) · topology via GET /topology",
+        bg="#f8f9fa",
+        stroke_style="dashed",
+        font_size=13,
+    )
+    d.box("es", 520, y5, 130, 52, "ES ingest", bg=C_DATA)
 
     d.arrow("e1", "agent", "t-agent", **side)
     d.arrow("e2", "inv", "t-inv", **side)
+    d.arrow("e2b", "proj-link", "t-links", **side)
     d.arrow("e3", "svc", "t-audit", **side)
-    d.arrow("e3b", "proj", "t-audit", **side)
     d.arrow("e4", "t-agent", "reg", label="consume", **side)
     d.arrow("e5", "t-inv", "pg", **side)
     d.arrow("e6", "t-inv", "console", label="SSE hub", **side)
     d.arrow("e7", "t-audit", "es", **side)
+    d.arrow("e8", "t-links", "links-mvp", label="publish only", **side, dashed=True)
     return d
 
 

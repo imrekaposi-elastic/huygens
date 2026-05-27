@@ -29,7 +29,7 @@ Operators need to connect libvirt virtual networks on different hypervisors (FRA
 
 ### Lifecycle
 
-`pending` → `applying` → `connected` | `error`; delete → `deleting` → removed. Reconciler runs in projects lifespan (default interval ~15s). Drift: compare agent breakout to expected; set `config_drift` on link (API only; topology UI drift badge not yet implemented).
+`pending` → `applying` → `connected` | `error`; delete → `deleting` → removed. Reconciler runs in projects lifespan (default interval ~15s). Drift: compare agent breakout to expected; set `config_drift` on the link record. Console topology shows a **drift** badge on edges and in the link detail panel when `config_drift` is true (HTTP `GET .../topology`, not a Kafka consumer on `huy.network.links`).
 
 ### APIs
 
@@ -46,7 +46,7 @@ Operators need to connect libvirt virtual networks on different hypervisors (FRA
 ### Events
 
 - CloudEvents type `com.huygens.network.link.v1` on Kafka topic **`huy.network.links`** when link status changes ([ADR 0004](0004-kafka-event-bus.md)). Created by Compose `kafka-init` in the default stack; external clusters use [init-topics.sh](../../../docker/kafka/init-topics.sh).
-- Console live refresh: inventory SSE + HTTP invalidation on projects mutations; **no** link-topic consumer in MVP.
+- Console live refresh: inventory SSE + HTTP invalidation on projects mutations; link status also visible via topology API (`config_drift`, `last_error`). **No** Kafka consumer on `huy.network.links` in MVP — see [05-event-flow.excalidraw](../diagrams/05-event-flow.excalidraw).
 
 ### Deployment boundary
 
@@ -56,9 +56,8 @@ Operators need to connect libvirt virtual networks on different hypervisors (FRA
 ### Out of scope (Phase 6 MVP)
 
 - Per-vnet flat L2 `bridge_uplink` / `macvlan` console UI (agent API exists; deferred Phase 6.1+).
-- Cascading delete of `network_links` when a vnet is deleted from a project.
-- Pruning `project_resources` when a vnet is removed only on the hypervisor (out-of-band).
-- Automated integration test that asserts reconcile-to-`connected` with a real or mock agent.
+- Cross-host **data-plane** automated test (control-plane reconcile is covered by unit tests; see [operations doc](../../operations/phase6-release-and-validation.md)).
+- Elasticsearch / audit consumer for `huy.network.links` (topic is publish-only in MVP).
 
 ## Consequences
 
