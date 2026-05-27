@@ -5,6 +5,8 @@ from __future__ import annotations
 import httpx
 from fastapi import HTTPException
 
+from huy_auth.url_safety import AgentUrlError, validate_agent_base_url
+
 
 async def fetch_agent_metrics(
     base_url: str,
@@ -12,7 +14,11 @@ async def fetch_agent_metrics(
     *,
     tls_verify: bool,
 ) -> dict:
-    url = f"{base_url.rstrip('/')}/api/v1/agent/metrics"
+    try:
+        origin = validate_agent_base_url(base_url)
+    except AgentUrlError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    url = f"{origin}/api/v1/agent/metrics"
     headers = {"Authorization": f"Bearer {agent_token}"}
     try:
         async with httpx.AsyncClient(verify=tls_verify, timeout=15.0) as client:

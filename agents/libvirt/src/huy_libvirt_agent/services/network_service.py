@@ -17,6 +17,7 @@ from huy_libvirt_agent.services.libvirt_client import LibvirtError
 from huy_libvirt_agent.services.system_networks import SYSTEM_READONLY_NETWORKS, network_access_flags
 from huy_libvirt_agent.services.metadata import read_metadata, write_metadata
 from huy_libvirt_agent.services.network_xml import render_network_xml
+from huy_libvirt_agent.services.path_safety import PathSafetyError, safe_child_dir, safe_registry_name
 
 
 class NetworkService:
@@ -24,7 +25,7 @@ class NetworkService:
         self._state = state
 
     def _vnet_dir(self, name: str) -> Path:
-        return self._state.settings.data_dir / "vnets" / name
+        return safe_child_dir(self._state.settings.data_dir / "vnets", name)
 
     def list_networks(self) -> list[NetworkResponse]:
         return self._build_network_list(self._state.libvirt.list_networks())
@@ -95,6 +96,10 @@ class NetworkService:
     def create_network(
         self, body: NetworkCreateRequest, correlation_id: str | None = None
     ) -> NetworkResponse:
+        try:
+            safe_registry_name(body.name)
+        except PathSafetyError as exc:
+            raise LibvirtError(str(exc), "INVALID_NAME") from exc
         if self._vnet_dir(body.name).exists():
             raise LibvirtError(f"Network {body.name} exists", "NETWORK_EXISTS")
         bridge = body.bridge or f"br-{body.name}"

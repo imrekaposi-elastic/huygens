@@ -28,3 +28,12 @@ def test_allows_file_under_allowed_root(tmp_path: Path) -> None:
     disk.write_bytes(b"x")
     resolved = resolve_local_image_source(str(disk), [root])
     assert resolved == disk.resolve()
+
+
+def test_rejects_unsafe_child_name(tmp_path: Path) -> None:
+    from huy_libvirt_agent.services.path_safety import safe_child_dir
+
+    parent = tmp_path / "vnets"
+    parent.mkdir()
+    with pytest.raises(PathSafetyError):
+        safe_child_dir(parent, "../escape")

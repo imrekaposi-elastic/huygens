@@ -21,6 +21,7 @@ from huy_libvirt_agent.services.path_safety import (
     PathSafetyError,
     resolve_cached_disk_path,
     resolve_local_image_source,
+    safe_child_dir,
     safe_registry_name,
 )
 
@@ -36,7 +37,7 @@ class ImageService:
         )
 
     def _image_dir(self, name: str) -> Path:
-        return self._registry_dir / safe_registry_name(name)
+        return safe_child_dir(self._registry_dir, name)
 
     def _local_import_roots(self) -> list[Path]:
         data = self._state.settings.data_dir

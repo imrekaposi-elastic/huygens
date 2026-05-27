@@ -1,5 +1,5 @@
 .PHONY: compose-up compose-down compose-logs compose-ps test test-unit test-integration test-ci test-deps venv \
-	test-huy-events test-iam test-registry test-inventory test-projects test-breakout-controller test-web wait-stack
+	test-huy-auth test-huy-events test-iam test-registry test-inventory test-projects test-breakout-controller test-web wait-stack
 
 VENV ?= $(CURDIR)/.venv
 PYTHON ?= $(VENV)/bin/python
@@ -29,7 +29,7 @@ test: test-unit
 # Matches default GitHub Actions CI (unit + integration).
 test-ci: test-unit test-integration
 
-test-unit: venv test-deps test-huy-events test-iam test-registry test-inventory test-projects test-breakout-controller test-web
+test-unit: venv test-deps test-huy-auth test-huy-events test-iam test-registry test-inventory test-projects test-breakout-controller test-web
 
 wait-stack:
 	bash scripts/wait-for-stack.sh
@@ -37,6 +37,10 @@ wait-stack:
 test-deps: venv
 	$(PIP) install -q -e shared/huy_auth
 	$(PIP) install -q -e "shared/huy_events[dev]"
+
+test-huy-auth: venv
+	$(PIP) install -q -e "shared/huy_auth[dev]" 2>/dev/null || $(PIP) install -q -e shared/huy_auth pytest
+	cd shared/huy_auth && $(PYTEST) -q
 
 test-huy-events: venv
 	$(PIP) install -q -e "shared/huy_events[dev]"
@@ -59,7 +63,7 @@ test-projects: venv test-deps
 	cd services/projects && $(PYTEST) -q
 
 test-breakout-controller:
-	cd services/breakout-controller && go test ./...
+	docker run --rm -v "$(CURDIR)/services/breakout-controller:/src" -w /src golang:1.23-bookworm go test ./...
 
 test-web:
 	cd web && npm install && npm test

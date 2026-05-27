@@ -8,6 +8,8 @@ from typing import Any
 import httpx
 import structlog
 
+from huy_auth.url_safety import AgentUrlError, validate_agent_base_url
+
 logger = structlog.get_logger(__name__)
 
 
@@ -39,7 +41,10 @@ def _normalize_network(net: dict) -> dict:
 
 
 async def poll_agent(target: dict) -> tuple[dict[str, Any] | None, str | None]:
-    base = target["base_url"].rstrip("/")
+    try:
+        base = validate_agent_base_url(target["base_url"])
+    except AgentUrlError as exc:
+        return None, str(exc)
     token = target["agent_token"]
     headers = {"Authorization": f"Bearer {token}"}
     verify = target.get("tls_verify", True)

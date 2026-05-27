@@ -10,6 +10,7 @@ import structlog
 from huy_libvirt_agent.api.schemas.network import FlatBreakoutConfig, WireGuardBreakoutConfig
 from huy_libvirt_agent.services.flat_backend import FlatBackend
 from huy_libvirt_agent.services.iptables_manager import IptablesManager
+from huy_libvirt_agent.services.path_safety import PathSafetyError, safe_child_dir, safe_registry_name
 from huy_libvirt_agent.services.wireguard_backend import WireGuardBackend
 
 logger = structlog.get_logger(__name__)
@@ -28,7 +29,10 @@ class BreakoutService:
         self._iptables = iptables
 
     def _vnet_path(self, name: str) -> Path:
-        p = self._vnets_dir / name
+        try:
+            p = safe_child_dir(self._vnets_dir, name)
+        except PathSafetyError as exc:
+            raise ValueError(str(exc)) from exc
         p.mkdir(parents=True, exist_ok=True)
         return p
 

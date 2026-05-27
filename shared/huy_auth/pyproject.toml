@@ -16,3 +16,7 @@ dependencies = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/huy_auth"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

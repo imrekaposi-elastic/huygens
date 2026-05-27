@@ -17,6 +17,7 @@ from huy_libvirt_agent.services.cloudinit import CloudInitBuilder
 from huy_libvirt_agent.services.cloudinit_validator import CloudInitPayload, CloudInitValidator
 from huy_libvirt_agent.services.libvirt_client import LibvirtError
 from huy_libvirt_agent.services.metadata import read_metadata, write_metadata
+from huy_libvirt_agent.services.path_safety import safe_child_dir
 
 
 class CloudInitProfileService:
@@ -44,7 +45,7 @@ class CloudInitProfileService:
         )
 
     def _profile_dir(self, name: str) -> Path:
-        return self._profiles_dir / name
+        return safe_child_dir(self._profiles_dir, name)
 
     def _meta_path(self, name: str) -> Path:
         return self._profile_dir(name) / "metadata.json"

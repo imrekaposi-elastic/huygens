@@ -21,6 +21,7 @@ from huy_libvirt_agent.services.image_service import ImageService
 from huy_libvirt_agent.services.image_store import ImageStore
 from huy_libvirt_agent.services.libvirt_client import LibvirtError
 from huy_libvirt_agent.services.metadata import read_metadata, write_metadata
+from huy_libvirt_agent.services.path_safety import safe_child_dir
 
 
 class VMService:
@@ -34,7 +35,7 @@ class VMService:
         self._cloudinit_profiles = CloudInitProfileService(state)
 
     def _instance_dir(self, name: str) -> Path:
-        return self._state.settings.data_dir / "instances" / name
+        return safe_child_dir(self._state.settings.data_dir / "instances", name)
 
     def list_vms(self) -> list[VMResponse]:
         names = set(self._state.libvirt.list_domains())

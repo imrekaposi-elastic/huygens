@@ -7,6 +7,7 @@ from typing import Any
 import httpx
 from fastapi import HTTPException
 
+from huy_auth.url_safety import AgentUrlError, validate_agent_base_url
 from huy_projects.services.registry_client import RegistryClient
 
 
@@ -28,9 +29,13 @@ class AgentProxy:
         return info
 
     def _client(self, info: dict[str, Any]) -> httpx.AsyncClient:
+        try:
+            base_url = validate_agent_base_url(info["base_url"])
+        except AgentUrlError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
         headers = {"Authorization": f"Bearer {info['agent_token']}"}
         return httpx.AsyncClient(
-            base_url=info["base_url"].rstrip("/"),
+            base_url=base_url,
             headers=headers,
             timeout=120.0,
             verify=info.get("tls_verify", True),

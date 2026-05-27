@@ -8,6 +8,7 @@ from pathlib import Path
 import structlog
 
 from huy_libvirt_agent.api.schemas.network import WireGuardBreakoutConfig
+from huy_libvirt_agent.services.path_safety import PathSafetyError, safe_registry_name
 
 logger = structlog.get_logger(__name__)
 
@@ -21,8 +22,12 @@ class WireGuardBackend:
 
     def apply(self, vnet: str, config: WireGuardBreakoutConfig) -> None:
         self._ensure_config_dir()
-        iface = config.interface or f"wg-{vnet}"
-        conf_path = self._config_dir / f"huy-{vnet}.conf"
+        try:
+            safe_vnet = safe_registry_name(vnet)
+        except PathSafetyError as exc:
+            raise ValueError(str(exc)) from exc
+        iface = config.interface or f"wg-{safe_vnet}"
+        conf_path = self._config_dir / f"huy-{safe_vnet}.conf"
         lines = [
             "[Interface]",
             f"PrivateKey = {config.private_key}",

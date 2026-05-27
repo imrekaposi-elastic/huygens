@@ -9,6 +9,8 @@ from pathlib import Path
 
 import structlog
 
+from huy_libvirt_agent.services.path_safety import PathSafetyError, safe_child_dir
+
 logger = structlog.get_logger(__name__)
 
 
@@ -51,7 +53,7 @@ class IptablesManager:
         }
         checksum = hashlib.sha256(json.dumps(spec, sort_keys=True).encode()).hexdigest()
         if self._vnets_dir:
-            state_path = self._vnets_dir / vnet / "iptables.json"
+            state_path = safe_child_dir(self._vnets_dir, vnet) / "iptables.json"
             state_path.parent.mkdir(parents=True, exist_ok=True)
             state_path.write_text(json.dumps({"spec": spec, "checksum": checksum}, indent=2))
         self._apply_nft(chains, exempt, dnat_rules, snat_interface, peer_forward=peers)
@@ -119,7 +121,10 @@ class IptablesManager:
     def checksum_for_vnet(self, vnet: str) -> str | None:
         if not self._vnets_dir:
             return None
-        path = self._vnets_dir / vnet / "iptables.json"
+        try:
+            path = safe_child_dir(self._vnets_dir, vnet) / "iptables.json"
+        except PathSafetyError:
+            return None
         if not path.exists():
             return None
         data = json.loads(path.read_text())

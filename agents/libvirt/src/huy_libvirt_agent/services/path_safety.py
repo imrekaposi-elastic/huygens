@@ -13,10 +13,20 @@ class PathSafetyError(ValueError):
 
 
 def safe_registry_name(name: str) -> str:
-    """Image/vnet registry names must be a single path segment."""
+    """Image/vnet/VM registry names must be a single path segment."""
     if not _REGISTRY_NAME.fullmatch(name):
         raise PathSafetyError(f"Invalid name: {name!r}")
     return name
+
+
+def safe_child_dir(parent: Path, name: str) -> Path:
+    """Return parent/name after validating name is a single safe segment under parent."""
+    safe_registry_name(name)
+    root = parent.resolve()
+    child = (root / name).resolve()
+    if not _is_under_root(child, root):
+        raise PathSafetyError(f"Path escapes data directory: {name!r}")
+    return child
 
 
 def _is_under_root(path: Path, root: Path) -> bool:
