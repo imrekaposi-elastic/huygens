@@ -8,6 +8,7 @@ import jwt
 
 SECRET = "test-jwt-secret-key-minimum-32-bytes!"
 ISSUER = "huy-iam"
+ORG_ID = "11111111-1111-1111-1111-111111111111"
 
 
 def platform_token() -> str:

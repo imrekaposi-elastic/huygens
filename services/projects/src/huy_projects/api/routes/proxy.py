@@ -259,7 +259,12 @@ async def delete_network(
     from huy_projects.services.network_delete_guard import assert_network_deletable
 
     await assert_network_deletable(
-        session, proxy, project, agent_id=agent_id, network_name=name
+        session,
+        proxy,
+        project,
+        agent_id=agent_id,
+        network_name=name,
+        agent_network_exists=existing is not None,
     )
     try:
         await proxy.delete_network(

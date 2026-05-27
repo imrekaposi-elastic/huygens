@@ -69,26 +69,9 @@ async def assert_network_deletable(
     *,
     agent_id: str,
     network_name: str,
+    agent_network_exists: bool = True,
 ) -> None:
     """Raise HTTP 409 if VMs, topology links, or active breakout block deletion."""
-    vm_names = await _vms_using_network(
-        proxy,
-        agent_id=agent_id,
-        organization_id=project.organization_id,
-        network_name=network_name,
-    )
-    if vm_names:
-        sample = ", ".join(vm_names[:5])
-        extra = f" (+{len(vm_names) - 5} more)" if len(vm_names) > 5 else ""
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                f"Cannot delete network '{network_name}': "
-                f"{len(vm_names)} VM(s) still use it ({sample}{extra}). "
-                "Move or delete those VMs first."
-            ),
-        )
-
     links = await _active_links_for_endpoint(
         session,
         project.organization_id,
@@ -105,6 +88,27 @@ async def assert_network_deletable(
                 f"Cannot delete network '{network_name}': "
                 f"{len(links)} topology link(s) still connected ({names}{extra}). "
                 "Remove the link(s) in Topology first."
+            ),
+        )
+
+    if not agent_network_exists:
+        return
+
+    vm_names = await _vms_using_network(
+        proxy,
+        agent_id=agent_id,
+        organization_id=project.organization_id,
+        network_name=network_name,
+    )
+    if vm_names:
+        sample = ", ".join(vm_names[:5])
+        extra = f" (+{len(vm_names) - 5} more)" if len(vm_names) > 5 else ""
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Cannot delete network '{network_name}': "
+                f"{len(vm_names)} VM(s) still use it ({sample}{extra}). "
+                "Move or delete those VMs first."
             ),
         )
 

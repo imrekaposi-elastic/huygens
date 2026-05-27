@@ -9,6 +9,7 @@ import respx
 from httpx import AsyncClient, Response
 
 from helpers import ORG_ID, compliance_engineer_token, org_admin_token
+from test_explorer import _mock_provider_regions, _region_json
 
 
 @pytest.mark.asyncio
@@ -97,16 +98,10 @@ async def test_placement_rationale(client: AsyncClient) -> None:
             },
         )
     )
-    respx.get(f"http://127.0.0.1:8082/api/v1/infrastructure-providers/{provider_id}").mock(
-        return_value=Response(200, json={"id": provider_id, "name": "On-prem"})
-    )
-    respx.get(
-        f"http://127.0.0.1:8082/api/v1/infrastructure-providers/{provider_id}/region-tree"
-    ).mock(
-        return_value=Response(
-            200,
-            json=[{"id": region_id, "name": "Rack A", "children": [], "agents": []}],
-        )
+    _mock_provider_regions(
+        respx,
+        provider_id,
+        [_region_json(region_id, provider_id, name="Rack A", slug="rack-a")],
     )
 
     catalog_bio = await client.post(

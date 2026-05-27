@@ -148,7 +148,11 @@ async def test_explorer_missing_catalog_and_trait_filter(client: AsyncClient) ->
     missing_bio = await client.get(
         f"/api/v1/organizations/{ORG_ID}/compliance-explorer",
         headers=headers,
-        params={"catalog_slug": "bio-baseline", "catalog_match": "missing"},
+        params={
+            "catalog_slug": "bio-baseline",
+            "catalog_match": "missing",
+            "resource_type": "vm",
+        },
     )
     assert missing_bio.status_code == 200
     body = missing_bio.json()

@@ -7,6 +7,7 @@ import respx
 from httpx import AsyncClient, Response
 
 from helpers import ORG_ID, org_admin_token
+from respx_helpers import mock_org_projects, mock_resource_assignments
 from test_explorer import _mock_provider_regions, _region_json
 
 
@@ -20,26 +21,33 @@ async def test_project_inherits_when_all_children_compliant(client: AsyncClient)
     provider_id = "dddddddd-dddd-dddd-dddd-dddddddddddd"
     region_id = "cccccccc-cccc-cccc-cccc-cccccccccccc"
 
-    respx.get(
-        f"http://127.0.0.1:8084/api/v1/internal/organizations/{ORG_ID}/resource-assignments"
-    ).mock(
-        return_value=Response(
-            200,
-            json=[
-                {
-                    "agent_id": agent_a,
-                    "resource_type": "vm",
-                    "name": "vm-a",
-                    "project_id": project_id,
-                },
-                {
-                    "agent_id": agent_b,
-                    "resource_type": "network",
-                    "name": "net-b",
-                    "project_id": project_id,
-                },
-            ],
-        )
+    mock_resource_assignments(
+        respx,
+        [
+            {
+                "agent_id": agent_a,
+                "resource_type": "vm",
+                "name": "vm-a",
+                "project_id": project_id,
+            },
+            {
+                "agent_id": agent_b,
+                "resource_type": "network",
+                "name": "net-b",
+                "project_id": project_id,
+            },
+        ],
+    )
+    mock_org_projects(
+        respx,
+        projects=[
+            {
+                "id": project_id,
+                "organization_id": ORG_ID,
+                "name": "Aggregate Lab",
+                "slug": "agg-lab",
+            }
+        ],
     )
     for agent_id in (agent_a, agent_b):
         respx.get(f"http://127.0.0.1:8082/api/v1/agents/{agent_id}").mock(
@@ -112,27 +120,24 @@ async def test_project_no_aggregate_when_one_child_missing(client: AsyncClient) 
     provider_id = "dddddddd-dddd-dddd-dddd-dddddddddddd"
     region_id = "cccccccc-cccc-cccc-cccc-cccccccccccc"
 
-    respx.get(
-        f"http://127.0.0.1:8084/api/v1/internal/organizations/{ORG_ID}/resource-assignments"
-    ).mock(
-        return_value=Response(
-            200,
-            json=[
-                {
-                    "agent_id": agent_a,
-                    "resource_type": "vm",
-                    "name": "vm-a",
-                    "project_id": project_id,
-                },
-                {
-                    "agent_id": agent_b,
-                    "resource_type": "vm",
-                    "name": "vm-b",
-                    "project_id": project_id,
-                },
-            ],
-        )
+    mock_resource_assignments(
+        respx,
+        [
+            {
+                "agent_id": agent_a,
+                "resource_type": "vm",
+                "name": "vm-a",
+                "project_id": project_id,
+            },
+            {
+                "agent_id": agent_b,
+                "resource_type": "vm",
+                "name": "vm-b",
+                "project_id": project_id,
+            },
+        ],
     )
+    mock_org_projects(respx)
     for agent_id in (agent_a, agent_b):
         respx.get(f"http://127.0.0.1:8082/api/v1/agents/{agent_id}").mock(
             return_value=Response(
