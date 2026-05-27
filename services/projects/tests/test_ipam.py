@@ -122,6 +122,63 @@ async def test_create_network_with_ipam(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_delete_empty_pool(client: AsyncClient) -> None:
+    headers = {"Authorization": f"Bearer {org_admin_token(ORG_ID)}"}
+    pool = await client.post(
+        f"/api/v1/organizations/{ORG_ID}/ipam/pools",
+        headers=headers,
+        json={"name": "empty-pool", "cidr": "10.70.0.0/24"},
+    )
+    assert pool.status_code == 201
+    pool_id = pool.json()["id"]
+
+    deleted = await client.delete(
+        f"/api/v1/organizations/{ORG_ID}/ipam/pools/{pool_id}",
+        headers=headers,
+    )
+    assert deleted.status_code == 204
+
+    listed = await client.get(
+        f"/api/v1/organizations/{ORG_ID}/ipam/pools",
+        headers=headers,
+    )
+    assert pool_id not in {p["id"] for p in listed.json()}
+
+
+@pytest.mark.asyncio
+async def test_reject_delete_pool_with_allocations(client: AsyncClient) -> None:
+    headers = {"Authorization": f"Bearer {org_admin_token(ORG_ID)}"}
+    pool = await client.post(
+        f"/api/v1/organizations/{ORG_ID}/ipam/pools",
+        headers=headers,
+        json={"name": "busy-pool", "cidr": "10.71.0.0/24"},
+    )
+    pool_id = pool.json()["id"]
+    project = await client.post(
+        "/api/v1/projects",
+        headers=headers,
+        json={"organization_id": ORG_ID, "name": "Busy", "slug": "busy-pool"},
+    )
+    project_id = project.json()["id"]
+    applied = await client.post(
+        f"/api/v1/organizations/{ORG_ID}/ipam/projects/{project_id}/wizard/apply",
+        headers=headers,
+        json={
+            "pool_id": pool_id,
+            "subnets": [{"cidr": "10.71.0.0/27", "name": "lab0"}],
+        },
+    )
+    assert applied.status_code == 200
+
+    denied = await client.delete(
+        f"/api/v1/organizations/{ORG_ID}/ipam/pools/{pool_id}",
+        headers=headers,
+    )
+    assert denied.status_code == 409
+    assert "subnet" in denied.json()["detail"].lower() or "reserved" in denied.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
 @respx.mock
 async def test_platform_admin_ipam_bypass(client: AsyncClient) -> None:
     from huy_projects.config import get_settings

@@ -155,3 +155,13 @@ export function ShieldIcon({ className = base }: IconProps) {
     </svg>
   );
 }
+
+/** Compliance nav / page mark (checkmark in circle). */
+export function CheckmarkIcon({ className = base }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8 12.5 10.5 15 16 9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

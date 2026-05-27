@@ -69,7 +69,7 @@ Operators need to connect libvirt virtual networks on different hypervisors (FRA
 - Second hypervisor agent needed for cross-host **data-plane** validation (manual runbook).
 - Single-agent environments: cross-agent links remain `error` until a peer agent exists — expected, not a reconciler bug.
 - Full mesh is emergent (many links), not auto-wired.
-- Network delete via projects purges agent-managed metadata and clears assignment; see agent `delete_network` and [operations doc](../../operations/phase6-release-and-validation.md).
+- Network delete via projects is allowed only when no VMs, active topology links, or enabled breakout remain on that vnet (**409** otherwise). Operators remove links in Topology and disable breakout first. See [phase7 operations](../../operations/phase7-compliance-and-lifecycle-guards.md) and agent `delete_network`.
 
 ## Alternatives considered
 

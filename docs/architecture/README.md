@@ -26,7 +26,7 @@ Architecture decisions, diagrams, and contracts for the Huygens platform.
 | [0009](adrs/0009-air-gapped-install.md) | Air-gapped installation |
 | [0010](adrs/0010-know-why-and-asset-criticality.md) | Know why: compliance and asset criticality |
 | [0011](adrs/0011-sse-auth-via-authorization-header.md) | SSE: Bearer header only; no `EventSource ?token=` |
-| [0011](adrs/0011-keycloak-group-role-mapping.md) | Keycloak SSO and IdP group → role mapping |
+| [0011](adrs/0011-keycloak-group-role-mapping.md) | Keycloak SSO and IdP group → role mapping (duplicate number — distinguish by filename) |
 | [0012](adrs/0012-hybrid-breakout-and-network-linking.md) | Phase 6: hybrid breakout, network links, topology |
 
 ## Phase map
@@ -38,5 +38,7 @@ See [../PHASED_PLAN.md](../PHASED_PLAN.md) for delivery phases 0–17.
 **Web console** (`web/`, Phase 5 ✅) proxies to IAM, projects, inventory, and registry via nginx in Compose. Live inventory uses **Kafka → inventory SSE hub → console** ([ADR 0011](adrs/0011-sse-auth-via-authorization-header.md)).
 
 **Phase 6 (network linking):** `projects` + `breakout-controller` + topology UI in Compose; libvirt agent on each hypervisor. Operational release and validation: [operations/phase6-release-and-validation.md](../operations/phase6-release-and-validation.md).
+
+**Phase 7 (compliance):** `compliance` service (port **8086**), console `/compliance` (Overview, Explorer, Catalog, Checks), infrastructure catalog standards on provider/region tree, project aggregate membership (blue), network and IP pool **delete guards** in `projects`. See [ADR 0010](adrs/0010-know-why-and-asset-criticality.md) and [operations/phase7-compliance-and-lifecycle-guards.md](../operations/phase7-compliance-and-lifecycle-guards.md).
 
 **Elasticsearch** is part of the target architecture for **audit logs (ECS)**, compliance dashboards, and **SSH session recording search** (Phase 9). Events flow **Kafka → ES ingest**; PostgreSQL stays the system of record. Inventory publishes snapshots via **`shared/huy_events`**; link lifecycle publishes to **`huy.network.links`**; agent→Kafka publish remains partial — see [adrs/0004-kafka-event-bus.md](adrs/0004-kafka-event-bus.md).

@@ -35,11 +35,12 @@ With Docker Compose from repo root: `docker compose up -d --build` (port **8082*
 | POST | `/api/v1/agents/{id}/rotate-token` | platform_admin |
 | POST | `/api/v1/agents/{id}/test-connection` | platform_admin |
 
-Internal (header `X-Huy-Service-Token`):
+Internal (header `X-Huy-Service-Token` — inventory and projects tokens):
 
 | Method | Path |
 |--------|------|
 | GET | `/api/v1/internal/poll-targets` |
+| GET | `/api/v1/internal/infrastructure-providers/{id}/regions` | Flat regions with `parent_region_id` (compliance lineage) |
 | GET | `/api/v1/internal/agents/{id}/connect` |
 | PATCH | `/api/v1/internal/agents/{id}/poll-status` |
 

@@ -102,6 +102,18 @@ export function IpamPage({ organizationId }: Props) {
     onError: (e) => setErr(e instanceof ApiError ? e.message : "Planning failed"),
   });
 
+  const deletePool = useMutation({
+    mutationFn: () => api.deleteIpamPool(organizationId, activePoolId),
+    onSuccess: () => {
+      setPoolId("");
+      setPlan(null);
+      setOk("Pool deleted.");
+      void qc.invalidateQueries({ queryKey: ["ipam-pools", organizationId] });
+      void qc.invalidateQueries({ queryKey: ["ipam-pool-allocations", organizationId] });
+    },
+    onError: (e) => setErr(e instanceof ApiError ? e.message : "Delete pool failed"),
+  });
+
   const applyPlan = useMutation({
     mutationFn: () => {
       if (!plan?.length) throw new Error("Calculate subnets first");
@@ -147,23 +159,47 @@ export function IpamPage({ organizationId }: Props) {
         </p>
 
         {(pools.data?.length ?? 0) > 0 && (
-          <label className="mt-4 block text-sm">
-            Active pool
-            <select
-              className="mt-1 w-full max-w-xl min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 font-mono text-sm"
-              value={activePoolId}
-              onChange={(e) => {
-                setPoolId(e.target.value);
-                setPlan(null);
-              }}
-            >
-              {pools.data?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} — {p.cidr} ({p.pool_kind})
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="mt-4 flex flex-wrap items-end gap-3">
+            <label className="block min-w-[16rem] flex-1 text-sm">
+              Active pool
+              <select
+                className="mt-1 w-full min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 font-mono text-sm"
+                value={activePoolId}
+                onChange={(e) => {
+                  setPoolId(e.target.value);
+                  setPlan(null);
+                }}
+              >
+                {pools.data?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} — {p.cidr} ({p.pool_kind})
+                  </option>
+                ))}
+              </select>
+            </label>
+            {activePoolId && (
+              <button
+                type="button"
+                disabled={deletePool.isPending}
+                onClick={() => {
+                  const pool = pools.data?.find((p) => p.id === activePoolId);
+                  if (
+                    !window.confirm(
+                      `Delete pool "${pool?.name ?? activePoolId}"? This is only allowed when no networks or topology links use it.`,
+                    )
+                  ) {
+                    return;
+                  }
+                  setErr(null);
+                  setOk(null);
+                  deletePool.mutate();
+                }}
+                className="min-h-10 rounded-lg border border-red-300 px-4 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40"
+              >
+                {deletePool.isPending ? "Deleting…" : "Delete pool"}
+              </button>
+            )}
+          </div>
         )}
 
         <div className="mt-4 grid gap-3 md:grid-cols-4">

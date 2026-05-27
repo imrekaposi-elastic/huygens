@@ -1,11 +1,19 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isValidOrgSlug, slugFromName } from "@/auth/setup";
+import { useAuth } from "@/auth/AuthContext";
 import { api, ApiError } from "@/api/client";
+import { InfrastructureCompliancePanel } from "@/components/compliance/InfrastructureCompliancePanel";
 import { CloudIcon, GlobeIcon, PageTitle } from "@/components/icons/NavIcons";
 import { RegionTreePanel } from "@/components/RegionTreePanel";
 
-function ProviderDetail({ providerId }: { providerId: string }) {
+function ProviderDetail({
+  providerId,
+  organizationId,
+}: {
+  providerId: string;
+  organizationId: string | null;
+}) {
   const qc = useQueryClient();
   const [subName, setSubName] = useState("");
   const [subSlug, setSubSlug] = useState("");
@@ -56,9 +64,16 @@ function ProviderDetail({ providerId }: { providerId: string }) {
         <GlobeIcon className="size-4 shrink-0 text-slate-500 dark:text-slate-500" />
         Regions
       </h2>
-      <RegionTreePanel nodes={data.region_tree} infrastructureProviderId={providerId} />
+      {organizationId && (
+        <InfrastructureCompliancePanel organizationId={organizationId} providerId={providerId} />
+      )}
+      <RegionTreePanel
+        nodes={data.region_tree}
+        infrastructureProviderId={providerId}
+        organizationId={organizationId}
+      />
       <form
-        className="mt-4 flex flex-col gap-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-red-50/90 dark:bg-red-950/50 p-4 md:flex-row md:flex-wrap md:items-end"
+        className="mt-4 flex flex-col gap-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/50 p-4 md:flex-row md:flex-wrap md:items-end"
         onSubmit={(e) => {
           e.preventDefault();
           addRegion.mutate();
@@ -134,6 +149,7 @@ function flattenForParentSelect(
 }
 
 export function InfrastructureProvidersPage() {
+  const { selectedOrgId } = useAuth();
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -233,7 +249,9 @@ export function InfrastructureProvidersPage() {
                 {p.operational ? "operational" : "inactive"}
               </span>
             </button>
-            {expandedId === p.id && <ProviderDetail providerId={p.id} />}
+            {expandedId === p.id && (
+              <ProviderDetail providerId={p.id} organizationId={selectedOrgId} />
+            )}
           </section>
         ))}
       </div>

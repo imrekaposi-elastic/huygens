@@ -1,15 +1,20 @@
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/auth/AuthContext";
-import { canAccessAdmin, canAccessIpam, canAccessTopology } from "@/auth/permissions";
+import {
+  canAccessAdmin,
+  canAccessCompliance,
+  canAccessIpam,
+  canAccessTopology,
+} from "@/auth/permissions";
 import { isPlatformAdmin, getAccessToken } from "@/auth/token";
 import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
 import { NavItem } from "@/components/NavItem";
 import {
-  AgentTechIcon,
   CloudIcon,
   FolderIcon,
   HomeIcon,
   NetworkIcon,
+  CheckmarkIcon,
   ShieldIcon,
 } from "@/components/icons/NavIcons";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -21,6 +26,7 @@ export function AppShell() {
   const token = getAccessToken();
   const showAgents = isPlatformAdmin(token);
   const showIpam = canAccessIpam(user, selectedOrgId, showAgents);
+  const showCompliance = canAccessCompliance(user, selectedOrgId, showAgents);
   const showTopology = canAccessTopology(user, selectedOrgId, showAgents);
   const showAdmin = canAccessAdmin(user, selectedOrgId, showAgents);
 
@@ -39,12 +45,6 @@ export function AppShell() {
           />
           {showAgents && (
             <>
-              <NavItem
-                to="/agent-technologies"
-                label="Fabric"
-                icon={<AgentTechIcon />}
-                active={pathname.startsWith("/agent-technologies")}
-              />
               <NavItem
                 to="/infrastructure"
                 label="Infrastructure"
@@ -79,6 +79,14 @@ export function AppShell() {
               label="IPAM"
               icon={<NetworkIcon />}
               active={pathname.startsWith("/ipam")}
+            />
+          )}
+          {showCompliance && (
+            <NavItem
+              to="/compliance/overview"
+              label="Compliance"
+              icon={<CheckmarkIcon />}
+              active={pathname.startsWith("/compliance")}
             />
           )}
           {showTopology && (

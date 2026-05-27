@@ -6,7 +6,8 @@ Operators call this service instead of hitting agent Swagger directly. The proxy
 
 - Validates IAM JWT and project/org RBAC
 - Resolves agent URL + token via registry internal API (`X-Huy-Service-Token`)
-- Rejects DELETE on readonly networks (`default` or `readonly: true`)
+- Rejects DELETE on readonly networks (`default` or `readonly: true`) — **403**
+- Rejects DELETE when VMs, topology links, or active breakout still use the network — **409** (see below)
 
 ## Run locally
 
@@ -28,7 +29,8 @@ Default port: **8084**.
 | GET | `/api/v1/projects` | Filter by org; RBAC-scoped list |
 | GET | `/api/v1/projects/{id}/agents` | Agents in project's org (via registry) |
 | `*` | `/api/v1/projects/{id}/agents/{agent_id}/vms` | Proxy to agent |
-| `*` | `/api/v1/projects/{id}/agents/{agent_id}/networks` | Proxy; enforces readonly delete; **IPAM** on create; default `purge=true` on delete |
+| `*` | `/api/v1/projects/{id}/agents/{agent_id}/networks` | Proxy; **409** delete guards; **IPAM** on create; default `purge=true` on delete |
+| DELETE | `/api/v1/organizations/{org_id}/ipam/pools/{pool_id}` | **409** if allocations or overlay links in use |
 | GET/POST/DELETE | `/api/v1/organizations/{org_id}/network-links` | Phase 6 link CRUD |
 | GET | `/api/v1/organizations/{org_id}/topology` | Phase 6 vnet graph + links |
 | POST | `/api/v1/organizations/{org_id}/ipam/pools` | RFC1918 or `pool_kind: overlay` |
@@ -54,7 +56,24 @@ Or use a pre-reserved `allocation_id` from the wizard.
 
 Reconciler runs when `LINK_RECONCILE_ENABLED=true` (default). Publishes to Kafka topic `huy.network.links` when `KAFKA_PUBLISH_ENABLED=true` (topic created by Compose `kafka-init`; see [docker-compose.md](../../docs/install/docker-compose.md)).
 
-Operational guide: [docs/operations/phase6-release-and-validation.md](../../docs/operations/phase6-release-and-validation.md).
+### Network delete guards (409)
+
+Before deleting a vnet, the proxy checks (in order):
+
+1. No VMs on the agent still attached to this network name
+2. No active topology links (`NetworkLink`, status ≠ `deleting`) on this endpoint
+3. No active breakout (WireGuard or flat `enabled` on agent)
+
+Remove blockers first; links are **not** auto-deleted. Implementation: `network_delete_guard.py`.
+
+### IP pool delete (409)
+
+`DELETE .../ipam/pools/{pool_id}` fails while:
+
+- Any **reserved** or **allocated** subnet exists in a vnet pool
+- Any topology link references an **overlay** pool
+
+Operational guides: [phase6](../../docs/operations/phase6-release-and-validation.md), [phase7](../../docs/operations/phase7-compliance-and-lifecycle-guards.md).
 
 ## Configuration
 

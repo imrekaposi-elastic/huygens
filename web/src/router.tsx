@@ -16,7 +16,13 @@ import { ProjectCloudInitTab } from "@/pages/project/ProjectCloudInitTab";
 import { ProjectVmsTab } from "@/pages/project/ProjectVmsTab";
 import { ProjectNetworksTab } from "@/pages/project/ProjectNetworksTab";
 import { ProjectAccessTab } from "@/pages/project/ProjectAccessTab";
+import { ProjectComplianceTab } from "@/pages/project/ProjectComplianceTab";
 import { ProjectImagesTab } from "@/pages/project/ProjectImagesTab";
+import { ComplianceGatePage } from "@/pages/compliance/ComplianceGatePage";
+import { ComplianceOverviewPage } from "@/pages/compliance/ComplianceOverviewPage";
+import { ComplianceExplorerPage } from "@/pages/compliance/ComplianceExplorerPage";
+import { ComplianceCatalogPage } from "@/pages/compliance/ComplianceCatalogPage";
+import { ComplianceChecksPage } from "@/pages/compliance/ComplianceChecksPage";
 import { IpamGatePage } from "@/pages/ipam/IpamGatePage";
 import { TopologyGatePage } from "@/pages/topology/TopologyGatePage";
 import { AdminGatePage } from "@/pages/admin/AdminGatePage";
@@ -66,7 +72,10 @@ const indexRoute = createRoute({
 const agentTechnologiesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/agent-technologies",
-  component: AgentTechnologiesGatePage,
+  beforeLoad: () => {
+    throw redirect({ to: "/admin/fabric" });
+  },
+  component: () => null,
 });
 
 const infrastructureRoute = createRoute({
@@ -85,6 +94,45 @@ const ipamRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/ipam",
   component: IpamGatePage,
+});
+
+const complianceRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/compliance",
+  component: ComplianceGatePage,
+});
+
+const complianceIndexRoute = createRoute({
+  getParentRoute: () => complianceRoute,
+  path: "/",
+  beforeLoad: () => {
+    throw redirect({ to: "/compliance/overview" });
+  },
+  component: () => null,
+});
+
+const complianceOverviewRoute = createRoute({
+  getParentRoute: () => complianceRoute,
+  path: "/overview",
+  component: ComplianceOverviewPage,
+});
+
+const complianceExplorerRoute = createRoute({
+  getParentRoute: () => complianceRoute,
+  path: "/explorer",
+  component: ComplianceExplorerPage,
+});
+
+const complianceCatalogRoute = createRoute({
+  getParentRoute: () => complianceRoute,
+  path: "/catalog",
+  component: ComplianceCatalogPage,
+});
+
+const complianceChecksRoute = createRoute({
+  getParentRoute: () => complianceRoute,
+  path: "/checks",
+  component: ComplianceChecksPage,
 });
 
 const topologyRoute = createRoute({
@@ -130,6 +178,12 @@ const adminRbacRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: "rbac",
   component: AdminRbacTab,
+});
+
+const adminFabricRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "fabric",
+  component: AgentTechnologiesGatePage,
 });
 
 const projectsRoute = createRoute({
@@ -190,6 +244,15 @@ const projectNetworksRoute = createRoute({
   },
 });
 
+const projectComplianceRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "compliance",
+  component: function ProjectComplianceRoute() {
+    const { projectId } = projectRoute.useParams();
+    return <ProjectComplianceTab projectId={projectId} />;
+  },
+});
+
 const projectCloudInitRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: "cloud-init",
@@ -218,9 +281,17 @@ const routeTree = rootRoute.addChildren([
     infrastructureRoute,
     agentsRoute,
     ipamRoute,
+    complianceRoute.addChildren([
+      complianceIndexRoute,
+      complianceOverviewRoute,
+      complianceExplorerRoute,
+      complianceCatalogRoute,
+      complianceChecksRoute,
+    ]),
     topologyRoute,
     adminRoute.addChildren([
       adminIndexRoute,
+      adminFabricRoute,
       adminUsersRoute,
       adminIdpRoute,
       adminAuthRoute,
@@ -232,6 +303,7 @@ const routeTree = rootRoute.addChildren([
       projectVmsRoute,
       projectImagesRoute,
       projectNetworksRoute,
+      projectComplianceRoute,
       projectCloudInitRoute,
       projectAccessRoute,
     ]),

@@ -28,6 +28,61 @@ export function canAccessIpam(
   return canManageOrgUsers(user, organizationId, platformAdmin);
 }
 
+const COMPLIANCE_ORG_ROLES = new Set([
+  "admin",
+  "compliance_admin",
+  "compliance_engineer",
+  "compliance_reader",
+]);
+
+/** Org compliance catalog, dashboard, placement rationale. */
+export function canAccessCompliance(
+  user: UserOut | null,
+  organizationId: string | null,
+  platformAdmin: boolean,
+): boolean {
+  if (!user || !organizationId) return false;
+  if (platformAdmin) return true;
+  const membership = user.org_memberships.find((m) => m.organization_id === organizationId);
+  if (!membership) return false;
+  return membership.roles.some((r) => COMPLIANCE_ORG_ROLES.has(r));
+}
+
+/** Infrastructure provider/region compliance (same roles as catalog manage). */
+export function canManageInfrastructureCompliance(
+  user: UserOut | null,
+  organizationId: string | null,
+  platformAdmin: boolean,
+): boolean {
+  return canManageComplianceCatalog(user, organizationId, platformAdmin);
+}
+
+export function canManageComplianceCatalog(
+  user: UserOut | null,
+  organizationId: string | null,
+  platformAdmin: boolean,
+): boolean {
+  if (!user || !organizationId) return false;
+  if (platformAdmin) return true;
+  const membership = user.org_memberships.find((m) => m.organization_id === organizationId);
+  if (!membership) return false;
+  return membership.roles.includes("admin") || membership.roles.includes("compliance_admin");
+}
+
+export function canAssignComplianceCriticality(
+  user: UserOut | null,
+  organizationId: string | null,
+  platformAdmin: boolean,
+): boolean {
+  if (!user || !organizationId) return false;
+  if (platformAdmin) return true;
+  const membership = user.org_memberships.find((m) => m.organization_id === organizationId);
+  if (!membership) return false;
+  return (
+    membership.roles.includes("admin") || membership.roles.includes("compliance_engineer")
+  );
+}
+
 /** Topology view: any org member or project grant in the org. */
 export function canAccessTopology(
   user: UserOut | null,

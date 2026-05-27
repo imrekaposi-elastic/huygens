@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useAuth } from "@/auth/AuthContext";
+import { canAccessCompliance } from "@/auth/permissions";
+import { getAccessToken, isPlatformAdmin } from "@/auth/token";
 import { api, ApiError } from "@/api/client";
+import { ResourceCriticalityDialog } from "@/components/compliance/ResourceCriticalityDialog";
 import { NetworkIcon } from "@/components/icons/NavIcons";
 import { liveQueryOptions } from "@/lib/liveRefresh";
 import { filterManagedNetworks, LIBVIRT_SYSTEM_NETWORK } from "@/lib/systemNetwork";
@@ -14,16 +18,21 @@ type Props = { projectId: string };
 
 export function ProjectNetworksTab({ projectId }: Props) {
   const { agentId } = useProjectWorkspace();
+  const { user, selectedOrgId } = useAuth();
+  const platformAdmin = isPlatformAdmin(getAccessToken());
   const qc = useQueryClient();
   const [showAvailable, setShowAvailable] = useState(false);
   const [dialog, setDialog] = useState<"create" | { edit: Record<string, unknown> } | null>(null);
   const [flatBreakoutNet, setFlatBreakoutNet] = useState<string | null>(null);
+  const [criticalityNet, setCriticalityNet] = useState<string | null>(null);
+  const [deleteErr, setDeleteErr] = useState<string | null>(null);
 
   const project = useQuery({
     queryKey: ["project", projectId],
     queryFn: () => api.getProject(projectId),
   });
-  const organizationId = project.data?.organization_id ?? "";
+  const organizationId = project.data?.organization_id ?? selectedOrgId ?? "";
+  const showCompliance = canAccessCompliance(user, organizationId, platformAdmin);
 
   const allocations = useQuery({
     queryKey: ["ipam-allocations", organizationId, projectId],
@@ -46,7 +55,12 @@ export function ProjectNetworksTab({ projectId }: Props) {
 
   const remove = useMutation({
     mutationFn: (name: string) => api.deleteNetwork(projectId, agentId, name),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      setDeleteErr(null);
+      invalidate();
+    },
+    onError: (e) =>
+      setDeleteErr(e instanceof ApiError ? e.message : "Could not delete network"),
   });
 
   const unassign = useMutation({
@@ -78,8 +92,14 @@ export function ProjectNetworksTab({ projectId }: Props) {
 
   return (
     <>
+      {deleteErr && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+          {deleteErr}
+        </p>
+      )}
       <p className="text-sm text-slate-500 dark:text-slate-500">
-        Deploy libvirt virtual networks on the selected agent. Subnet blocks come from{" "}
+        Deploy libvirt virtual networks on the selected agent. A network can only be deleted when
+        no VMs use it, no topology links connect it, and breakout is disabled. Subnet blocks come from{" "}
         <Link to="/ipam" className="font-medium text-emerald-600 dark:text-emerald-400 hover:underline">
           IPAM
         </Link>
@@ -177,6 +197,11 @@ export function ProjectNetworksTab({ projectId }: Props) {
                 key={name}
                 name={name}
                 subtitle={subtitle}
+                onCompliance={
+                  showCompliance && organizationId
+                    ? () => setCriticalityNet(name)
+                    : undefined
+                }
                 onEdit={() => setDialog({ edit: net })}
                 onFlatBreakout={
                   readonly ? undefined : () => setFlatBreakoutNet(name)
@@ -220,6 +245,18 @@ export function ProjectNetworksTab({ projectId }: Props) {
         onClose={() => setFlatBreakoutNet(null)}
         onSaved={invalidate}
       />
+
+      {organizationId && criticalityNet && (
+        <ResourceCriticalityDialog
+          organizationId={organizationId}
+          projectId={projectId}
+          agentId={agentId}
+          resourceType="network"
+          resourceName={criticalityNet}
+          open
+          onClose={() => setCriticalityNet(null)}
+        />
+      )}
 
       <NetworkDialog
         open={dialog !== null}

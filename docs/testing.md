@@ -38,6 +38,7 @@ This executes pytest in each service:
 | Registry | `services/registry` |
 | Inventory | `services/inventory` |
 | Projects | `services/projects` |
+| Compliance | `services/compliance` |
 | Breakout controller | `services/breakout-controller` (`go test ./...`) |
 | Console | `web` (`npm test`) |
 
@@ -60,6 +61,8 @@ make test-integration
 See [tests/integration/README.md](../tests/integration/README.md) for environment variables and module layout.
 
 **Phase 6 scope:** `test_network_links.py` covers link API and validation; `test_link_reconcile.py` exercises **create → reconcile → `connected`** for local and WireGuard links with mocked agent/breakout-controller HTTP. Cross-host **data-plane** traffic still requires [manual runbooks](../tests/integration/README.md#manual-two-agent-wireguard-link-test-phase-6).
+
+**Phase 7 / guards:** `services/compliance/tests/` (explorer, project aggregate, region lineage); `services/projects/tests/test_network_delete_guard.py`, `test_ipam.py` (pool delete).
 
 Conventions:
 

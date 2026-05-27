@@ -340,3 +340,162 @@ export type InventoryCloudEvent = {
     polled_at: string;
   };
 };
+
+export type MoscowKind = "must" | "should" | "could" | "wont";
+
+export type ComplianceItem = {
+  id: string;
+  organization_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  reference_url: string | null;
+  moscow: MoscowKind;
+  target_level: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type InfrastructureProviderCompliance = {
+  organization_id: string;
+  infrastructure_provider_id: string;
+  is_compliant: boolean;
+  compliance_items: ComplianceItem[];
+  updated_at: string | null;
+};
+
+export type RegionCompliance = {
+  organization_id: string;
+  region_id: string;
+  compliance_items: ComplianceItem[];
+};
+
+export type ComplianceTrait = {
+  id: string;
+  organization_id: string;
+  trait_key: string;
+  title: string;
+  description: string | null;
+  moscow: MoscowKind;
+  infrastructure_provider_id?: string | null;
+  region_id?: string | null;
+  created_at: string;
+};
+
+export type ComplianceCheck = {
+  id: string;
+  organization_id: string;
+  compliance_item_id: string;
+  compliance_item_name?: string | null;
+  owner_user_id: string;
+  owner_display: string | null;
+  valid_until: string;
+  status: string;
+  last_reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  days_until_expiry?: number | null;
+};
+
+export type ComplianceDashboard = {
+  organization_id: string;
+  catalog_count: number;
+  checks_active: number;
+  checks_expiring_soon: number;
+  checks_expired: number;
+  assignments_count: number;
+  provider_traits_count: number;
+  region_traits_count: number;
+};
+
+export type AssetCriticality = {
+  organization_id: string;
+  resource_type: "project" | "vm" | "network";
+  project_id: string;
+  agent_id?: string | null;
+  name?: string | null;
+  compliance_items: ComplianceItem[];
+  inherited_compliance_items?: ComplianceItem[];
+  aggregate_compliance_items?: ComplianceItem[];
+  placement_note: string | null;
+  updated_at: string | null;
+};
+
+export type ComplianceExplorerRow = {
+  resource_type: "project" | "vm" | "network";
+  project_id: string;
+  project_name?: string | null;
+  agent_id?: string | null;
+  agent_name?: string | null;
+  name?: string | null;
+  region_id?: string | null;
+  region_name?: string | null;
+  infrastructure_provider_id?: string | null;
+  catalog_items: ComplianceItem[];
+  direct_catalog_items?: ComplianceItem[];
+  inherited_catalog_items?: ComplianceItem[];
+  /** Project only: standards every child VM/network satisfies. */
+  aggregate_catalog_items?: ComplianceItem[];
+  inherited_traits: PlacementRationale["inherited_traits"];
+  placement_note?: string | null;
+};
+
+export type ComplianceExplorerResult = {
+  organization_id: string;
+  filter_description: string;
+  total_matched: number;
+  offset: number;
+  page_size: number;
+  truncated: boolean;
+  rows: ComplianceExplorerRow[];
+};
+
+export type ComplianceExplorerSuggestion = {
+  resource_key: string;
+  resource_type: "project" | "vm" | "network";
+  label: string;
+  project_id: string;
+  project_name?: string | null;
+  agent_id?: string | null;
+  name?: string | null;
+};
+
+export type ComplianceExplorerSuggestResult = {
+  organization_id: string;
+  query: string;
+  suggestions: ComplianceExplorerSuggestion[];
+};
+
+export type ComplianceExplorerFacets = {
+  organization_id: string;
+  catalog_items: ComplianceItem[];
+  trait_keys: string[];
+};
+
+export type PlacementRationale = {
+  organization_id: string;
+  resource_type: "project" | "vm" | "network";
+  project_id: string;
+  agent_id?: string | null;
+  name?: string | null;
+  project_name?: string | null;
+  agent_name?: string | null;
+  region_id?: string | null;
+  infrastructure_provider_id?: string | null;
+  inherited_traits: {
+    scope: "provider" | "region";
+    trait_key: string;
+    title: string;
+    description: string | null;
+    moscow: MoscowKind;
+    infrastructure_provider_id?: string | null;
+    infrastructure_provider_name?: string | null;
+    region_id?: string | null;
+    region_name?: string | null;
+  }[];
+  compliance_items: ComplianceItem[];
+  inherited_compliance_items?: ComplianceItem[];
+  placement_note: string | null;
+  related_checks: ComplianceCheck[];
+  config_drift?: boolean | null;
+};

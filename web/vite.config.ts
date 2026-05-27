@@ -19,8 +19,19 @@ export default defineConfig({
       "/api/v1/organizations": {
         ...cp(8081),
         router(req) {
-          if (req.url && /\/organizations\/[^/]+\/ipam/.test(req.url)) {
+          const url = req.url ?? "";
+          if (/\/organizations\/[^/]+\/ipam/.test(url)) {
             return "http://127.0.0.1:8084";
+          }
+          if (
+            /\/organizations\/[^/]+\/(compliance-catalog|compliance-checks|compliance-dashboard|compliance-explorer[^?]*|regions\/[^/]+\/(traits|compliance-items)|traits\/|projects\/[^/]+\/(criticality|resources)|resources\/)/.test(
+              url,
+            ) ||
+            /\/organizations\/[^/]+\/infrastructure-providers\/[^/]+\/(traits|compliance-profile)/.test(
+              url,
+            )
+          ) {
+            return "http://127.0.0.1:8086";
           }
           return "http://127.0.0.1:8081";
         },

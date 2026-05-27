@@ -96,6 +96,62 @@ async def create_pool(session: AsyncSession, organization_id: str, body: IpPoolC
     return pool
 
 
+async def delete_pool(session: AsyncSession, organization_id: str, pool_id: str) -> None:
+    pool = await get_pool(session, pool_id)
+    if pool is None or pool.organization_id != organization_id:
+        raise HTTPException(status_code=404, detail="Pool not found")
+
+    alloc_result = await session.execute(
+        select(IpAllocation).where(
+            IpAllocation.pool_id == pool_id,
+            IpAllocation.status.in_(("reserved", "allocated")),
+        )
+    )
+    allocations = list(alloc_result.scalars().all())
+    if allocations:
+        in_use = [a for a in allocations if a.status == "allocated" and a.network_name]
+        reserved = [a for a in allocations if a.status == "reserved" or not a.network_name]
+        parts: list[str] = []
+        if in_use:
+            nets = ", ".join(
+                f"{a.network_name} ({a.cidr})" for a in in_use[:3] if a.network_name
+            )
+            extra = f" (+{len(in_use) - 3} more)" if len(in_use) > 3 else ""
+            parts.append(f"{len(in_use)} network(s) still bound ({nets}{extra})")
+        if reserved:
+            parts.append(f"{len(reserved)} reserved subnet block(s)")
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Cannot delete pool '{pool.name}': "
+                + "; ".join(parts)
+                + ". Release or delete those networks first."
+            ),
+        )
+
+    link_result = await session.execute(
+        select(NetworkLink).where(
+            NetworkLink.overlay_pool_id == pool_id,
+            NetworkLink.status != "deleting",
+        )
+    )
+    links = list(link_result.scalars().all())
+    if links:
+        names = ", ".join(link.name for link in links[:3])
+        extra = f" (+{len(links) - 3} more)" if len(links) > 3 else ""
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Cannot delete pool '{pool.name}': "
+                f"{len(links)} topology link(s) still use it ({names}{extra}). "
+                "Delete those links in Topology first."
+            ),
+        )
+
+    await session.delete(pool)
+    await session.commit()
+
+
 async def _occupied_cidrs(session: AsyncSession, pool_id: str) -> list[str]:
     result = await session.execute(
         select(IpAllocation.cidr).where(

@@ -52,6 +52,7 @@ export function ResourceListItem({
   name,
   subtitle,
   onEdit,
+  onCompliance,
   onFlatBreakout,
   onDelete,
   deleteLabel = "Delete",
@@ -60,6 +61,7 @@ export function ResourceListItem({
   name: string;
   subtitle?: string;
   onEdit?: () => void;
+  onCompliance?: () => void;
   onFlatBreakout?: () => void;
   onDelete?: () => void;
   deleteLabel?: string;
@@ -73,6 +75,15 @@ export function ResourceListItem({
         {extra}
       </div>
       <div className="flex shrink-0 gap-2">
+        {onCompliance && (
+          <button
+            type="button"
+            onClick={onCompliance}
+            className="rounded border border-slate-400/50 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            Compliance
+          </button>
+        )}
         {onEdit && (
           <button
             type="button"

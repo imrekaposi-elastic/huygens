@@ -1,6 +1,6 @@
 # Huygens console
 
-React SPA for operators. Phase 5 (projects, inventory, IPAM) and Phase 6 (**Topology** — network linking) are in the console; see [PHASED_PLAN.md](../docs/PHASED_PLAN.md).
+React SPA for operators. Phase 5 (projects, inventory, IPAM), Phase 6 (**Topology**), and Phase 7 (**Compliance**) are in the console; see [PHASED_PLAN.md](../docs/PHASED_PLAN.md).
 
 ## Development
 
@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 — Vite proxies `/api/v1/*` to IAM (8081), registry (8082), inventory (8083), projects (8084).
+Open http://localhost:5173 — Vite proxies `/api/v1/*` to IAM (8081), registry (8082), inventory (8083), projects (8084), compliance (8086).
 
 Default login (from `compose.env.example`): `platform-admin` / `platform-admin-dev`
 
@@ -20,6 +20,12 @@ Default login (from `compose.env.example`): `platform-admin` / `platform-admin-d
 **Platform admin nav:** **Fabric** (libvirt-agent, …) → **Infrastructure** (vendor + region tree) → **Agents** (enroll at a region) → Dashboard / Projects / **Topology** / IPAM.
 
 **Topology (Phase 6):** connect vnets on the graph (drag or click source then target). Cross-hypervisor links need an overlay IPAM pool; same-hypervisor links use direct routing (`local`). Link detail shows `last_error` when reconcile fails — often outdated libvirt agent; see [Phase 6 operations](../docs/operations/phase6-release-and-validation.md).
+
+**Compliance (Phase 7):** **Compliance** nav — Overview (KPIs), **Explorer** (filters, green/grey/blue membership), Catalog, Checks. **Infrastructure** (platform admin): provider/region catalog standards (inherit to sub-regions and workloads). **Projects:** Compliance tab; VM/network **Compliance** and **Why here?** dialogs. Membership: green = direct, grey = placement inherited, blue = all child VMs/networks compliant.
+
+**IPAM:** delete empty pools; **409** when subnets or overlay links still in use.
+
+**Networks:** delete blocked (**409**) while VMs, topology links, or active breakout remain — see [Phase 7 operations](../docs/operations/phase7-compliance-and-lifecycle-guards.md).
 
 **DB reset:** This release changes registry/projects schema (`infrastructure_providers`, hierarchical regions, `agent_technologies`). Run `docker compose down -v` before upgrading.
 

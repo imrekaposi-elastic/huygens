@@ -42,6 +42,9 @@ PERM_INVENTORY_READ = "inventory:read"
 PERM_PROJECT_READ = "project:read"
 PERM_PROJECT_MANAGE = "project:manage"
 PERM_PROJECT_OPERATE = "project:operate"
+PERM_COMPLIANCE_READ = "compliance:read"
+PERM_COMPLIANCE_CATALOG_MANAGE = "compliance:catalog_manage"
+PERM_COMPLIANCE_ASSIGN = "compliance:assign"
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     PlatformRole.PLATFORM_ADMIN.value: frozenset(
@@ -57,6 +60,9 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_PROJECT_READ,
             PERM_PROJECT_MANAGE,
             PERM_PROJECT_OPERATE,
+            PERM_COMPLIANCE_READ,
+            PERM_COMPLIANCE_CATALOG_MANAGE,
+            PERM_COMPLIANCE_ASSIGN,
         }
     ),
     OrgRole.ADMIN.value: frozenset(
@@ -67,10 +73,27 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_PROJECT_READ,
             PERM_PROJECT_MANAGE,
             PERM_PROJECT_OPERATE,
+            PERM_COMPLIANCE_READ,
+            PERM_COMPLIANCE_CATALOG_MANAGE,
+            PERM_COMPLIANCE_ASSIGN,
         }
     ),
-    OrgRole.COMPLIANCE_ADMIN.value: frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
-    OrgRole.COMPLIANCE_ENGINEER.value: frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
+    OrgRole.COMPLIANCE_ADMIN.value: frozenset(
+        {
+            PERM_ORG_READ,
+            PERM_INVENTORY_READ,
+            PERM_COMPLIANCE_READ,
+            PERM_COMPLIANCE_CATALOG_MANAGE,
+        }
+    ),
+    OrgRole.COMPLIANCE_ENGINEER.value: frozenset(
+        {
+            PERM_ORG_READ,
+            PERM_INVENTORY_READ,
+            PERM_COMPLIANCE_READ,
+            PERM_COMPLIANCE_ASSIGN,
+        }
+    ),
     ProjectRole.PROJECT_ADMIN.value: frozenset(
         {
             PERM_ORG_READ,
@@ -85,6 +108,10 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     ProjectRole.RESOURCE_MANAGER.value: frozenset(
         {PERM_ORG_READ, PERM_PROJECT_READ, PERM_PROJECT_OPERATE}
     ),
-    ProjectRole.AUDITOR.value: frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
-    ProjectRole.COMPLIANCE_READER.value: frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
+    ProjectRole.AUDITOR.value: frozenset(
+        {PERM_ORG_READ, PERM_INVENTORY_READ, PERM_COMPLIANCE_READ}
+    ),
+    ProjectRole.COMPLIANCE_READER.value: frozenset(
+        {PERM_ORG_READ, PERM_INVENTORY_READ, PERM_COMPLIANCE_READ}
+    ),
 }

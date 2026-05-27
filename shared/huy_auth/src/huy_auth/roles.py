@@ -13,6 +13,9 @@ PERM_INVENTORY_READ = "inventory:read"
 PERM_PROJECT_READ = "project:read"
 PERM_PROJECT_MANAGE = "project:manage"
 PERM_PROJECT_OPERATE = "project:operate"
+PERM_COMPLIANCE_READ = "compliance:read"
+PERM_COMPLIANCE_CATALOG_MANAGE = "compliance:catalog_manage"
+PERM_COMPLIANCE_ASSIGN = "compliance:assign"
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "platform_admin": frozenset(
@@ -28,6 +31,9 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_PROJECT_READ,
             PERM_PROJECT_MANAGE,
             PERM_PROJECT_OPERATE,
+            PERM_COMPLIANCE_READ,
+            PERM_COMPLIANCE_CATALOG_MANAGE,
+            PERM_COMPLIANCE_ASSIGN,
         }
     ),
     "admin": frozenset(
@@ -38,6 +44,9 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_PROJECT_READ,
             PERM_PROJECT_MANAGE,
             PERM_PROJECT_OPERATE,
+            PERM_COMPLIANCE_READ,
+            PERM_COMPLIANCE_CATALOG_MANAGE,
+            PERM_COMPLIANCE_ASSIGN,
         }
     ),
     "project_admin": frozenset(
@@ -62,8 +71,26 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_PROJECT_OPERATE,
         }
     ),
-    "compliance_admin": frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
-    "compliance_engineer": frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
-    "auditor": frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
-    "compliance_reader": frozenset({PERM_ORG_READ, PERM_INVENTORY_READ}),
+    "compliance_admin": frozenset(
+        {
+            PERM_ORG_READ,
+            PERM_INVENTORY_READ,
+            PERM_COMPLIANCE_READ,
+            PERM_COMPLIANCE_CATALOG_MANAGE,
+        }
+    ),
+    "compliance_engineer": frozenset(
+        {
+            PERM_ORG_READ,
+            PERM_INVENTORY_READ,
+            PERM_COMPLIANCE_READ,
+            PERM_COMPLIANCE_ASSIGN,
+        }
+    ),
+    "auditor": frozenset(
+        {PERM_ORG_READ, PERM_INVENTORY_READ, PERM_COMPLIANCE_READ}
+    ),
+    "compliance_reader": frozenset(
+        {PERM_ORG_READ, PERM_INVENTORY_READ, PERM_COMPLIANCE_READ}
+    ),
 }

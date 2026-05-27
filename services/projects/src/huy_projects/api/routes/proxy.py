@@ -256,14 +256,10 @@ async def delete_network(
     await project_scope.require_resource_in_project(
         session, project, agent_id=agent_id, resource_type="network", name=name
     )
-    from huy_projects.services import link_service
+    from huy_projects.services.network_delete_guard import assert_network_deletable
 
-    await link_service.delete_links_for_network(
-        session,
-        project.organization_id,
-        agent_id=agent_id,
-        project_id=project.id,
-        network_name=name,
+    await assert_network_deletable(
+        session, proxy, project, agent_id=agent_id, network_name=name
     )
     try:
         await proxy.delete_network(

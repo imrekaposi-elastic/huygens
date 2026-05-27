@@ -1,6 +1,6 @@
 .PHONY: compose-up compose-down compose-logs compose-ps test test-unit test-integration test-ci test-deps venv \
-	test-huy-auth test-huy-events test-iam test-registry test-inventory test-projects test-agent-libvirt \
-	test-breakout-controller test-web wait-stack
+	test-huy-auth test-huy-events test-iam test-registry test-inventory test-projects test-compliance \
+	test-agent-libvirt test-breakout-controller test-web wait-stack
 
 VENV ?= $(CURDIR)/.venv
 PYTHON ?= $(VENV)/bin/python
@@ -30,7 +30,7 @@ test: test-unit
 # Matches default GitHub Actions CI (unit + integration).
 test-ci: test-unit test-integration
 
-test-unit: venv test-deps test-huy-auth test-huy-events test-iam test-registry test-inventory test-projects test-agent-libvirt test-breakout-controller test-web
+test-unit: venv test-deps test-huy-auth test-huy-events test-iam test-registry test-inventory test-projects test-compliance test-agent-libvirt test-breakout-controller test-web
 
 wait-stack:
 	bash scripts/wait-for-stack.sh
@@ -62,6 +62,10 @@ test-inventory: venv test-deps
 test-projects: venv test-deps
 	$(PIP) install -q -e "services/projects[dev]"
 	cd services/projects && $(PYTEST) -q
+
+test-compliance: venv test-deps
+	$(PIP) install -q -e "services/compliance[dev]"
+	cd services/compliance && $(PYTEST) -q
 
 test-agent-libvirt: venv
 	$(PIP) install -q -e "agents/libvirt[dev]"

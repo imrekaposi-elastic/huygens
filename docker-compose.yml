@@ -183,6 +183,39 @@ services:
       retries: 6
       start_period: 10s
 
+  compliance:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_DIR: services/compliance
+        RUN_SCRIPT: huy-compliance
+    ports:
+      - "8086:8086"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-huy}:${POSTGRES_PASSWORD:-huy}@postgres:5432/${POSTGRES_DB:-huy}
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me-minimum-32-chars}
+      JWT_ISSUER: ${JWT_ISSUER:-huy-iam}
+      REGISTRY_URL: http://registry:8082
+      PROJECTS_URL: http://projects:8084
+      PROJECTS_SERVICE_TOKEN: ${PROJECTS_SERVICE_TOKEN:-dev-projects-service-token}
+      CHECK_ALERT_ENABLED: ${CHECK_ALERT_ENABLED:-true}
+      HUY_COMPLIANCE_HOST: 0.0.0.0
+      HUY_COMPLIANCE_PORT: "8086"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      registry:
+        condition: service_healthy
+      projects:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8086/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
   web:
     build:
       context: .
@@ -197,6 +230,8 @@ services:
       inventory:
         condition: service_healthy
       projects:
+        condition: service_healthy
+      compliance:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/health || exit 1"]

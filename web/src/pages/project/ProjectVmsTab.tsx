@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/auth/AuthContext";
+import { canAccessCompliance } from "@/auth/permissions";
+import { getAccessToken, isPlatformAdmin } from "@/auth/token";
 import { api } from "@/api/client";
+import { PlacementRationaleDialog } from "@/components/compliance/PlacementRationaleDialog";
+import { ResourceCriticalityDialog } from "@/components/compliance/ResourceCriticalityDialog";
 import { VmIcon } from "@/components/icons/NavIcons";
 import { liveQueryOptions } from "@/lib/liveRefresh";
 import { useProjectWorkspace } from "@/pages/project/projectContext";
@@ -11,8 +16,20 @@ type Props = { projectId: string };
 
 export function ProjectVmsTab({ projectId }: Props) {
   const { agentId } = useProjectWorkspace();
+  const { user, selectedOrgId } = useAuth();
+  const platformAdmin = isPlatformAdmin(getAccessToken());
+  const showRationale = canAccessCompliance(user, selectedOrgId, platformAdmin);
+  const showCompliance = canAccessCompliance(user, selectedOrgId, platformAdmin);
   const qc = useQueryClient();
   const [dialog, setDialog] = useState<"create" | { edit: Record<string, unknown> } | null>(null);
+  const [rationaleVm, setRationaleVm] = useState<string | null>(null);
+  const [criticalityVm, setCriticalityVm] = useState<string | null>(null);
+
+  const project = useQuery({
+    queryKey: ["project", projectId],
+    queryFn: () => api.getProject(projectId),
+  });
+  const organizationId = project.data?.organization_id ?? selectedOrgId ?? "";
 
   const { data, isLoading } = useQuery({
     queryKey: ["vms", projectId, agentId],
@@ -73,7 +90,25 @@ export function ProjectVmsTab({ projectId }: Props) {
             const name = String(vm.name ?? "");
             return (
               <div className="flex flex-col items-end gap-1">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
+                  {showCompliance && organizationId && (
+                    <button
+                      type="button"
+                      onClick={() => setCriticalityVm(name)}
+                      className="rounded border border-slate-400/50 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                    >
+                      Compliance
+                    </button>
+                  )}
+                  {showRationale && organizationId && (
+                    <button
+                      type="button"
+                      onClick={() => setRationaleVm(name)}
+                      className="rounded border border-emerald-600/50 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+                    >
+                      Why here?
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setDialog({ edit: vm as Record<string, unknown> })}
@@ -113,6 +148,29 @@ export function ProjectVmsTab({ projectId }: Props) {
         onClose={() => setDialog(null)}
         onSaved={invalidate}
       />
+
+      {organizationId && rationaleVm && (
+        <PlacementRationaleDialog
+          organizationId={organizationId}
+          projectId={projectId}
+          agentId={agentId}
+          vmName={rationaleVm}
+          open
+          onClose={() => setRationaleVm(null)}
+        />
+      )}
+
+      {organizationId && criticalityVm && (
+        <ResourceCriticalityDialog
+          organizationId={organizationId}
+          projectId={projectId}
+          agentId={agentId}
+          resourceType="vm"
+          resourceName={criticalityVm}
+          open
+          onClose={() => setCriticalityVm(null)}
+        />
+      )}
     </>
   );
 }

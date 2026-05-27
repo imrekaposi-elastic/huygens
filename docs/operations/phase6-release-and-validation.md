@@ -74,17 +74,18 @@ automatically on `docker compose up`. No manual `kafka-topics.sh` step for the d
 |----------|---------|
 | Cross-hypervisor WireGuard link | [tests/integration/README.md](../../tests/integration/README.md#manual-two-agent-wireguard-link-test-phase-6) |
 | Same-hypervisor local link | [tests/integration/README.md](../../tests/integration/README.md#manual-same-hypervisor-local-link-test-phase-6) |
-| Network delete / inventory orphan | Delete via **Projects → networks** (default `purge=true`); related links enter `deleting`; assignment reconciler (~60s) prunes OOB-deleted vnets from topology |
+| Network delete / inventory orphan | Delete via **Projects → networks** only when no VMs, topology links, or active breakout use the vnet (**409** otherwise). See [phase7-compliance-and-lifecycle-guards.md](phase7-compliance-and-lifecycle-guards.md). Assignment reconciler (~60s) prunes OOB-deleted vnets from topology |
 
 ## Known limitations (documented backlog)
 
 These are **not** fixed by documentation alone; tracked for product planning:
 
 - **Flat L2** `bridge_uplink` / `macvlan`: configure per vnet in the console (**Networks → Flat breakout**, Phase 6.1). Same-hypervisor routing between vnets still uses topology link type `local` (`local_peer`).
-- **Integration tests** do not POST links or assert reconcile-to-`connected` (smoke only).
+- **Compose integration tests** are API smoke only (`tests/integration/test_network_links.py`). Control-plane reconcile-to-`connected` is covered in unit tests (`services/projects/tests/test_link_reconcile.py`).
 
 ## Related docs
 
+- [phase7-compliance-and-lifecycle-guards.md](phase7-compliance-and-lifecycle-guards.md)
 - [ADR 0012](../architecture/adrs/0012-hybrid-breakout-and-network-linking.md)
 - [ADR 0004](../architecture/adrs/0004-kafka-event-bus.md)
 - [docker-compose.md](../install/docker-compose.md)

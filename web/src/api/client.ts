@@ -16,8 +16,20 @@ import type {
   ProjectAgentTechnology,
   RegionTreeNode,
   WizardPlanResponse,
+  AssetCriticality,
+  ComplianceCheck,
+  ComplianceDashboard,
+  ComplianceExplorerFacets,
+  ComplianceExplorerResult,
+  ComplianceExplorerSuggestResult,
+  ComplianceItem,
+  ComplianceTrait,
+  InfrastructureProviderCompliance,
+  RegionCompliance,
   FlatBreakoutConfig,
   IdpGroupMapping,
+  PlacementRationale,
+  MoscowKind,
   NetworkBreakout,
   TokenResponse,
   UserOut,
@@ -266,6 +278,12 @@ export const api = {
     request<IpPool>(
       `/api/v1/organizations/${encodeURIComponent(organizationId)}/ipam/pools`,
       { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  deleteIpamPool: (organizationId: string, poolId: string) =>
+    request<void>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/ipam/pools/${encodeURIComponent(poolId)}`,
+      { method: "DELETE" },
     ),
 
   topology: (organizationId: string) =>
@@ -629,4 +647,276 @@ export const api = {
       `/api/v1/projects/${projectId}/agents/${agentId}/images/${encodeURIComponent(name)}`,
       { method: "DELETE" },
     ),
+
+  complianceDashboard: (organizationId: string) =>
+    request<ComplianceDashboard>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-dashboard`,
+    ),
+
+  complianceExplorerFacets: (organizationId: string) =>
+    request<ComplianceExplorerFacets>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-explorer/facets`,
+    ),
+
+  complianceExplorerSuggest: (
+    organizationId: string,
+    params: { q: string; resource_type?: "project" | "vm" | "network"; limit?: number },
+  ) => {
+    const qs = new URLSearchParams({ q: params.q });
+    if (params.resource_type) qs.set("resource_type", params.resource_type);
+    if (params.limit != null) qs.set("limit", String(params.limit));
+    return request<ComplianceExplorerSuggestResult>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-explorer/suggest?${qs}`,
+    );
+  },
+
+  complianceExplorer: (
+    organizationId: string,
+    params: {
+      catalog_slug?: string;
+      catalog_item_id?: string;
+      catalog_match?: "has" | "missing";
+      trait_key?: string;
+      trait_match?: "has" | "missing";
+      trait_scope?: "any" | "provider" | "region";
+      resource_type?: "project" | "vm" | "network";
+      q?: string;
+      resource_key?: string;
+      offset?: number;
+      page_size?: number;
+    },
+  ) => {
+    const q = new URLSearchParams();
+    if (params.catalog_slug) q.set("catalog_slug", params.catalog_slug);
+    if (params.catalog_item_id) q.set("catalog_item_id", params.catalog_item_id);
+    if (params.catalog_match) q.set("catalog_match", params.catalog_match);
+    if (params.trait_key) q.set("trait_key", params.trait_key);
+    if (params.trait_match) q.set("trait_match", params.trait_match);
+    if (params.trait_scope) q.set("trait_scope", params.trait_scope);
+    if (params.resource_type) q.set("resource_type", params.resource_type);
+    if (params.q) q.set("q", params.q);
+    if (params.resource_key) q.set("resource_key", params.resource_key);
+    if (params.offset != null) q.set("offset", String(params.offset));
+    if (params.page_size != null) q.set("page_size", String(params.page_size));
+    const qs = q.toString();
+    return request<ComplianceExplorerResult>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-explorer${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  listComplianceCatalog: (organizationId: string) =>
+    request<ComplianceItem[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-catalog`,
+    ),
+
+  createComplianceCatalogItem: (
+    organizationId: string,
+    body: {
+      name: string;
+      slug?: string;
+      description?: string;
+      reference_url?: string;
+      moscow?: MoscowKind;
+      target_level?: string;
+    },
+  ) =>
+    request<ComplianceItem>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-catalog`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  updateComplianceCatalogItem: (
+    organizationId: string,
+    itemId: string,
+    body: {
+      name?: string;
+      description?: string | null;
+      reference_url?: string | null;
+      moscow?: MoscowKind;
+      target_level?: string | null;
+    },
+  ) =>
+    request<ComplianceItem>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-catalog/${encodeURIComponent(itemId)}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+
+  deleteComplianceCatalogItem: (organizationId: string, itemId: string) =>
+    request<void>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-catalog/${encodeURIComponent(itemId)}`,
+      { method: "DELETE" },
+    ),
+
+  listComplianceChecks: (organizationId: string) =>
+    request<ComplianceCheck[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-checks`,
+    ),
+
+  createComplianceCheck: (
+    organizationId: string,
+    body: {
+      compliance_item_id: string;
+      owner_user_id: string;
+      owner_display?: string;
+      valid_until: string;
+      status?: "active" | "expired" | "waived";
+    },
+  ) =>
+    request<ComplianceCheck>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-checks`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  updateComplianceCheck: (
+    organizationId: string,
+    checkId: string,
+    body: {
+      owner_user_id?: string;
+      owner_display?: string;
+      valid_until?: string;
+      status?: "active" | "expired" | "waived";
+    },
+  ) =>
+    request<ComplianceCheck>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-checks/${encodeURIComponent(checkId)}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+
+  deleteComplianceCheck: (organizationId: string, checkId: string) =>
+    request<void>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-checks/${encodeURIComponent(checkId)}`,
+      { method: "DELETE" },
+    ),
+
+  getProviderComplianceProfile: (organizationId: string, providerId: string) =>
+    request<InfrastructureProviderCompliance>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/infrastructure-providers/${encodeURIComponent(providerId)}/compliance-profile`,
+    ),
+
+  setProviderComplianceProfile: (
+    organizationId: string,
+    providerId: string,
+    body: { compliance_item_ids: string[]; is_compliant?: boolean },
+  ) =>
+    request<InfrastructureProviderCompliance>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/infrastructure-providers/${encodeURIComponent(providerId)}/compliance-profile`,
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
+
+  getRegionComplianceItems: (organizationId: string, regionId: string) =>
+    request<RegionCompliance>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/regions/${encodeURIComponent(regionId)}/compliance-items`,
+    ),
+
+  setRegionComplianceItems: (
+    organizationId: string,
+    regionId: string,
+    body: { compliance_item_ids: string[] },
+  ) =>
+    request<RegionCompliance>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/regions/${encodeURIComponent(regionId)}/compliance-items`,
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
+
+  listProviderTraits: (organizationId: string, providerId: string) =>
+    request<ComplianceTrait[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/infrastructure-providers/${encodeURIComponent(providerId)}/traits`,
+    ),
+
+  createProviderTrait: (
+    organizationId: string,
+    providerId: string,
+    body: { trait_key: string; title: string; description?: string; moscow?: MoscowKind },
+  ) =>
+    request<ComplianceTrait>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/infrastructure-providers/${encodeURIComponent(providerId)}/traits`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  deleteProviderTrait: (organizationId: string, traitId: string) =>
+    request<void>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/traits/provider/${encodeURIComponent(traitId)}`,
+      { method: "DELETE" },
+    ),
+
+  listRegionTraits: (organizationId: string, regionId: string) =>
+    request<ComplianceTrait[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/regions/${encodeURIComponent(regionId)}/traits`,
+    ),
+
+  createRegionTrait: (
+    organizationId: string,
+    regionId: string,
+    body: { trait_key: string; title: string; description?: string; moscow?: MoscowKind },
+  ) =>
+    request<ComplianceTrait>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/regions/${encodeURIComponent(regionId)}/traits`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  deleteRegionTrait: (organizationId: string, traitId: string) =>
+    request<void>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/traits/region/${encodeURIComponent(traitId)}`,
+      { method: "DELETE" },
+    ),
+
+  placementRationale: (
+    organizationId: string,
+    params: {
+      resource_type: "project" | "vm" | "network";
+      project_id: string;
+      agent_id?: string;
+      name?: string;
+    },
+  ) => {
+    const q = new URLSearchParams({ project_id: params.project_id });
+    if (params.agent_id) q.set("agent_id", params.agent_id);
+    if (params.name) q.set("name", params.name);
+    return request<PlacementRationale>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/resources/${encodeURIComponent(params.resource_type)}/placement-rationale?${q}`,
+    );
+  },
+
+  getProjectCriticality: (organizationId: string, projectId: string) =>
+    request<AssetCriticality>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/projects/${encodeURIComponent(projectId)}/criticality`,
+    ),
+
+  setProjectCriticality: (
+    organizationId: string,
+    projectId: string,
+    body: { compliance_item_ids: string[]; placement_note?: string },
+  ) =>
+    request<AssetCriticality>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/projects/${encodeURIComponent(projectId)}/criticality`,
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
+
+  getResourceCriticality: (
+    organizationId: string,
+    projectId: string,
+    resourceType: "vm" | "network",
+    name: string,
+    agentId: string,
+  ) => {
+    const q = new URLSearchParams({ agent_id: agentId });
+    return request<AssetCriticality>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/projects/${encodeURIComponent(projectId)}/resources/${encodeURIComponent(resourceType)}/${encodeURIComponent(name)}/criticality?${q}`,
+    );
+  },
+
+  setResourceCriticality: (
+    organizationId: string,
+    projectId: string,
+    resourceType: "vm" | "network",
+    name: string,
+    agentId: string,
+    body: { compliance_item_ids: string[]; placement_note?: string },
+  ) => {
+    const q = new URLSearchParams({ agent_id: agentId });
+    return request<AssetCriticality>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/projects/${encodeURIComponent(projectId)}/resources/${encodeURIComponent(resourceType)}/${encodeURIComponent(name)}/criticality?${q}`,
+      { method: "PUT", body: JSON.stringify(body) },
+    );
+  },
 };

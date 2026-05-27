@@ -345,7 +345,7 @@ async def test_local_link_rejected_when_agent_lacks_local_peer_capability(
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_delete_network_marks_related_links_deleting(client: AsyncClient) -> None:
+async def test_delete_network_rejected_when_topology_link_exists(client: AsyncClient) -> None:
     headers = {"Authorization": f"Bearer {org_admin_token(ORG_ID)}"}
     agent_id = "99999999-9999-9999-9999-999999999999"
     _mock_agent_connect(agent_id)
@@ -422,14 +422,15 @@ async def test_delete_network_marks_related_links_deleting(client: AsyncClient) 
         f"/api/v1/projects/{pid_a}/agents/{agent_id}/networks/net-a",
         headers=headers,
     )
-    assert deleted.status_code == 204
+    assert deleted.status_code == 409
+    assert "topology link" in deleted.json()["detail"].lower()
 
     links = await client.get(
         f"/api/v1/organizations/{ORG_ID}/network-links",
         headers=headers,
     )
     assert links.status_code == 200
-    assert links.json()[0]["status"] == "deleting"
+    assert links.json()[0]["status"] == "connected"
 
 
 @pytest.mark.asyncio

@@ -3,8 +3,8 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 
 from huy_registry.api.deps import InventoryServiceDep, SessionDep, SettingsDep
-from huy_registry.schemas import AgentConnectOut, AgentTechnologyOut, PollStatusUpdate, PollTargetOut
-from huy_registry.services import agent_service, agent_technology_service
+from huy_registry.schemas import AgentConnectOut, AgentTechnologyOut, PollStatusUpdate, PollTargetOut, RegionOut
+from huy_registry.services import agent_service, agent_technology_service, region_tree_service
 
 router = APIRouter(prefix="/api/v1/internal", tags=["internal"])
 
@@ -25,6 +25,22 @@ async def poll_targets(
     settings: SettingsDep,
 ) -> list[PollTargetOut]:
     return await agent_service.list_poll_targets(session, settings)
+
+
+@router.get(
+    "/infrastructure-providers/{infrastructure_provider_id}/regions",
+    response_model=list[RegionOut],
+)
+async def list_provider_regions_internal(
+    infrastructure_provider_id: str,
+    _service: InventoryServiceDep,
+    session: SessionDep,
+) -> list[RegionOut]:
+    """Flat region list (with parent_region_id) for compliance placement inheritance."""
+    rows = await region_tree_service.list_all_regions_for_provider(
+        session, infrastructure_provider_id
+    )
+    return [RegionOut.model_validate(r) for r in rows]
 
 
 @router.get("/agents/{agent_id}/connect", response_model=AgentConnectOut)

@@ -50,6 +50,18 @@ async def list_pools(
     return [ipam_service.pool_to_out(p) for p in pools]
 
 
+@router.delete("/pools/{pool_id}", status_code=204)
+async def delete_pool(
+    organization_id: str,
+    pool_id: str,
+    user: CurrentUserDep,
+    session: SessionDep,
+) -> None:
+    _check_org_access(user, organization_id)
+    authorization.require_org_ipam_manage(user, organization_id)
+    await ipam_service.delete_pool(session, organization_id, pool_id)
+
+
 @router.get("/pools/{pool_id}/allocations", response_model=list[IpAllocationOut])
 async def list_pool_allocations(
     organization_id: str,

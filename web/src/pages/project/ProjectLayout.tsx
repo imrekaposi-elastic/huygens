@@ -8,12 +8,16 @@ import {
   FolderOpenIcon,
   NetworkIcon,
   PageTitleIcon,
+  CheckmarkIcon,
   UsersIcon,
   VmIcon,
 } from "@/components/icons/NavIcons";
+import { useAuth } from "@/auth/AuthContext";
+import { canAccessCompliance } from "@/auth/permissions";
+import { getAccessToken, isPlatformAdmin } from "@/auth/token";
 import { useProjectWorkspace } from "@/pages/project/projectContext";
 
-const subNav = [
+const subNavBase = [
   { tab: "vms" as const, label: "Virtual machines", icon: <VmIcon /> },
   { tab: "images" as const, label: "Images", icon: <CdIcon /> },
   { tab: "networks" as const, label: "Networks", icon: <NetworkIcon /> },
@@ -25,6 +29,8 @@ type Props = { projectId: string };
 
 export function ProjectLayout({ projectId }: Props) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { user, selectedOrgId } = useAuth();
+  const platformAdmin = isPlatformAdmin(getAccessToken());
   const { agentId, setAgentId } = useProjectWorkspace();
   const qc = useQueryClient();
 
@@ -48,6 +54,16 @@ export function ProjectLayout({ projectId }: Props) {
       setAgentId(agents.data[0].id);
     }
   }, [agentId, agents.data, setAgentId]);
+
+  const organizationId = project.data?.organization_id ?? selectedOrgId ?? "";
+  const showCompliance = canAccessCompliance(user, organizationId, platformAdmin);
+  const subNav = showCompliance
+    ? [
+        ...subNavBase.slice(0, 3),
+        { tab: "compliance" as const, label: "Compliance", icon: <CheckmarkIcon className="size-5" /> },
+        ...subNavBase.slice(3),
+      ]
+    : subNavBase;
 
   const saveTechs = useMutation({
     mutationFn: (technologies: { agent_technology_id: string; enabled: boolean }[]) =>

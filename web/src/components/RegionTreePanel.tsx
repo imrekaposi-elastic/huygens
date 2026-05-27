@@ -1,16 +1,23 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/api/client";
+import { InfrastructureCompliancePanel } from "@/components/compliance/InfrastructureCompliancePanel";
 import { GlobeIcon } from "@/components/icons/NavIcons";
 import type { RegionTreeNode } from "@/api/types";
 
 type Props = {
   nodes: RegionTreeNode[];
   infrastructureProviderId: string;
+  organizationId?: string | null;
   depth?: number;
 };
 
-export function RegionTreePanel({ nodes, infrastructureProviderId, depth = 0 }: Props) {
+export function RegionTreePanel({
+  nodes,
+  infrastructureProviderId,
+  organizationId = null,
+  depth = 0,
+}: Props) {
   const qc = useQueryClient();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -56,7 +63,7 @@ export function RegionTreePanel({ nodes, infrastructureProviderId, depth = 0 }: 
       {err && <p className="mb-2 text-sm text-red-600 dark:text-red-400">{err}</p>}
       <ul className={depth === 0 ? "space-y-2" : "ml-4 mt-2 space-y-2 border-l border-slate-300 dark:border-slate-700 pl-3"}>
         {nodes.map((node) => (
-          <li key={node.id} className="rounded-lg border border-slate-200 dark:border-slate-800 bg-red-50 dark:bg-red-950/40 p-3">
+          <li key={node.id} className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/50 p-3">
             <div className="flex flex-wrap items-center gap-2">
               <GlobeIcon className="size-4 shrink-0 text-slate-500 dark:text-slate-500" />
               <span className="font-medium">{node.name}</span>
@@ -96,10 +103,18 @@ export function RegionTreePanel({ nodes, infrastructureProviderId, depth = 0 }: 
                 ))}
               </ul>
             )}
+            {organizationId && (
+              <InfrastructureCompliancePanel
+                organizationId={organizationId}
+                providerId={infrastructureProviderId}
+                regionId={node.id}
+              />
+            )}
             {node.children.length > 0 && (
               <RegionTreePanel
                 nodes={node.children}
                 infrastructureProviderId={infrastructureProviderId}
+                organizationId={organizationId}
                 depth={depth + 1}
               />
             )}

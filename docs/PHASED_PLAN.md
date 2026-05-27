@@ -17,7 +17,7 @@ The strategic proposal and the build plan share one delivery model: **Huygens is
 | Strategic promise | Technical expression in phases |
 |-------------------|-------------------------------|
 | Know **where** workloads run | Phase 1 inventory; provider/region/agent/project; Phase 11 K8s node placement; Phases 14–17 optional adoption (Proxmox, AWS/GCP/Azure RO) |
-| Know **why** | Phase 7: org compliance catalog + **asset criticality** on resources + inherited provider/region traits |
+| Know **why** | Phase 7 ✅: org catalog + asset criticality + infrastructure placement standards (provider/region, incl. sub-regions) |
 | **Compliant** | Phase 7 checks, owners, validity periods; drift flags from Phase 1 |
 | **Who changed** | ECS audit (ES); RBAC including `auditor`, `compliance_engineer` |
 | **How connected** | Phase 6 overlay/breakout + topology UI (MVP ✅; GA criteria in [operations/phase6-release-and-validation.md](operations/phase6-release-and-validation.md)) |
@@ -35,8 +35,9 @@ The strategic proposal and the build plan share one delivery model: **Huygens is
 | Workload inventory | Yes | Via console/agents | Phase 1 + agent | **Done** (Phase 1) |
 | Operator VM/network CRUD | Yes | Via console | **Phases 3 + 5** | **Done** (projects proxy + web console) |
 | Web console + live inventory | Yes | Instant status | **Phase 5** | **Done** (SSE + Kafka; poller backstop) |
-| Asset **criticality** | Implied (risk-aware) | **NEW:** `compliance_engineer`, org compliance picker | **Phase 7** | Not in Phases 0–1 |
-| Org compliance standards | Yes | Provider/region traits, MoSCoW | Phase 7 | Planned |
+| Asset **criticality** | Implied (risk-aware) | `compliance_engineer`, org compliance picker | **Phase 7** | **MVP shipped** |
+| Org compliance standards | Yes | Provider/region catalog links, MoSCoW | Phase 7 | **MVP shipped** |
+| Lifecycle delete guards | — | Network / IP pool preflight | Post–Phase 6 | **Shipped** in `projects` |
 | Config drift | Yes (Elastic narrative) | `config_drift` API flag | Phase 1 + 7 UI | Agent/control plane partial |
 | Overlay / topology | Yes | WG breakout, drag-and-drop | Phase 6 | MVP ✅ (manual cross-host validation) |
 | platform_admin onboarding | — | — | Phase 1 | Documented |
@@ -70,7 +71,7 @@ Based on [FRAMEWORK_PLAN.md](../FRAMEWORK_PLAN.md) and your iteration:
 | **Air-gapped install** | No mandatory cloud; offline bundles (containers/Helm/packages); Phase 0 ADR + Phase 10 runbook — **strategic link** alongside OSS self-hosted |
 | **Observability** | **OpenTelemetry throughout**, **EDOT-friendly** (FRAMEWORK_PLAN); ECS logs + OTLP to Elastic Observability or any OTLP backend |
 | **Asset criticality** | Org-level compliance catalog; `compliance_engineer` assigns criticality/requirements to resources from that catalog (Phase 7) |
-| **Know why** | Placement/explainability = inherited provider/region traits + selected org compliance items + asset criticality on VM/project/vnet |
+| **Know why** | Placement/explainability = infrastructure catalog standards (provider/region lineage) + direct assignments + project aggregate when all children comply |
 
 ---
 
@@ -158,8 +159,11 @@ flowchart TB
 | Object | Purpose |
 |--------|---------|
 | `OrgComplianceItem` | Org standard: name, description, URL, MoSCoW, target level (FRAMEWORK_PLAN admin section) |
-| Provider / Region `trait` | Qualitative characteristics (sovereignty, BIO, …) — **inherited** by child resources |
-| `AssetCriticality` (on VM, project, vnet, …) | Selected from org compliance items by **`compliance_engineer`**; drives “why” and compliance views |
+| `InfrastructureProviderCompliance` + item links | Catalog standards on a provider — inherited by all agents on that provider |
+| `RegionComplianceItemLink` | Catalog standards on a region — inherited by agents in that region and **sub-regions** |
+| `AssetCriticalityAssignment` | Direct catalog selection on VM, project, or network by **`compliance_engineer`** |
+| Project **aggregate** (derived) | Catalog item on project when **every** child VM/network has it in effective compliance |
+| `ProviderTrait` / `RegionTrait` | Legacy free-form traits (API only; console uses catalog links above) |
 | `ComplianceCheck` | Owner, validity period, annual refresh; audited |
 
 PostgreSQL: authoritative config. Elasticsearch ECS: audit + compliance **search/dashboards** (strategic Elastic narrative).
@@ -429,16 +433,22 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - `local_peer` remains topology-managed (read-only in UI when a `local` link is active)
 - Agent validates uplink interface names; tests in `test_flat_breakout_schema.py`, `test_breakout_proxy.py`
 
-### Phase 7 — Compliance, asset criticality, and “know why”
-- **Org compliance catalog:** standards with description, URL, MoSCoW, org target level (FRAMEWORK_PLAN)
-- **Provider / region traits** with inheritance to projects/VMs
-- **`compliance_engineer` role:** assign **asset criticality** and compliance requirements on resources by **selecting from org compliance items** (not free-text only)
-- **Compliance checks:** owner, validity period, annual refresh; all changes audited → ES ECS
-- **Compliance alerter** (FRAMEWORK_PLAN)
-- Console: drift badge + criticality badge + inherited traits (“why this workload is here” panel)
-- **Explainability API:** `GET /resources/{id}/placement-rationale` (inherited traits + criticality + checks)
-- **Kibana (optional pack):** compliance app/node — dashboards over Huygens ECS data (no mandatory SIEM index templates)
-- **Deliverable:** Compliance dashboard; ES views for `compliance_admin`, `compliance_reader`, `auditor`; explainability API; Kibana compliance pack spike
+### Phase 7 — Compliance, asset criticality, and “know why” (MVP shipped)
+- **Status:** `services/compliance` (port **8086**), console `/compliance` (Overview, Explorer, Catalog, Checks), infrastructure standards on provider/region tree, VM **Why here?**; PG audit events (ES/Kibana deferred)
+- **Shipped:**
+  - Org compliance catalog + checks (CRUD, delete checks)
+  - **Explorer** — filter by catalog slug, placement trait, resource type; project rows with aggregate membership
+  - **Membership UI** — green direct, grey placement inherited, blue project aggregate (“all child objects are compliant”)
+  - Infrastructure **catalog standards** on provider and region (region standards inherit to sub-regions)
+  - Asset criticality on project / VM / network; dialog auto-close on save
+  - Placement rationale API; check alerter (structlog)
+  - **Lifecycle guards** (in `projects`): network delete blocked when VMs / links / breakout attached; IP pool delete when allocations or overlay links in use
+- **Remaining / deferred:**
+  - Kibana compliance pack spike; ES dashboards for `compliance_admin` / `auditor`
+  - `config_drift` on placement rationale (inventory integration)
+  - Free-form traits API — no console UI
+  - Drift/criticality badges on resource list rows (not implemented)
+- **Ops:** [operations/phase7-compliance-and-lifecycle-guards.md](operations/phase7-compliance-and-lifecycle-guards.md)
 
 ### Phase 8 — Observability, EDOT, and graphs
 - **OpenTelemetry throughout** all control-plane services (traces, metrics, logs) per FRAMEWORK_PLAN
@@ -600,7 +610,7 @@ Phase **9** can ship before **11** (VM-only). Phase **12** requires **11** (clus
 | `inventory` | Python | Poller + Kafka producer; uses agent **read path** |
 | `audit-ingest` | Python/Logstash | Writes ECS to Elasticsearch |
 | `projects` | Python | **Phases 3–4 ✅** Project CRUD, IPAM, agent proxy (`:8084`); quotas TBD |
-| `compliance` | Python | Org catalog, asset criticality, traits, checks; PG + ES views |
+| `compliance` | Python | Org catalog, explorer, criticality, infrastructure profiles, checks (`:8086`) |
 | `breakout-controller` | Go | Central WG |
 | `api-gateway` | Go/Kong | Auth, routing |
 | `web` | React/TS | **Phase 5 ✅** Console SPA → IAM, projects, inventory (nginx in Compose) |
@@ -632,7 +642,7 @@ Phase **9** can ship before **11** (VM-only). Phase **12** requires **11** (clus
 - Audited VM SSH (Phase 9); K8s exec / k9s via proxy (Phase 12); session playbooks (Phase 13)
 - Multi-region control-plane HA (Phase 10)
 - **Ticketing** — SNOW/Jira plugin only if needed later
-- **Asset criticality UI** — Phase 7 (role exists in FRAMEWORK_PLAN from day one in IAM stubs only)
+- **Kibana compliance dashboards** — Phase 7 spike only; PG/console MVP shipped
 - **Kubernetes inventory** — Phase 11 (not deferred indefinitely; **crucial** after core platform)
 - **Proxmox / AWS / GCP / Azure adoption** — Phases 14–17 (inventory RO; **lowest priority**; not before Phase 13)
 
