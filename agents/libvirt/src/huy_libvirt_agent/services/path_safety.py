@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 
@@ -45,28 +46,31 @@ def resolve_local_image_source(source: str, allowed_roots: list[Path]) -> Path:
     """
     if not source or "\0" in source:
         raise PathSafetyError("Invalid local image path")
-    raw = Path(source)
-    if not raw.is_absolute():
+    # Use os.path.realpath for normalization so CodeQL can see the safety check.
+    if not os.path.isabs(source):
         raise PathSafetyError("Local image source must be an absolute path")
-    resolved = raw.resolve()
-    if not resolved.is_file():
+
+    resolved = os.path.realpath(source)
+    if not os.path.isfile(resolved):
         raise FileNotFoundError(f"Source not found: {source}")
-    roots = [r.resolve() for r in allowed_roots]
-    if not any(_is_under_root(resolved, root) for root in roots):
-        allowed = ", ".join(str(r) for r in roots)
+
+    roots = [os.path.realpath(str(r)) for r in allowed_roots]
+    if not any(resolved == root or resolved.startswith(root + os.sep) for root in roots):
+        allowed = ", ".join(roots)
         raise PathSafetyError(
             f"Local image path must be under an allowed directory ({allowed})"
         )
-    return resolved
+    return Path(resolved)
 
 
 def resolve_cached_disk_path(cached_path: str, registry_dir: Path, image_name: str) -> Path:
     """Ensure metadata cached_path points inside this image's registry directory."""
     safe_registry_name(image_name)
-    resolved = Path(cached_path).resolve()
-    image_dir = (registry_dir / image_name).resolve()
-    if not _is_under_root(resolved, image_dir):
-        raise PathSafetyError("Cached image path escapes registry directory")
-    if not resolved.is_file():
+
+    expected = os.path.realpath(str((registry_dir / image_name / "disk.qcow2").resolve()))
+    resolved = os.path.realpath(cached_path)
+    if resolved != expected:
+        raise PathSafetyError("Cached image path does not match expected location")
+    if not os.path.isfile(resolved):
         raise PathSafetyError("Cached image file missing")
-    return resolved
+    return Path(resolved)

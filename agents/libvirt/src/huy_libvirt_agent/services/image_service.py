@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 from datetime import UTC, datetime
+import os
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -165,6 +166,11 @@ class ImageService:
                     src = resolve_local_image_source(source, self._local_import_roots())
                 except PathSafetyError as exc:
                     raise LibvirtError(str(exc), "INVALID_SOURCE") from exc
+                # Re-check before file copy so CodeQL sees the guard at the sink.
+                resolved_src = os.path.realpath(str(src))
+                roots = [os.path.realpath(str(r)) for r in self._local_import_roots()]
+                if not any(resolved_src == root or resolved_src.startswith(root + os.sep) for root in roots):
+                    raise LibvirtError("Local image path must be under an allowed directory", "INVALID_SOURCE")
                 if src != dest.resolve():
                     shutil.copy2(src, dest)
                 if meta.get("sha256"):
