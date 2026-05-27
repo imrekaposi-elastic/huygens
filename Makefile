@@ -63,7 +63,7 @@ test-projects: venv test-deps
 	cd services/projects && $(PYTEST) -q
 
 test-breakout-controller:
-	docker run --rm -v "$(CURDIR)/services/breakout-controller:/src" -w /src golang:1.23-bookworm go test ./...
+	docker run --rm -v "$(CURDIR)/services/breakout-controller:/src" -w /src golang:1.24-bookworm go test ./...
 
 test-web:
 	cd web && npm install && npm test
