@@ -5,7 +5,7 @@ Run the control plane and PostgreSQL with one command. The libvirt agent stays o
 ## Prerequisites
 
 - Docker Engine 24+ with Compose v2
-- Ports free: `5432`, `8081`–`8084`, `9092` (PostgreSQL, control plane, Kafka)
+- Ports free: `5432`, `8081`–`8085`, `9092` (PostgreSQL, control plane, Kafka)
 
 ## Start
 
@@ -27,7 +27,8 @@ docker compose ps
 | IAM | http://localhost:8081/docs | Login, orgs, RBAC |
 | Registry | http://localhost:8082/docs | Scaffold (Phase 1) |
 | Inventory | http://localhost:8083/docs | Poller + SSE |
-| Projects | http://localhost:8084/docs | Project CRUD + agent proxy |
+| Projects | http://localhost:8084/docs | Project CRUD, IPAM, links, agent proxy |
+| Breakout controller | http://localhost:8085/health | WireGuard link planning (internal) |
 | **Console** | http://localhost:5173 | Phase 5 web UI (nginx) |
 | PostgreSQL | `localhost:5432` | user/db/password: `huy` |
 

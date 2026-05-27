@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Network link event",
+  "type": "object",
+  "required": ["version", "link_id", "organization_id", "status"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "link_id": { "type": "string" },
+    "organization_id": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "applying", "connected", "error", "deleting"]
+    },
+    "left_agent_id": { "type": "string" },
+    "right_agent_id": { "type": "string" }
+  }
+}

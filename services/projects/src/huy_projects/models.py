@@ -110,8 +110,50 @@ class IpPool(Base):
     cidr: Mapped[str] = mapped_column(String(64), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     exceptions: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    pool_kind: Mapped[str] = mapped_column(String(16), nullable=False, default="vnet")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class NetworkLink(Base):
+    """WireGuard link between two project vnets on different agents (Phase 6)."""
+
+    __tablename__ = "network_links"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    organization_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    link_type: Mapped[str] = mapped_column(String(32), nullable=False, default="wireguard")
+    left_agent_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    left_project_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    left_network_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    right_agent_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    right_project_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    right_network_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    overlay_pool_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    tunnel_cidr: Mapped[str] = mapped_column(String(64), nullable=False)
+    left_tunnel_address: Mapped[str] = mapped_column(String(64), nullable=False)
+    right_tunnel_address: Mapped[str] = mapped_column(String(64), nullable=False)
+    left_public_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    right_public_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    left_private_key_enc: Mapped[str] = mapped_column(Text, nullable=False)
+    right_private_key_enc: Mapped[str] = mapped_column(Text, nullable=False)
+    left_vnet_cidr: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    right_vnet_cidr: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    config_drift: Mapped[bool] = mapped_column(default=False, nullable=False)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    desired_generation: Mapped[int] = mapped_column(default=1, nullable=False)
+    applied_generation: Mapped[int] = mapped_column(default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )
 
 

@@ -40,6 +40,26 @@ def require_org_ipam_manage(user: AuthContext, organization_id: str) -> None:
     raise HTTPException(status_code=403, detail="Org admin required for IPAM pool management")
 
 
+def require_link_manage(user: AuthContext, organization_id: str, left: Project, right: Project) -> None:
+    """Create/delete links: org admin, platform_admin, or operator on both projects."""
+    if user.is_platform_admin():
+        return
+    if "admin" in user.org_roles(organization_id):
+        return
+    if user.can_operate_project(organization_id, left.id) and user.can_operate_project(
+        organization_id, right.id
+    ):
+        return
+    raise HTTPException(status_code=403, detail="Link management requires operate on both projects")
+
+
+def require_topology_read(user: AuthContext, organization_id: str) -> None:
+    if user.is_platform_admin():
+        return
+    if not user.can_access_org(organization_id):
+        raise HTTPException(status_code=403, detail="Organization access denied")
+
+
 def require_project_create(user: AuthContext, organization_id: str) -> None:
     if user.is_platform_admin():
         return

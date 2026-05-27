@@ -12,9 +12,10 @@ from huy_projects.ipam.core import (
     next_subnet,
     parse_network,
     plan_subnets,
+    validate_overlay_pool_cidr,
     validate_pool_cidr,
 )
-from huy_projects.models import IpAllocation, IpPool, Project
+from huy_projects.models import IpAllocation, IpPool, NetworkLink, Project
 from huy_projects.schemas import (
     IpAllocationOut,
     IpPoolCreate,
@@ -34,6 +35,7 @@ def pool_to_out(pool: IpPool) -> IpPoolOut:
         cidr=pool.cidr,
         description=pool.description,
         exceptions=pool.exceptions or [],
+        pool_kind=pool.pool_kind,  # type: ignore[arg-type]
         created_at=pool.created_at,
     )
 
@@ -63,8 +65,10 @@ async def list_pools(session: AsyncSession, organization_id: str) -> list[IpPool
 
 async def create_pool(session: AsyncSession, organization_id: str, body: IpPoolCreate) -> IpPool:
     try:
-        validate_pool_cidr(body.cidr)
-        pool_net = validate_pool_cidr(body.cidr)
+        if body.pool_kind == "overlay":
+            pool_net = validate_overlay_pool_cidr(body.cidr)
+        else:
+            pool_net = validate_pool_cidr(body.cidr)
         for exc in body.exceptions:
             exc_net = parse_network(exc)
             if not exc_net.subnet_of(pool_net):
@@ -84,6 +88,7 @@ async def create_pool(session: AsyncSession, organization_id: str, body: IpPoolC
         cidr=body.cidr,
         description=body.description,
         exceptions=body.exceptions,
+        pool_kind=body.pool_kind,
     )
     session.add(pool)
     await session.commit()
@@ -242,3 +247,35 @@ async def resolve_network_cidr(
         agent_body["ipv4_cidr"] = allocation.cidr
 
     return agent_body, allocation
+
+
+async def _occupied_tunnel_cidrs(session: AsyncSession, pool_id: str) -> list[str]:
+    result = await session.execute(
+        select(NetworkLink.tunnel_cidr).where(
+            NetworkLink.overlay_pool_id == pool_id,
+            NetworkLink.status != "deleting",
+        )
+    )
+    return [row[0] for row in result.all()]
+
+
+async def allocate_link_tunnel(
+    session: AsyncSession, pool: IpPool
+) -> tuple[str, str, str]:
+    """Allocate a /30 from an overlay pool; returns (tunnel_cidr, left_ip, right_ip)."""
+    if pool.pool_kind != "overlay":
+        raise HTTPException(status_code=400, detail="Pool must have pool_kind overlay")
+    try:
+        pool_net = validate_overlay_pool_cidr(pool.cidr)
+        subnet = next_subnet(
+            pool_net,
+            30,
+            await _occupied_tunnel_cidrs(session, pool.id),
+            exceptions=pool.exceptions or [],
+        )
+        hosts = list(subnet.hosts())
+        if len(hosts) < 2:
+            raise IpamError("No host addresses in /30 subnet")
+        return str(subnet), str(hosts[0]), str(hosts[1])
+    except IpamError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e

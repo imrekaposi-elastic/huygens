@@ -3,3 +3,4 @@
 TOPIC_AGENT_EVENTS = "huy.agent.events"
 TOPIC_INVENTORY_SNAPSHOTS = "huy.inventory.snapshots"
 TOPIC_AUDIT_EVENTS = "huy.audit.events"
+TOPIC_NETWORK_LINKS = "huy.network.links"

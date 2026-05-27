@@ -64,10 +64,17 @@ class BreakoutService:
         exempt: list[str] = [vnet_cidr]
         wg = breakout.get("wireguard", {})
         flat = breakout.get("flat", {})
+        peer_forward: list[str] = []
         if wg.get("enabled"):
             exempt.extend(wg.get("nat_exempt_cidrs", []))
         if flat.get("enabled"):
             exempt.extend(flat.get("nat_exempt_cidrs", flat.get("remote_hypervisor_cidrs", [])))
+            if flat.get("mode") == "local_peer":
+                peer_forward = list(
+                    flat.get("remote_hypervisor_cidrs", []) or flat.get("nat_exempt_cidrs", [])
+                )
         dnat_path = self._vnet_path(vnet) / "dnat.json"
         dnat_rules = json.loads(dnat_path.read_text()) if dnat_path.exists() else []
-        self._iptables.apply_vnet_rules(vnet, vnet_cidr, exempt, dnat_rules)
+        self._iptables.apply_vnet_rules(
+            vnet, vnet_cidr, exempt, dnat_rules, peer_forward_cidrs=peer_forward
+        )

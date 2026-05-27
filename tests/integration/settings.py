@@ -12,6 +12,7 @@ class StackSettings:
     registry_url: str
     inventory_url: str
     projects_url: str
+    breakout_url: str
     web_url: str
     username: str
     password: str
@@ -24,6 +25,7 @@ class StackSettings:
             registry_url=os.environ.get("HUY_REGISTRY_URL", "http://127.0.0.1:8082").rstrip("/"),
             inventory_url=os.environ.get("HUY_INVENTORY_URL", "http://127.0.0.1:8083").rstrip("/"),
             projects_url=os.environ.get("HUY_PROJECTS_URL", "http://127.0.0.1:8084").rstrip("/"),
+            breakout_url=os.environ.get("HUY_BREAKOUT_URL", "http://127.0.0.1:8085").rstrip("/"),
             web_url=os.environ.get("HUY_WEB_URL", "http://127.0.0.1:5173").rstrip("/"),
             username=os.environ.get("HUY_E2E_USER", "platform-admin"),
             password=os.environ.get("HUY_E2E_PASSWORD", "platform-admin-dev"),
@@ -36,5 +38,6 @@ class StackSettings:
             "registry": f"{self.registry_url}/health",
             "inventory": f"{self.inventory_url}/health",
             "projects": f"{self.projects_url}/health",
+            "breakout-controller": f"{self.breakout_url}/health",
             "web": f"{self.web_url}/health",
         }

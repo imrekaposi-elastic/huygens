@@ -253,11 +253,52 @@ export const api = {
 
   createIpamPool: (
     organizationId: string,
-    body: { name: string; cidr: string; description?: string; exceptions?: string[] },
+    body: {
+      name: string;
+      cidr: string;
+      description?: string;
+      exceptions?: string[];
+      pool_kind?: "vnet" | "overlay";
+    },
   ) =>
     request<IpPool>(
       `/api/v1/organizations/${encodeURIComponent(organizationId)}/ipam/pools`,
       { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  topology: (organizationId: string) =>
+    request<import("@/api/types").Topology>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/topology`,
+    ),
+
+  listNetworkLinks: (organizationId: string) =>
+    request<import("@/api/types").NetworkLink[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/network-links`,
+    ),
+
+  getNetworkLink: (organizationId: string, linkId: string) =>
+    request<import("@/api/types").NetworkLink>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/network-links/${encodeURIComponent(linkId)}`,
+    ),
+
+  createNetworkLink: (
+    organizationId: string,
+    body: {
+      overlay_pool_id?: string;
+      name?: string;
+      left: import("@/api/types").NetworkLinkEndpoint;
+      right: import("@/api/types").NetworkLinkEndpoint;
+    },
+  ) =>
+    request<import("@/api/types").NetworkLink>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/network-links`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  deleteNetworkLink: (organizationId: string, linkId: string) =>
+    request<import("@/api/types").NetworkLink>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/network-links/${encodeURIComponent(linkId)}`,
+      { method: "DELETE" },
     ),
 
   ipamWizardPlan: (

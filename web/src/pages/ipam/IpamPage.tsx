@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/api/client";
-import type { IpAllocation, Project, WizardSubnetPlan } from "@/api/types";
+import type { IpAllocation, PoolKind, Project, WizardSubnetPlan } from "@/api/types";
 import { NetworkIcon, PageTitleIcon } from "@/components/icons/NavIcons";
 import { addressesInSubnet, hostsToPrefixLen, subnetMaskLabel } from "@/lib/ipam";
 
@@ -15,6 +15,7 @@ export function IpamPage({ organizationId }: Props) {
   const [poolId, setPoolId] = useState("");
   const [newPoolName, setNewPoolName] = useState("org-private");
   const [newPoolCidr, setNewPoolCidr] = useState("10.100.0.0/16");
+  const [newPoolKind, setNewPoolKind] = useState<PoolKind>("vnet");
   const [assignProjectId, setAssignProjectId] = useState("");
   const [networkCount, setNetworkCount] = useState("3");
   const [hostsPerNetwork, setHostsPerNetwork] = useState("50");
@@ -35,6 +36,8 @@ export function IpamPage({ organizationId }: Props) {
   });
 
   const activePoolId = poolId || pools.data?.[0]?.id || "";
+  const activePool = pools.data?.find((p) => p.id === activePoolId);
+  const isOverlayPool = activePool?.pool_kind === "overlay";
   const hosts = Math.max(1, parseInt(hostsPerNetwork, 10) || 50);
   const prefixLen = hostsToPrefixLen(hosts);
 
@@ -57,16 +60,33 @@ export function IpamPage({ organizationId }: Props) {
       api.createIpamPool(organizationId, {
         name: newPoolName.trim(),
         cidr: newPoolCidr.trim(),
-        description: "Organization private address space",
+        pool_kind: newPoolKind,
+        description:
+          newPoolKind === "overlay"
+            ? "WireGuard tunnel /30 addresses for Topology links"
+            : "Organization private address space for project vnets",
       }),
     onSuccess: (pool) => {
       setPoolId(pool.id);
       setPlan(null);
-      setOk(`Created address pool ${pool.name} (${pool.cidr}).`);
+      setOk(
+        `Created ${pool.pool_kind === "overlay" ? "overlay" : "vnet"} pool ${pool.name} (${pool.cidr}).`,
+      );
       void qc.invalidateQueries({ queryKey: ["ipam-pools", organizationId] });
     },
     onError: (e) => setErr(e instanceof ApiError ? e.message : "Create pool failed"),
   });
+
+  function onPoolKindChange(kind: PoolKind) {
+    setNewPoolKind(kind);
+    if (kind === "overlay") {
+      if (newPoolName === "org-private") setNewPoolName("org-overlay");
+      if (newPoolCidr === "10.100.0.0/16") setNewPoolCidr("10.255.0.0/24");
+    } else {
+      if (newPoolName === "org-overlay") setNewPoolName("org-private");
+      if (newPoolCidr === "10.255.0.0/24") setNewPoolCidr("10.100.0.0/16");
+    }
+  }
 
   const runPlan = useMutation({
     mutationFn: () =>
@@ -121,46 +141,12 @@ export function IpamPage({ organizationId }: Props) {
       {err && <p className="text-sm text-red-700 dark:text-red-300">{err}</p>}
 
       <section className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/80 p-4">
-        <h2 className="text-sm font-medium text-slate-700 dark:text-slate-300">Organization address pool</h2>
+        <h2 className="text-sm font-medium text-slate-700 dark:text-slate-300">Organization address pools</h2>
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
-          One RFC1918 pool per organization keeps address spaces unique for cross-project linking (phase 6).
+          Vnet pools feed project subnets; overlay pools reserve /30 blocks for WireGuard links in Topology.
         </p>
 
-        {(pools.data?.length ?? 0) === 0 ? (
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <label className="block text-sm md:col-span-1">
-              Pool name
-              <input
-                className="mt-1 w-full min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 font-mono text-sm"
-                value={newPoolName}
-                onChange={(e) => setNewPoolName(e.target.value)}
-              />
-            </label>
-            <label className="block text-sm md:col-span-2">
-              Organization CIDR (RFC1918)
-              <input
-                className="mt-1 w-full min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 font-mono text-sm"
-                value={newPoolCidr}
-                onChange={(e) => setNewPoolCidr(e.target.value)}
-                placeholder="10.100.0.0/16"
-              />
-            </label>
-            <div className="md:col-span-3">
-              <button
-                type="button"
-                disabled={createPool.isPending}
-                onClick={() => {
-                  setErr(null);
-                  setOk(null);
-                  createPool.mutate();
-                }}
-                className="min-h-10 rounded-lg bg-emerald-600 px-4 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
-              >
-                {createPool.isPending ? "Creating…" : "Create organization pool"}
-              </button>
-            </div>
-          </div>
-        ) : (
+        {(pools.data?.length ?? 0) > 0 && (
           <label className="mt-4 block text-sm">
             Active pool
             <select
@@ -173,13 +159,91 @@ export function IpamPage({ organizationId }: Props) {
             >
               {pools.data?.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name} — {p.cidr}
+                  {p.name} — {p.cidr} ({p.pool_kind})
                 </option>
               ))}
             </select>
           </label>
         )}
+
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <fieldset className="block text-sm md:col-span-4">
+            <legend className="text-sm font-medium text-slate-700 dark:text-slate-300">Pool type</legend>
+            <div className="mt-2 flex flex-wrap gap-4">
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="pool-kind"
+                  checked={newPoolKind === "vnet"}
+                  onChange={() => onPoolKindChange("vnet")}
+                />
+                Vnet (project subnets)
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="pool-kind"
+                  checked={newPoolKind === "overlay"}
+                  onChange={() => onPoolKindChange("overlay")}
+                />
+                Overlay (Topology / WireGuard)
+              </label>
+            </div>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
+              {newPoolKind === "overlay"
+                ? "Use a /16–/28 slice; each link consumes one /30 (e.g. 10.255.0.0/24)."
+                : "Typical org pool is /16–/24 for carving project /24–/26 subnets."}
+            </p>
+          </fieldset>
+          <label className="block text-sm md:col-span-1">
+            Pool name
+            <input
+              className="mt-1 w-full min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 font-mono text-sm"
+              value={newPoolName}
+              onChange={(e) => setNewPoolName(e.target.value)}
+            />
+          </label>
+          <label className="block text-sm md:col-span-3">
+            Organization CIDR (RFC1918)
+            <input
+              className="mt-1 w-full min-h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 font-mono text-sm"
+              value={newPoolCidr}
+              onChange={(e) => setNewPoolCidr(e.target.value)}
+              placeholder={newPoolKind === "overlay" ? "10.255.0.0/24" : "10.100.0.0/16"}
+            />
+          </label>
+          <div className="md:col-span-4">
+            <button
+              type="button"
+              disabled={createPool.isPending}
+              onClick={() => {
+                setErr(null);
+                setOk(null);
+                createPool.mutate();
+              }}
+              className="min-h-10 rounded-lg bg-emerald-600 px-4 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
+            >
+              {createPool.isPending
+                ? "Creating…"
+                : newPoolKind === "overlay"
+                  ? "Create overlay pool"
+                  : "Create vnet pool"}
+            </button>
+          </div>
+        </div>
       </section>
+
+      {activePoolId && isOverlayPool && (
+        <section className="rounded-lg border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-800 dark:bg-amber-950/30">
+          <p className="text-sm text-amber-900 dark:text-amber-200">
+            This is an overlay pool — tunnel /30s are allocated automatically when you create links in{" "}
+            <Link to="/topology" className="font-medium underline">
+              Topology
+            </Link>
+            . The subnet wizard below applies only to vnet pools.
+          </p>
+        </section>
+      )}
 
       {activePoolId && (
         <>
@@ -211,6 +275,7 @@ export function IpamPage({ organizationId }: Props) {
             )}
           </section>
 
+          {!isOverlayPool && (
           <section className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/80 p-4">
             <h2 className="text-sm font-medium text-slate-700 dark:text-slate-300">Subnet wizard</h2>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
@@ -331,6 +396,7 @@ export function IpamPage({ organizationId }: Props) {
               </div>
             )}
           </section>
+          )}
         </>
       )}
     </div>

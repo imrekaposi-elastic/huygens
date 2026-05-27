@@ -13,6 +13,9 @@ logger = structlog.get_logger(__name__)
 
 class FlatBackend:
     def apply(self, vnet: str, config: FlatBreakoutConfig) -> None:
+        if config.mode == "local_peer":
+            logger.info("flat_breakout_local_peer", vnet=vnet, peers=config.nat_exempt_cidrs)
+            return
         bridge = f"br-{vnet}"
         if config.mode == "bridge_uplink":
             subprocess.run(

@@ -1,7 +1,7 @@
 .PHONY: compose-up compose-down compose-logs compose-ps test test-unit test-integration test-deps venv \
 	test-huy-events test-iam test-registry test-inventory test-projects test-web
 
-VENV ?= .venv
+VENV ?= $(CURDIR)/.venv
 PYTHON ?= $(VENV)/bin/python
 PIP ?= $(PYTHON) -m pip
 PYTEST ?= $(PYTHON) -m pytest

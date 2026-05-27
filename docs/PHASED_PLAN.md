@@ -20,7 +20,7 @@ The strategic proposal and the build plan share one delivery model: **Huygens is
 | Know **why** | Phase 7: org compliance catalog + **asset criticality** on resources + inherited provider/region traits |
 | **Compliant** | Phase 7 checks, owners, validity periods; drift flags from Phase 1 |
 | **Who changed** | ECS audit (ES); RBAC including `auditor`, `compliance_engineer` |
-| **How connected** | Phase 6 overlay/breakout + topology UI |
+| **How connected** | Phase 6 overlay/breakout + topology UI ✅ |
 | **Audited access** | Phase 9 VM SSH; Phase 12 K8s exec/k9s via API proxy; Phase 13 playbooks; sessions → ES |
 | **Elastic-correlatable telemetry** | ECS logs; inventory/drift/events Kafka → ES; metrics Phase 8 |
 | **Under Kubernetes, not instead of it** | **Phase 11** (crucial) |
@@ -38,7 +38,7 @@ The strategic proposal and the build plan share one delivery model: **Huygens is
 | Asset **criticality** | Implied (risk-aware) | **NEW:** `compliance_engineer`, org compliance picker | **Phase 7** | Not in Phases 0–1 |
 | Org compliance standards | Yes | Provider/region traits, MoSCoW | Phase 7 | Planned |
 | Config drift | Yes (Elastic narrative) | `config_drift` API flag | Phase 1 + 7 UI | Agent/control plane partial |
-| Overlay / topology | Yes | WG breakout, drag-and-drop | Phase 6 | Later |
+| Overlay / topology | Yes | WG breakout, drag-and-drop | Phase 6 | ✅ |
 | platform_admin onboarding | — | — | Phase 1 | Documented |
 | Open source | **Explicit** | — | **Phase 0** | Was implicit; now explicit |
 | Kubernetes | **Explicit section** | — | **Phase 11** | Was missing; now crucial |
@@ -397,10 +397,12 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - Cross-service tests: `make test-integration` (`tests/integration/`, `HUY_E2E=1`) — see [docs/testing.md](testing.md)
 - **Deliverable:** Operators use console only (replaces curl/projects CLI for normal work) — **done** (`web/`, Compose `web` service, inventory SSE)
 
-### Phase 6 — Hybrid breakout and network linking
-- Central `breakout-controller` + per-agent breakout
-- Drag-and-drop linking (UI)
-- **Deliverable:** Cross-hypervisor link visible in UI
+### Phase 6 — Hybrid breakout and network linking ✅
+- Central `breakout-controller` (Go, `:8085`) + projects link reconciler + per-agent WG apply
+- Org overlay IPAM (`pool_kind: overlay`), `network_links` desired state, Kafka `huy.network.links`
+- Console **Topology** (React Flow): drag vnet→vnet, link status + tunnel IPs on edges
+- ADR [0012](architecture/adrs/0012-hybrid-breakout-and-network-linking.md); integration smoke + [two-agent manual test](../tests/integration/README.md#manual-two-agent-link-test-phase-6)
+- **Deliverable:** Cross-hypervisor link visible in UI — **done** (requires two connected agents for live traffic)
 
 ### Phase 7 — Compliance, asset criticality, and “know why”
 - **Org compliance catalog:** standards with description, URL, MoSCoW, org target level (FRAMEWORK_PLAN)

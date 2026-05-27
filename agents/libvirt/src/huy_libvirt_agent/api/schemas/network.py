@@ -41,7 +41,7 @@ class WireGuardBreakoutConfig(BaseModel):
 
 class FlatBreakoutConfig(BaseModel):
     enabled: bool = False
-    mode: Literal["bridge_uplink", "macvlan"] = "bridge_uplink"
+    mode: Literal["bridge_uplink", "macvlan", "local_peer"] = "bridge_uplink"
     uplink: str = ""
     remote_hypervisor_cidrs: list[str] = Field(default_factory=list)
     nat_exempt_cidrs: list[str] = Field(default_factory=list)

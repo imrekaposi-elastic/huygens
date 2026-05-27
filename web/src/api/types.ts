@@ -146,6 +146,8 @@ export type Project = {
   description: string | null;
 };
 
+export type PoolKind = "vnet" | "overlay";
+
 export type IpPool = {
   id: string;
   organization_id: string;
@@ -153,7 +155,69 @@ export type IpPool = {
   cidr: string;
   description: string | null;
   exceptions: string[];
+  pool_kind: PoolKind;
   created_at: string;
+};
+
+export type LinkStatus = "pending" | "applying" | "connected" | "error" | "deleting";
+
+export type LinkType = "wireguard" | "local";
+
+export type NetworkLinkEndpoint = {
+  agent_id: string;
+  project_id: string;
+  network_name: string;
+};
+
+export type NetworkLink = {
+  id: string;
+  organization_id: string;
+  name: string | null;
+  status: LinkStatus;
+  link_type: LinkType;
+  left: NetworkLinkEndpoint;
+  right: NetworkLinkEndpoint;
+  overlay_pool_id: string;
+  tunnel_cidr: string;
+  left_tunnel_address: string;
+  right_tunnel_address: string;
+  left_public_key: string;
+  right_public_key: string;
+  left_vnet_cidr: string | null;
+  right_vnet_cidr: string | null;
+  config_drift: boolean;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TopologyVnetNode = {
+  agent_id: string;
+  agent_name?: string | null;
+  project_id: string;
+  project_name?: string | null;
+  network_name: string;
+  ipv4_cidr: string | null;
+};
+
+export type TopologyLinkEdge = {
+  id: string;
+  name: string | null;
+  status: LinkStatus;
+  link_type: LinkType;
+  left: NetworkLinkEndpoint;
+  right: NetworkLinkEndpoint;
+  left_tunnel_address: string;
+  right_tunnel_address: string;
+  tunnel_cidr: string;
+  config_drift: boolean;
+  last_error: string | null;
+};
+
+export type Topology = {
+  organization_id: string;
+  vnets: TopologyVnetNode[];
+  links: TopologyLinkEdge[];
 };
 
 export type IpAllocation = {

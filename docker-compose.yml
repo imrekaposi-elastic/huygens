@@ -129,6 +129,22 @@ services:
       retries: 6
       start_period: 10s
 
+  breakout-controller:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.breakout-controller
+    ports:
+      - "8085:8085"
+    environment:
+      HUY_BREAKOUT_HOST: 0.0.0.0:8085
+      BREAKOUT_SERVICE_TOKEN: ${BREAKOUT_SERVICE_TOKEN:-dev-breakout-service-token}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8085/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+
   projects:
     build:
       context: .
@@ -143,8 +159,11 @@ services:
       REGISTRY_URL: http://registry:8082
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me-minimum-32-chars}
       JWT_ISSUER: ${JWT_ISSUER:-huy-iam}
+      AGENT_TOKEN_ENCRYPTION_KEY: ${AGENT_TOKEN_ENCRYPTION_KEY:-dev-agent-token-encryption-key-change-me}
       PROJECTS_SERVICE_TOKEN: ${PROJECTS_SERVICE_TOKEN:-dev-projects-service-token}
       INVENTORY_SERVICE_TOKEN: ${INVENTORY_SERVICE_TOKEN:-dev-inventory-service-token}
+      BREAKOUT_CONTROLLER_URL: http://breakout-controller:8085
+      BREAKOUT_SERVICE_TOKEN: ${BREAKOUT_SERVICE_TOKEN:-dev-breakout-service-token}
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
       HUY_PROJECTS_HOST: 0.0.0.0
       HUY_PROJECTS_PORT: "8084"
@@ -154,6 +173,8 @@ services:
       kafka:
         condition: service_healthy
       registry:
+        condition: service_healthy
+      breakout-controller:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8084/health')\""]

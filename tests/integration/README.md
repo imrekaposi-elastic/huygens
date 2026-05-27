@@ -51,8 +51,22 @@ Unit tests (`make test`) **do not** run these; they stay fast for PR CI.
 | `test_operator_workflow.py` | Ephemeral org → project → IPAM pool → wizard (cleanup after test) |
 | `test_inventory_live.py` | Dashboard, SSE Bearer-only contract, nginx SSE proxy |
 | `test_agent_proxy.py` | `@pytest.mark.requires_agent` — list VMs/networks via projects proxy |
+| `test_network_links.py` | Overlay pool + topology + link list API smoke |
 
 Tests marked `requires_agent` skip automatically when no agent is `connected` for the target org.
+
+## Manual two-agent link test (Phase 6)
+
+Requires **two connected libvirt agents** in the same organization, each with a project-managed vnet (not `default`).
+
+1. Create an **overlay pool** under **IPAM** (`pool_kind: overlay`), e.g. `10.255.0.0/24`.
+2. Assign a vnet on agent A to project P1 and a vnet on agent B to project P2 (console **Projects** → networks).
+3. Open **Topology**, drag from vnet A to vnet B, confirm link creation (select overlay pool).
+4. Wait for link status **connected** (reconciler ~15s). Edge shows tunnel `/30` addresses.
+5. From a VM on vnet A, ping a VM on vnet B across the WireGuard breakout.
+6. Delete the link in the topology detail panel; verify breakout disabled on both agents (`GET` via projects proxy if needed).
+
+If only one agent is enrolled, link creation may succeed in the API but reconciliation stays **error** until the peer agent is reachable.
 
 ## CI recommendation
 

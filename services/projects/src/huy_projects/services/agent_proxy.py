@@ -181,6 +181,39 @@ class AgentProxy:
         info = await self._connect(agent_id, organization_id)
         await self._request(info, "DELETE", f"/api/v1/images/{name}")
 
+    async def get_breakout(
+        self, agent_id: str, organization_id: str, name: str
+    ) -> dict[str, Any]:
+        info = await self._connect(agent_id, organization_id)
+        response = await self._request(info, "GET", f"/api/v1/networks/{name}/breakout")
+        return response.json()
+
+    async def put_wireguard_breakout(
+        self,
+        agent_id: str,
+        organization_id: str,
+        name: str,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        info = await self._connect(agent_id, organization_id)
+        response = await self._request(
+            info, "PUT", f"/api/v1/networks/{name}/breakout/wireguard", json=body
+        )
+        return response.json()
+
+    async def put_flat_breakout(
+        self,
+        agent_id: str,
+        organization_id: str,
+        name: str,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        info = await self._connect(agent_id, organization_id)
+        response = await self._request(
+            info, "PUT", f"/api/v1/networks/{name}/breakout/flat", json=body
+        )
+        return response.json()
+
     async def delete_network(
         self,
         agent_id: str,

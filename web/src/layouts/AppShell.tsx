@@ -1,6 +1,6 @@
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/auth/AuthContext";
-import { canAccessAdmin, canAccessIpam } from "@/auth/permissions";
+import { canAccessAdmin, canAccessIpam, canAccessTopology } from "@/auth/permissions";
 import { isPlatformAdmin, getAccessToken } from "@/auth/token";
 import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
 import { NavItem } from "@/components/NavItem";
@@ -21,6 +21,7 @@ export function AppShell() {
   const token = getAccessToken();
   const showAgents = isPlatformAdmin(token);
   const showIpam = canAccessIpam(user, selectedOrgId, showAgents);
+  const showTopology = canAccessTopology(user, selectedOrgId, showAgents);
   const showAdmin = canAccessAdmin(user, selectedOrgId, showAgents);
 
   useInventoryEvents(selectedOrgId, !!selectedOrgId);
@@ -78,6 +79,14 @@ export function AppShell() {
               label="IPAM"
               icon={<NetworkIcon />}
               active={pathname.startsWith("/ipam")}
+            />
+          )}
+          {showTopology && (
+            <NavItem
+              to="/topology"
+              label="Topology"
+              icon={<NetworkIcon />}
+              active={pathname.startsWith("/topology")}
             />
           )}
           {showAdmin && (

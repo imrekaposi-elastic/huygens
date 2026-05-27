@@ -1,0 +1,14 @@
+FROM golang:1.22-bookworm AS build
+WORKDIR /src
+COPY services/breakout-controller/go.mod services/breakout-controller/go.sum* ./services/breakout-controller/
+WORKDIR /src/services/breakout-controller
+RUN go mod download
+COPY services/breakout-controller/ ./
+RUN CGO_ENABLED=0 go build -o /huy-breakout-controller ./cmd/huy-breakout-controller
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /huy-breakout-controller /usr/local/bin/huy-breakout-controller
+EXPOSE 8085
+ENTRYPOINT ["/usr/local/bin/huy-breakout-controller"]

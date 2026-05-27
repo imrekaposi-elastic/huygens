@@ -18,6 +18,7 @@ import { ProjectNetworksTab } from "@/pages/project/ProjectNetworksTab";
 import { ProjectAccessTab } from "@/pages/project/ProjectAccessTab";
 import { ProjectImagesTab } from "@/pages/project/ProjectImagesTab";
 import { IpamGatePage } from "@/pages/ipam/IpamGatePage";
+import { TopologyGatePage } from "@/pages/topology/TopologyGatePage";
 import { AdminGatePage } from "@/pages/admin/AdminGatePage";
 import { AdminUsersTab } from "@/pages/admin/AdminUsersTab";
 import { AdminIdpMappingsTab } from "@/pages/admin/AdminIdpMappingsTab";
@@ -84,6 +85,12 @@ const ipamRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/ipam",
   component: IpamGatePage,
+});
+
+const topologyRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/topology",
+  component: TopologyGatePage,
 });
 
 const adminRoute = createRoute({
@@ -211,6 +218,7 @@ const routeTree = rootRoute.addChildren([
     infrastructureRoute,
     agentsRoute,
     ipamRoute,
+    topologyRoute,
     adminRoute.addChildren([
       adminIndexRoute,
       adminUsersRoute,

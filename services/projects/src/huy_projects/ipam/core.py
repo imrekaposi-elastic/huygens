@@ -40,6 +40,16 @@ def validate_pool_cidr(cidr: str) -> ipaddress.IPv4Network:
     return net
 
 
+def validate_overlay_pool_cidr(cidr: str) -> ipaddress.IPv4Network:
+    """Overlay pools hold /30 tunnel endpoints; allow a smaller slice than vnet pools."""
+    net = parse_network(cidr)
+    if not is_rfc1918(net):
+        raise IpamError("Pool must be within RFC1918 private address space")
+    if net.prefixlen < 16 or net.prefixlen > 28:
+        raise IpamError("Overlay pool prefix length must be between /16 and /28")
+    return net
+
+
 def hosts_to_prefixlen(hosts: int) -> int:
     if hosts < 1:
         raise IpamError("hosts must be at least 1")

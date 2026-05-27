@@ -39,6 +39,24 @@ class Settings(BaseSettings):
         description="Comma-separated Kafka bootstrap brokers",
     )
     kafka_client_id: str | None = Field(default=None, alias="KAFKA_CLIENT_ID")
+    kafka_publish_enabled: bool = Field(default=True, alias="KAFKA_PUBLISH_ENABLED")
+    agent_token_encryption_key: str = Field(
+        default="dev-agent-token-encryption-key-change-me",
+        alias="AGENT_TOKEN_ENCRYPTION_KEY",
+    )
+    breakout_controller_url: str = Field(
+        default="http://127.0.0.1:8085",
+        alias="BREAKOUT_CONTROLLER_URL",
+    )
+    breakout_service_token: str = Field(
+        default="dev-breakout-service-token",
+        alias="BREAKOUT_SERVICE_TOKEN",
+    )
+    link_reconcile_enabled: bool = Field(default=True, alias="LINK_RECONCILE_ENABLED")
+    link_reconcile_interval_seconds: int = Field(
+        default=15,
+        alias="LINK_RECONCILE_INTERVAL_SECONDS",
+    )
 
 
 @lru_cache

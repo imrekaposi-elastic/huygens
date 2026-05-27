@@ -14,6 +14,11 @@ os.environ.setdefault("PROJECTS_SERVICE_TOKEN", "test-projects-service-token")
 os.environ.setdefault("INVENTORY_SERVICE_TOKEN", "test-inventory-service-token")
 os.environ.setdefault("REGISTRY_URL", "http://registry.test")
 os.environ.setdefault("IPAM_ENFORCE", "false")
+os.environ.setdefault("AGENT_TOKEN_ENCRYPTION_KEY", "test-agent-token-encryption-key-32b!")
+os.environ.setdefault("BREAKOUT_CONTROLLER_URL", "http://breakout.test")
+os.environ.setdefault("BREAKOUT_SERVICE_TOKEN", "test-breakout-service-token")
+os.environ.setdefault("LINK_RECONCILE_ENABLED", "false")
+os.environ.setdefault("KAFKA_PUBLISH_ENABLED", "false")
 
 
 @pytest.fixture
