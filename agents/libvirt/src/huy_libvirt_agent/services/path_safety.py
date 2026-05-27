@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 from pathlib import Path
 
 _REGISTRY_NAME = re.compile(r"^[a-zA-Z0-9._-]+$")
@@ -72,7 +73,7 @@ def copy_validated_local_image(source: str, dest: Path, allowed_roots: list[Path
     if src == dest_resolved:
         return
     dest_resolved.parent.mkdir(parents=True, exist_ok=True)
-    dest_resolved.write_bytes(src.read_bytes())
+    shutil.copyfile(src, dest_resolved)
 
 
 def resolve_cached_disk_path(cached_path: str, registry_dir: Path, image_name: str) -> Path:
