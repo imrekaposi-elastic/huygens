@@ -38,6 +38,7 @@ This executes pytest in each service:
 | Registry | `services/registry` |
 | Inventory | `services/inventory` |
 | Projects | `services/projects` |
+| Breakout controller | `services/breakout-controller` (`go test ./...`) |
 | Console | `web` (`npm test`) |
 
 Shared packages `huy_auth` and `huy_events` are installed once via `make test-deps` before services that depend on them.

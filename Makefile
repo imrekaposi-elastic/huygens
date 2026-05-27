@@ -1,5 +1,5 @@
 .PHONY: compose-up compose-down compose-logs compose-ps test test-unit test-integration test-ci test-deps venv \
-	test-huy-events test-iam test-registry test-inventory test-projects test-web wait-stack
+	test-huy-events test-iam test-registry test-inventory test-projects test-breakout-controller test-web wait-stack
 
 VENV ?= $(CURDIR)/.venv
 PYTHON ?= $(VENV)/bin/python
@@ -29,7 +29,7 @@ test: test-unit
 # Matches default GitHub Actions CI (unit + integration).
 test-ci: test-unit test-integration
 
-test-unit: venv test-deps test-huy-events test-iam test-registry test-inventory test-projects test-web
+test-unit: venv test-deps test-huy-events test-iam test-registry test-inventory test-projects test-breakout-controller test-web
 
 wait-stack:
 	bash scripts/wait-for-stack.sh
@@ -57,6 +57,9 @@ test-inventory: venv test-deps
 test-projects: venv test-deps
 	$(PIP) install -q -e "services/projects[dev]"
 	cd services/projects && $(PYTEST) -q
+
+test-breakout-controller:
+	cd services/breakout-controller && go test ./...
 
 test-web:
 	cd web && npm install && npm test

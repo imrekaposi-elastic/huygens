@@ -27,6 +27,9 @@ Included in root `docker-compose.yml`. Health: `http://localhost:8085/health`.
 
 ## Tests
 
-No Go unit tests in-tree yet. Behavior is covered indirectly by projects unit tests
-(mock HTTP) and manual two-agent validation — see
-[docs/operations/phase6-release-and-validation.md](../../docs/operations/phase6-release-and-validation.md).
+```bash
+make test
+# or from repo root: make test-breakout-controller
+```
+
+Covers `/health`, service-token auth, `POST /v1/links/plan` (validation + peer config), `POST /v1/links/revoke`, interface name sanitization, and WireGuard key generation. Projects tests additionally mock HTTP against this API.
