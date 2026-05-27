@@ -220,16 +220,27 @@ class AgentProxy:
         organization_id: str,
         name: str,
         *,
-        purge: bool = False,
+        purge: bool = True,
     ) -> None:
         if name == "default":
             raise HTTPException(status_code=403, detail="Network 'default' is readonly")
-        network = await self.get_network(agent_id, organization_id, name)
-        if network.get("readonly") or not network.get("deletable", True):
+        try:
+            network = await self.get_network(agent_id, organization_id, name)
+        except HTTPException as exc:
+            if exc.status_code != 404:
+                raise
+            network = None
+        if network is not None and (
+            network.get("readonly") or not network.get("deletable", True)
+        ):
             raise HTTPException(
                 status_code=403,
                 detail=f"Network '{name}' is readonly and cannot be deleted",
             )
         info = await self._connect(agent_id, organization_id)
         params = {"purge": "true"} if purge else None
-        await self._request(info, "DELETE", f"/api/v1/networks/{name}", params=params)
+        try:
+            await self._request(info, "DELETE", f"/api/v1/networks/{name}", params=params)
+        except HTTPException as exc:
+            if exc.status_code != 404:
+                raise

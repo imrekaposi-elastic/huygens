@@ -438,3 +438,71 @@ async def test_vm_not_visible_in_other_project(client: AsyncClient) -> None:
     assert list_a.status_code == 200
     assert len(list_a.json()) == 1
     assert list_a.json()[0]["name"] == "shared-vm"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_delete_network_clears_assignment_when_already_gone_on_agent(
+    client: AsyncClient,
+) -> None:
+    """Project assignment and IPAM must be cleared even if the agent no longer has the vnet."""
+    headers = {"Authorization": f"Bearer {org_admin_token(ORG_ID)}"}
+    project = await client.post(
+        "/api/v1/projects",
+        headers=headers,
+        json={"organization_id": ORG_ID, "name": "NetDel", "slug": "net-del"},
+    )
+    project_id = project.json()["id"]
+    agent_id = "99999999-9999-9999-9999-999999999999"
+
+    respx.get(f"http://registry.test/api/v1/internal/agents/{agent_id}/connect").mock(
+        return_value=Response(
+            200,
+            json={
+                "agent_id": agent_id,
+                "organization_id": ORG_ID,
+                "base_url": "https://agent.test",
+                "agent_token": "agent-secret",
+                "tls_verify": False,
+            },
+        )
+    )
+    respx.get("https://agent.test/api/v1/networks/lab0").mock(
+        return_value=Response(404, json={"detail": "not found"})
+    )
+    respx.delete("https://agent.test/api/v1/networks/lab0").mock(
+        return_value=Response(404, json={"detail": "not found"})
+    )
+
+    from huy_projects.db import get_session_factory
+    from huy_projects.models import ProjectResource
+
+    factory = get_session_factory()
+    async with factory() as session:
+        session.add(
+            ProjectResource(
+                project_id=project_id,
+                agent_id=agent_id,
+                resource_type="network",
+                name="lab0",
+                desired_state={"ipv4_cidr": "10.0.0.0/24"},
+            )
+        )
+        await session.commit()
+
+    deleted = await client.delete(
+        f"/api/v1/projects/{project_id}/agents/{agent_id}/networks/lab0",
+        headers=headers,
+    )
+    assert deleted.status_code == 204
+
+    async with factory() as session:
+        from sqlalchemy import select
+
+        rows = await session.execute(
+            select(ProjectResource).where(
+                ProjectResource.project_id == project_id,
+                ProjectResource.name == "lab0",
+            )
+        )
+        assert rows.scalars().all() == []

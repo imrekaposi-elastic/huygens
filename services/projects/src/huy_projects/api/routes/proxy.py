@@ -232,7 +232,7 @@ async def delete_network(
     user: CurrentUserDep,
     proxy: AgentProxyDep,
     session: SessionDep,
-    purge: bool = Query(False),
+    purge: bool = Query(True),
 ) -> None:
     authorization.require_project_operate(user, project)
     if is_system_network(name):
@@ -256,9 +256,13 @@ async def delete_network(
     await project_scope.require_resource_in_project(
         session, project, agent_id=agent_id, resource_type="network", name=name
     )
-    await proxy.delete_network(
-        agent_id, project.organization_id, name, purge=purge
-    )
+    try:
+        await proxy.delete_network(
+            agent_id, project.organization_id, name, purge=purge
+        )
+    except HTTPException as exc:
+        if exc.status_code != 404:
+            raise
     from sqlalchemy import select
 
     from huy_projects.models import IpAllocation

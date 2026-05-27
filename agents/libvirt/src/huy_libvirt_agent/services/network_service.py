@@ -41,7 +41,12 @@ class NetworkService:
             if p.is_dir()
         }
         libvirt_nets = {n["name"]: n for n in libvirt_nets_list}
-        all_names = sorted(managed | set(libvirt_nets.keys()))
+        # When libvirt is connected, only list networks that still exist in libvirt.
+        # Stale metadata dirs (undefine without purge) must not appear as orphans in inventory.
+        if self._state.libvirt.connected:
+            all_names = sorted(set(libvirt_nets.keys()))
+        else:
+            all_names = sorted(managed | set(libvirt_nets.keys()))
         return [self.get_network(n, libvirt_nets.get(n)) for n in all_names]
 
     def get_network(self, name: str, lv_info: dict | None = None) -> NetworkResponse:
@@ -137,7 +142,11 @@ class NetworkService:
         except LibvirtError:
             pass
         vdir = self._vnet_dir(name)
-        if purge and vdir.exists():
+        if agent_managed and vdir.exists():
+            import shutil
+
+            shutil.rmtree(vdir)
+        elif purge and vdir.exists():
             import shutil
 
             shutil.rmtree(vdir)
