@@ -196,8 +196,8 @@ func TestPlanSanitizeInterfaceName(t *testing.T) {
 	if resp.Left.Interface != "wg-dmz-lab" {
 		t.Fatalf("left interface = %q", resp.Left.Interface)
 	}
-	if resp.Right.Interface != "wg-vnet" {
-		t.Fatalf("right interface = %q, want wg-vnet for empty sanitize", resp.Right.Interface)
+	if resp.Right.Interface != "wg----" {
+		t.Fatalf("right interface = %q, want wg---- for non-alphanumeric name", resp.Right.Interface)
 	}
 }
 
@@ -235,7 +235,7 @@ func TestSanitize(t *testing.T) {
 		{"lab0", "lab0"},
 		{"dmz/lab", "dmz-lab"},
 		{"net_a", "net-a"},
-		{"!!!", "vnet"},
+		{"!!!", "---"},
 		{"", "vnet"},
 	}
 	for _, tc := range tests {
