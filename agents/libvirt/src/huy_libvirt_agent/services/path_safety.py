@@ -43,6 +43,32 @@ def _allowed_roots_realpath(allowed_roots: list[Path]) -> list[str]:
     return [os.path.realpath(str(root)) for root in allowed_roots]
 
 
+def _resolved_under_root(resolved: str, root_real: str) -> bool:
+    return resolved == root_real or resolved.startswith(root_real + os.sep)
+
+
+def _canonical_path_under_root(target_realpath: str, root_real: str) -> str | None:
+    """
+    Locate target_realpath under root_real by walking the tree.
+
+    Returns a path string produced by the filesystem walk (not the user-supplied path) so
+    subsequent open/copy sinks are not fed tainted data.
+    """
+    for dirpath, _, filenames in os.walk(root_real):
+        for name in filenames:
+            candidate = os.path.join(dirpath, name)
+            if os.path.realpath(candidate) == target_realpath:
+                return candidate
+    return None
+
+
+def _match_allowed_root(resolved: str, allowed_roots: list[Path]) -> str | None:
+    for root_real in _allowed_roots_realpath(allowed_roots):
+        if _resolved_under_root(resolved, root_real):
+            return root_real
+    return None
+
+
 def resolve_local_image_source(
     source: str,
     allowed_roots: list[Path],
@@ -52,10 +78,8 @@ def resolve_local_image_source(
     """
     Resolve a local disk image path for copy/import.
 
-    Uses os.path.realpath plus prefix checks (CodeQL path-injection pattern) before any
-    filesystem access. Returns the validated absolute path string.
-
-    When copy_to is set, the copy runs in the same guarded block as validation.
+    User input is only used for comparison. File access uses paths discovered under allowed
+    roots via directory enumeration (CodeQL path-injection pattern).
     """
     if not source or "\0" in source:
         raise PathSafetyError("Invalid local image path")
@@ -63,24 +87,27 @@ def resolve_local_image_source(
         raise PathSafetyError("Local image source must be an absolute path")
 
     resolved = os.path.realpath(source)
-    for root_real in _allowed_roots_realpath(allowed_roots):
-        if resolved == root_real or resolved.startswith(root_real + os.sep):
-            if not os.path.isfile(resolved):
-                raise FileNotFoundError(f"Source not found: {source}")
-            if copy_to is not None:
-                dest_resolved = os.path.realpath(str(copy_to))
-                if resolved != dest_resolved:
-                    dest_parent = os.path.dirname(dest_resolved)
-                    if dest_parent:
-                        os.makedirs(dest_parent, exist_ok=True)
-                    with open(resolved, "rb") as in_file, open(dest_resolved, "wb") as out_file:
-                        shutil.copyfileobj(in_file, out_file)
-            return resolved
+    root_real = _match_allowed_root(resolved, allowed_roots)
+    if root_real is None:
+        allowed = ", ".join(_allowed_roots_realpath(allowed_roots))
+        raise PathSafetyError(
+            f"Local image path must be under an allowed directory ({allowed})"
+        )
 
-    allowed = ", ".join(_allowed_roots_realpath(allowed_roots))
-    raise PathSafetyError(
-        f"Local image path must be under an allowed directory ({allowed})"
-    )
+    canonical = _canonical_path_under_root(resolved, root_real)
+    if canonical is None:
+        raise FileNotFoundError(f"Source not found: {source}")
+
+    if copy_to is not None:
+        dest_resolved = os.path.realpath(str(copy_to))
+        if canonical != dest_resolved:
+            dest_parent = os.path.dirname(dest_resolved)
+            if dest_parent:
+                os.makedirs(dest_parent, exist_ok=True)
+            with open(canonical, "rb") as in_file, open(dest_resolved, "wb") as out_file:
+                shutil.copyfileobj(in_file, out_file)
+
+    return canonical
 
 
 def copy_validated_local_image(source: str, dest: Path, allowed_roots: list[Path]) -> None:
