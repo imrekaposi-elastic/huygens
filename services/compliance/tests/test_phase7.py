@@ -9,6 +9,7 @@ import respx
 from httpx import AsyncClient, Response
 
 from helpers import ORG_ID, compliance_engineer_token, org_admin_token
+from respx_helpers import mock_resource_assignments
 from test_explorer import _mock_provider_regions, _region_json
 
 
@@ -52,7 +53,9 @@ async def test_catalog_crud(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+@respx.mock
 async def test_asset_criticality_assignment(client: AsyncClient) -> None:
+    mock_resource_assignments(respx, [])
     admin = {"Authorization": f"Bearer {org_admin_token()}"}
     ce = {"Authorization": f"Bearer {compliance_engineer_token()}"}
     catalog = await client.post(
