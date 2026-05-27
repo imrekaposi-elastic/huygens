@@ -68,12 +68,14 @@ def resolve_local_image_source(source: str, allowed_roots: list[Path]) -> Path:
 
 def copy_validated_local_image(source: str, dest: Path, allowed_roots: list[Path]) -> None:
     """Copy a validated local image file into dest (no-op when source and dest are the same)."""
-    src = resolve_local_image_source(source, allowed_roots)
+    validated_src = resolve_local_image_source(source, allowed_roots)
     dest_resolved = dest.resolve()
-    if src == dest_resolved:
+    if validated_src == dest_resolved:
         return
+    if not validated_src.is_file():
+        raise FileNotFoundError(f"Source not found: {source}")
     dest_resolved.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(src, dest_resolved)
+    shutil.copyfile(validated_src, dest_resolved)
 
 
 def resolve_cached_disk_path(cached_path: str, registry_dir: Path, image_name: str) -> Path:
