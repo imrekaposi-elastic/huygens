@@ -11,7 +11,6 @@ pytestmark = pytest.mark.integration
 
 def test_topology_and_overlay_pool_smoke(cp, ephemeral_org) -> None:
     org_id = str(ephemeral_org["id"])
-    headers = cp.auth_headers()
 
     pool = cp.projects(
         "POST",
