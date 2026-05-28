@@ -78,7 +78,7 @@ Projects unit tests use **SQLite**; production Compose uses **PostgreSQL**. Colu
 
 ## CodeQL
 
-See [operations/codeql.md](operations/codeql.md). This repo uses GitHub **default** CodeQL setup plus [`.github/codeql/codeql-config.yml`](../.github/codeql/codeql-config.yml) — not a custom CodeQL workflow (default and advanced setups cannot both upload SARIF).
+See [operations/codeql.md](operations/codeql.md). CodeQL runs via [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml) (advanced setup). **Disable CodeQL default setup** in repo Settings or you will see a configuration error.
 
 ## Observability (optional)
 

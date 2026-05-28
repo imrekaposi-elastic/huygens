@@ -1,0 +1,72 @@
+# Advanced CodeQL setup — Python, TypeScript, and Go only (no C/C++).
+# Requires CodeQL *default setup* to be disabled in repo Settings (see docs/operations/codeql.md).
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 3 * * 1"
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: python
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+          - language: go
+            build-mode: manual
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        if: matrix.language == 'go'
+        with:
+          go-version-file: services/breakout-controller/go.mod
+          cache-dependency-path: services/breakout-controller/go.sum
+
+      - uses: actions/setup-node@v4
+        if: matrix.language == 'javascript-typescript'
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config-file: ./.github/codeql/codeql-config.yml
+
+      - name: Build Go
+        if: matrix.language == 'go'
+        working-directory: services/breakout-controller
+        run: go build -v ./...
+
+      - name: Install web dependencies
+        if: matrix.language == 'javascript-typescript'
+        working-directory: web
+        run: npm ci
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}
