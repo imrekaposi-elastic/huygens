@@ -12,7 +12,7 @@ from huy_iam.schemas import (
     IdpGroupMappingUpdate,
     IdpGroupsOut,
 )
-from huy_iam.services import idp_mapping_service, user_service
+from huy_iam.services import audit, idp_mapping_service, user_service
 
 org_router = APIRouter(prefix="/api/v1/organizations", tags=["idp-mappings"])
 platform_router = APIRouter(prefix="/api/v1/platform/idp-group-mappings", tags=["idp-mappings"])
@@ -59,6 +59,14 @@ async def create_org_mapping(
     )
     await session.commit()
     await session.refresh(row)
+    await audit.record_audit(
+        organization_id=organization_id,
+        actor_user_id=user.user_id,
+        action="idp_mapping.create",
+        resource_type="idp_group_mapping",
+        resource_id=row.id,
+        message=body.idp_group_name,
+    )
     return IdpGroupMappingOut.model_validate(row)
 
 
@@ -106,6 +114,13 @@ async def delete_org_mapping(
         raise HTTPException(status_code=404, detail="Mapping not found")
     await idp_mapping_service.delete_mapping(session, row)
     await session.commit()
+    await audit.record_audit(
+        organization_id=organization_id,
+        actor_user_id=user.user_id,
+        action="idp_mapping.delete",
+        resource_type="idp_group_mapping",
+        resource_id=mapping_id,
+    )
 
 
 @platform_router.get("", response_model=list[IdpGroupMappingOut])
@@ -135,6 +150,13 @@ async def create_platform_mapping(
     )
     await session.commit()
     await session.refresh(row)
+    await audit.record_platform_audit(
+        actor_user_id=admin.user_id,
+        action="idp_mapping.create",
+        resource_type="idp_group_mapping",
+        resource_id=row.id,
+        message=body.idp_group_name,
+    )
     return IdpGroupMappingOut.model_validate(row)
 
 
@@ -173,6 +195,12 @@ async def delete_platform_mapping(
         raise HTTPException(status_code=404, detail="Mapping not found")
     await idp_mapping_service.delete_mapping(session, row)
     await session.commit()
+    await audit.record_platform_audit(
+        actor_user_id=_admin.user_id,
+        action="idp_mapping.delete",
+        resource_type="idp_group_mapping",
+        resource_id=mapping_id,
+    )
 
 
 @auth_router.get("/me/idp-groups", response_model=IdpGroupsOut)

@@ -18,7 +18,7 @@ from huy_iam.schemas import (
     UserOut,
     UserRolesUpdate,
 )
-from huy_iam.services import user_service
+from huy_iam.services import audit, user_service
 
 router = APIRouter(prefix="/api/v1/organizations", tags=["organizations"])
 
@@ -35,6 +35,14 @@ async def create_organization(
     org = await user_service.create_organization(session, body.name, body.slug)
     await session.commit()
     await session.refresh(org)
+    await audit.record_audit(
+        organization_id=org.id,
+        actor_user_id=_admin.user_id,
+        action="organization.create",
+        resource_type="organization",
+        resource_id=org.id,
+        message=org.slug,
+    )
     return OrganizationOut.model_validate(org)
 
 
@@ -61,6 +69,13 @@ async def delete_organization(
     if not deleted:
         raise HTTPException(status_code=404, detail="Organization not found")
     await session.commit()
+    await audit.record_audit(
+        organization_id=organization_id,
+        actor_user_id=_admin.user_id,
+        action="organization.delete",
+        resource_type="organization",
+        resource_id=organization_id,
+    )
 
 
 @router.get("/{organization_id}", response_model=OrganizationOut)
@@ -111,6 +126,14 @@ async def create_org_user(
     elif not user.is_platform_admin():
         await user_service.set_org_roles(session, member, [OrgRole.ADMIN])
     await session.commit()
+    await audit.record_audit(
+        organization_id=organization_id,
+        actor_user_id=user.user_id,
+        action="organization.user.create",
+        resource_type="user",
+        resource_id=new_user.id,
+        message=new_user.username,
+    )
     ctx = await user_service.build_auth_context(session, new_user)
     return user_to_out(ctx, new_user)
 
@@ -176,6 +199,13 @@ async def delete_org_user(
     if not deleted:
         raise HTTPException(status_code=404, detail="User not found")
     await session.commit()
+    await audit.record_audit(
+        organization_id=organization_id,
+        actor_user_id=actor.user_id,
+        action="organization.user.delete",
+        resource_type="user",
+        resource_id=user_id,
+    )
 
 
 @router.post("/{organization_id}/users/{user_id}/project-roles", status_code=201)

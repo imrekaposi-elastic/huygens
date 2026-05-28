@@ -37,6 +37,7 @@ class Settings(BaseSettings):
         description="Comma-separated Kafka bootstrap brokers",
     )
     kafka_client_id: str | None = Field(default=None, alias="KAFKA_CLIENT_ID")
+    kafka_publish_enabled: bool = Field(default=True, alias="KAFKA_PUBLISH_ENABLED")
     host: str = Field(default="127.0.0.1", alias="HUY_REGISTRY_HOST")
     port: int = Field(default=8082, alias="HUY_REGISTRY_PORT")
 

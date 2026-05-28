@@ -14,7 +14,8 @@ WORKDIR /app
 
 COPY shared/huy_auth /deps/huy-auth
 COPY shared/huy_events /deps/huy-events
-RUN pip install --no-cache-dir /deps/huy-auth /deps/huy-events
+COPY shared/huy_telemetry /deps/huy-telemetry
+RUN pip install --no-cache-dir /deps/huy-auth /deps/huy-events /deps/huy-telemetry
 
 COPY ${SERVICE_DIR}/pyproject.toml ${SERVICE_DIR}/README.md ./
 COPY ${SERVICE_DIR}/src ./src

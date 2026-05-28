@@ -79,6 +79,16 @@ Projects unit tests use **SQLite**; production Compose uses **PostgreSQL**. Colu
 
 See [operations/codeql.md](operations/codeql.md). This repo uses GitHub **default** CodeQL setup plus [`.github/codeql/codeql-config.yml`](../.github/codeql/codeql-config.yml) — not a custom CodeQL workflow (default and advanced setups cannot both upload SARIF).
 
+## Observability (optional)
+
+Shared library: [`shared/huy_telemetry`](../shared/huy_telemetry). Unit tests set `OTEL_SDK_DISABLED=true`.
+
+```bash
+docker compose --profile observability up -d --build
+```
+
+See [operations/observability-stack.md](operations/observability-stack.md) and [phase8-observability.md](operations/phase8-observability.md).
+
 ## Adding tests for a new phase
 
 1. Add service unit tests under `services/<name>/tests/`.

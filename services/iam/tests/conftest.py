@@ -12,6 +12,8 @@ os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-key-minimum-32-bytes!")
 os.environ.setdefault("BOOTSTRAP_ADMIN_USERNAME", "platform-admin")
 os.environ.setdefault("BOOTSTRAP_ADMIN_PASSWORD", "platform-admin-secret-12")
+os.environ.setdefault("OTEL_SDK_DISABLED", "true")
+os.environ.setdefault("KAFKA_PUBLISH_ENABLED", "false")
 
 from huy_iam.config import get_settings  # noqa: E402
 from huy_iam.main import create_app  # noqa: E402

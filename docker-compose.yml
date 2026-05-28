@@ -5,6 +5,9 @@
 #
 # Stack includes PostgreSQL + Kafka (required). Keycloak SSO (Phase 2):
 #   docker compose --profile sso up -d --build
+#
+# Observability demo (Elasticsearch + Kibana + OTLP collector + audit ingest):
+#   docker compose --profile observability up -d --build
 
 name: huygens
 
@@ -47,6 +50,11 @@ services:
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-huy-iam}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-huy-iam-dev-secret}
       OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-http://127.0.0.1:8081/api/v1/auth/oidc/callback}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
+      KAFKA_PUBLISH_ENABLED: ${KAFKA_PUBLISH_ENABLED:-true}
+      OTEL_SERVICE_NAME: huy-iam
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
       HUY_IAM_HOST: 0.0.0.0
       HUY_IAM_PORT: "8081"
     depends_on:
@@ -79,6 +87,10 @@ services:
       INVENTORY_SERVICE_TOKEN: ${INVENTORY_SERVICE_TOKEN:-dev-inventory-service-token}
       PROJECTS_SERVICE_TOKEN: ${PROJECTS_SERVICE_TOKEN:-dev-projects-service-token}
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
+      KAFKA_PUBLISH_ENABLED: ${KAFKA_PUBLISH_ENABLED:-true}
+      OTEL_SERVICE_NAME: huy-registry
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
       HUY_REGISTRY_HOST: 0.0.0.0
       HUY_REGISTRY_PORT: "8082"
     depends_on:
@@ -113,6 +125,9 @@ services:
       INVENTORY_SERVICE_TOKEN: ${INVENTORY_SERVICE_TOKEN:-dev-inventory-service-token}
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
       POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-30}
+      OTEL_SERVICE_NAME: huy-inventory
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
       HUY_INVENTORY_HOST: 0.0.0.0
       HUY_INVENTORY_PORT: "8083"
     depends_on:
@@ -165,6 +180,9 @@ services:
       BREAKOUT_CONTROLLER_URL: http://breakout-controller:8085
       BREAKOUT_SERVICE_TOKEN: ${BREAKOUT_SERVICE_TOKEN:-dev-breakout-service-token}
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
+      OTEL_SERVICE_NAME: huy-projects
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
       HUY_PROJECTS_HOST: 0.0.0.0
       HUY_PROJECTS_PORT: "8084"
     depends_on:
@@ -207,11 +225,18 @@ services:
       OBJECT_STORE_ACCESS_KEY_ID: ${OBJECT_STORE_ACCESS_KEY_ID:-huy-dev-access-key}
       OBJECT_STORE_SECRET_ACCESS_KEY: ${OBJECT_STORE_SECRET_ACCESS_KEY:-huy-dev-secret-key}
       OBJECT_STORE_PREFIX: ${OBJECT_STORE_PREFIX:-huy-compliance}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
+      KAFKA_PUBLISH_ENABLED: ${KAFKA_PUBLISH_ENABLED:-true}
+      OTEL_SERVICE_NAME: huy-compliance
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
       HUY_COMPLIANCE_HOST: 0.0.0.0
       HUY_COMPLIANCE_PORT: "8086"
     depends_on:
       postgres:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
       registry:
         condition: service_healthy
       projects:
@@ -404,8 +429,76 @@ services:
     entrypoint: ["/bin/bash", "/init-topics.sh"]
     restart: "no"
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_STACK_VERSION:-9.4.1}
+    profiles: [observability]
+    mem_limit: 2g
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      xpack.security.http.ssl.enabled: "false"
+      ES_JAVA_OPTS: -Xms1g -Xmx1g
+    ports:
+      - "9200:9200"
+    volumes:
+      - huygens-esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf http://127.0.0.1:9200/_cluster/health?wait_for_status=yellow&timeout=60s >/dev/null",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${ELASTIC_STACK_VERSION:-9.4.1}
+    profiles: [observability]
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:5601/api/status >/dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:${OTEL_COLLECTOR_VERSION:-0.153.0}
+    profiles: [observability]
+    command: ["--config=/etc/otelcol/config.yaml"]
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./docker/observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:${ELASTIC_STACK_VERSION:-9.4.1}
+    profiles: [observability]
+    depends_on:
+      kafka:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./docker/observability/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    environment:
+      LS_JAVA_OPTS: -Xms256m -Xmx256m
+
 volumes:
   huygens-pgdata:
+  huygens-esdata:
   huygens-seaweed-master:
   huygens-seaweed-volume:
   huygens-seaweed-filer:

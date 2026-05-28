@@ -8,6 +8,7 @@ from pathlib import Path
 import structlog
 import uvicorn
 from fastapi import FastAPI
+from huy_telemetry import attach_fastapi_telemetry, prepare_service_telemetry
 
 from huy_inventory import __version__
 from huy_inventory.api.routes import events, health, internal, inventory
@@ -63,6 +64,7 @@ async def lifespan(app: FastAPI):
         poller_enabled=settings.poller_enabled,
         kafka_publish_enabled=settings.kafka_publish_enabled,
         kafka_sse_consumer_enabled=settings.kafka_sse_consumer_enabled,
+        otel_export_enabled=getattr(app.state, "otel_export_enabled", False),
     )
     yield
     if _poller is not None:
@@ -77,12 +79,14 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    otel_export = prepare_service_telemetry("huy-inventory")
     app = FastAPI(
         title="Huygens Inventory",
         version=__version__,
         description="Agent inventory poller and dashboard API (Phase 1)",
         lifespan=lifespan,
     )
+    attach_fastapi_telemetry(app, export_enabled=otel_export)
     app.include_router(health.router)
     app.include_router(internal.router)
     app.include_router(inventory.router)

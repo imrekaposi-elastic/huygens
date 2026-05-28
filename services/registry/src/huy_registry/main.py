@@ -8,6 +8,8 @@ from pathlib import Path
 import structlog
 import uvicorn
 from fastapi import FastAPI
+from huy_events import start_audit_kafka_producer, stop_audit_kafka_producer
+from huy_telemetry import attach_fastapi_telemetry, prepare_service_telemetry
 
 from huy_registry import __version__
 from huy_registry.api.routes import (
@@ -23,10 +25,12 @@ from huy_registry.db import dispose_db, get_engine, get_session_factory, init_db
 from huy_registry.models import Base
 
 logger = structlog.get_logger(__name__)
+_kafka_producer = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _kafka_producer
     settings = get_settings()
     if settings.database_url.startswith("sqlite"):
         db_path = settings.database_url.split("///")[-1]
@@ -36,18 +40,33 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     async with get_session_factory()() as session:
         await bootstrap_agent_technologies(session)
-    logger.info("huy_registry_started", version=__version__)
+    _kafka_producer = await start_audit_kafka_producer(
+        bootstrap=settings.kafka_bootstrap,
+        service_name="registry",
+        enabled=settings.kafka_publish_enabled,
+        client_id=settings.kafka_client_id,
+    )
+    logger.info(
+        "huy_registry_started",
+        version=__version__,
+        kafka_publish_enabled=settings.kafka_publish_enabled,
+        otel_export_enabled=getattr(app.state, "otel_export_enabled", False),
+    )
     yield
+    await stop_audit_kafka_producer(_kafka_producer)
+    _kafka_producer = None
     await dispose_db()
 
 
 def create_app() -> FastAPI:
+    otel_export = prepare_service_telemetry("huy-registry")
     app = FastAPI(
         title="Huygens Registry",
         version=__version__,
         description="Infrastructure providers, regions, agent technologies, enrollment",
         lifespan=lifespan,
     )
+    attach_fastapi_telemetry(app, export_enabled=otel_export)
     app.include_router(health.router)
     app.include_router(agent_technologies.router)
     app.include_router(infrastructure_providers.router)

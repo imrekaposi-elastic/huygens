@@ -19,6 +19,8 @@ CloudEvents 1.0 envelope with JSON `data` payloads. Producers set:
 | `huy.network.links` | [com.huygens.network.link.v1.json](com.huygens.network.link.v1.json) |
 | `huy.audit.events` | [audit-event.schema.json](audit-event.schema.json) |
 
+Producers: compliance (PG + Kafka), IAM, registry via [`shared/huy_events`](../../shared/huy_events). Platform-scoped actions (global infrastructure catalog) use `organization_id` `00000000-0000-0000-0000-000000000001` (`PLATFORM_AUDIT_ORG_ID`). Ingest to Elasticsearch: `docker compose --profile observability` + Logstash — see [observability-stack.md](../../docs/operations/observability-stack.md).
+
 Compose runs `kafka-init` to create all topics on startup. External clusters: [docker/kafka/init-topics.sh](../../docker/kafka/init-topics.sh). See [docs/install/docker-compose.md](../../docs/install/docker-compose.md#kafka).
 
 ## Versioning

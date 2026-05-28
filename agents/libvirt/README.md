@@ -84,6 +84,16 @@ huy-libvirt-agent
 
 API documentation: `http://127.0.0.1:8765/docs` (or `https://...` when TLS is enabled)
 
+## Observability (Phase 8)
+
+- **Prometheus:** `GET /metrics` on the agent (host CPU/memory/disk, libvirt queues, per-VM stats).
+- **OpenTelemetry:** set `OTEL_EXPORTER_OTLP_ENDPOINT` (and optional `OTEL_SERVICE_NAME`, default `huy-libvirt-agent`) to export HTTP traces and the same hypervisor metrics over OTLP on an interval aligned with `HUY_STATUS_POLL_SECONDS`.
+- **Logs:** JSON to stdout/journal with ECS-style fields (`service.name`, `trace.id`, `@timestamp`). See [phase8-observability.md](../../docs/operations/phase8-observability.md).
+
+```bash
+curl -i http://127.0.0.1:8765/healthz   # expect X-Request-Id (and X-Trace-Id when OTLP/tracing is active)
+```
+
 ## Upgrading the agent (Phase 6+)
 
 The control plane (Compose) and the libvirt agent **release together** for breakout and

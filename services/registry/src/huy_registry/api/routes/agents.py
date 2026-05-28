@@ -19,7 +19,7 @@ from huy_registry.schemas import (
     AgentTokenExport,
     AgentUpdate,
 )
-from huy_registry.services import agent_metrics_client, agent_service, connection_probe
+from huy_registry.services import agent_metrics_client, agent_service, audit, connection_probe
 from huy_registry.services.agent_service import agent_to_out
 
 router = APIRouter(prefix="/api/v1/agents", tags=["agents"])
@@ -46,12 +46,20 @@ async def _probe_and_update(session, settings, agent, token: str):
 @router.post("", response_model=AgentCreated, status_code=201)
 async def register_agent(
     body: AgentCreate,
-    _admin: PlatformAdminDep,
+    admin: PlatformAdminDep,
     session: SessionDep,
     settings: SettingsDep,
 ) -> AgentCreated:
     agent, token = await agent_service.create_agent(session, settings, body)
     agent = await _probe_and_update(session, settings, agent, token)
+    await audit.record_audit(
+        organization_id=agent.organization_id,
+        actor_user_id=admin.user_id,
+        action="agent.create",
+        resource_type="agent",
+        resource_id=agent.id,
+        message=agent.name,
+    )
     out = agent_to_out(agent)
     return AgentCreated(**out.model_dump(), agent_token=token)
 
@@ -86,14 +94,24 @@ async def get_agent(agent_id: str, user: CurrentUserDep, session: SessionDep) ->
 @router.delete("/{agent_id}", status_code=204)
 async def delete_agent(
     agent_id: str,
-    _admin: PlatformAdminDep,
+    admin: PlatformAdminDep,
     session: SessionDep,
     settings: SettingsDep,
 ) -> None:
     agent = await agent_service.get_agent(session, agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
+    org_id = agent.organization_id
+    name = agent.name
     await agent_service.delete_agent(session, settings, agent)
+    await audit.record_audit(
+        organization_id=org_id,
+        actor_user_id=admin.user_id,
+        action="agent.delete",
+        resource_type="agent",
+        resource_id=agent_id,
+        message=name,
+    )
 
 
 @router.patch("/{agent_id}", response_model=AgentOut)

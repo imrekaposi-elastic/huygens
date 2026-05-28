@@ -9,6 +9,7 @@ import structlog
 import uvicorn
 from fastapi import FastAPI
 from huy_events import HuyKafkaProducer, KafkaSettings
+from huy_telemetry import attach_fastapi_telemetry, prepare_service_telemetry
 
 from huy_projects import __version__
 from huy_projects.api.routes import (
@@ -70,6 +71,7 @@ async def lifespan(app: FastAPI):
         link_reconcile_enabled=settings.link_reconcile_enabled,
         assignment_reconcile_enabled=settings.assignment_reconcile_enabled,
         kafka_publish_enabled=settings.kafka_publish_enabled,
+        otel_export_enabled=getattr(app.state, "otel_export_enabled", False),
     )
     yield
     if _link_reconciler is not None:
@@ -85,12 +87,14 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    otel_export = prepare_service_telemetry("huy-projects")
     app = FastAPI(
         title="Huygens Projects",
         version=__version__,
         description="Project CRUD, IPAM, network links, and libvirt agent proxy (Phases 3–6)",
         lifespan=lifespan,
     )
+    attach_fastapi_telemetry(app, export_enabled=otel_export)
     app.include_router(health.router)
     app.include_router(internal.router)
     app.include_router(projects.router)

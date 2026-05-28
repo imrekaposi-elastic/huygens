@@ -12,6 +12,8 @@ os.environ.setdefault("JWT_SECRET", "test-jwt-secret-key-minimum-32-bytes!")
 os.environ.setdefault("JWT_ISSUER", "huy-iam")
 os.environ.setdefault("AGENT_TOKEN_ENCRYPTION_KEY", "test-agent-token-encryption-key")
 os.environ.setdefault("INVENTORY_SERVICE_TOKEN", "test-inventory-service-token")
+os.environ.setdefault("OTEL_SDK_DISABLED", "true")
+os.environ.setdefault("KAFKA_PUBLISH_ENABLED", "false")
 
 
 @pytest.fixture

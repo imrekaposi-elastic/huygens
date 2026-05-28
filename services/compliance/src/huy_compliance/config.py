@@ -40,6 +40,14 @@ class Settings(BaseSettings):
     object_store_prefix: str = Field(default="huy-compliance", alias="OBJECT_STORE_PREFIX")
     object_store_local_dir: str = Field(default="./data/object-store", alias="OBJECT_STORE_LOCAL_DIR")
 
+    kafka_bootstrap: str = Field(
+        default="kafka:9092",
+        alias="KAFKA_BOOTSTRAP",
+        description="Comma-separated Kafka bootstrap brokers",
+    )
+    kafka_client_id: str | None = Field(default=None, alias="KAFKA_CLIENT_ID")
+    kafka_publish_enabled: bool = Field(default=True, alias="KAFKA_PUBLISH_ENABLED")
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -22,10 +22,14 @@ dependencies = [
     "httpx>=0.27.0",
     "boto3>=1.35.0",
     "huy-auth",
+    "huy-events",
+    "huy-telemetry",
 ]
 
 [tool.uv.sources]
 huy-auth = { path = "../../shared/huy_auth", editable = true }
+huy-events = { path = "../../shared/huy_events", editable = true }
+huy-telemetry = { path = "../../shared/huy_telemetry", editable = true }
 
 [project.optional-dependencies]
 dev = [
@@ -45,7 +49,7 @@ packages = ["src/huy_compliance"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-pythonpath = ["src", "../../shared/huy_auth/src"]
+pythonpath = ["src", "../../shared/huy_auth/src", "../../shared/huy_events/src", "../../shared/huy_telemetry/src"]
 
 [tool.ruff]
 line-length = 110

@@ -78,3 +78,13 @@ cd agents/libvirt && make run
 Production hypervisors: [agents/libvirt/README.md](../../agents/libvirt/README.md#upgrading-the-agent-phase-6) and [Phase 6 operations](../operations/phase6-release-and-validation.md).
 
 Point the agent at registry when Phase 1 enrollment exists.
+
+## Observability profile (optional)
+
+Elasticsearch, Kibana, OTLP collector, and audit ingest (~3 GB extra RAM):
+
+```bash
+docker compose --profile observability up -d --build
+```
+
+See [operations/observability-stack.md](../operations/observability-stack.md).

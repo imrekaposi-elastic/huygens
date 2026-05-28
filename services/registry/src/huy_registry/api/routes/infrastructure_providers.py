@@ -13,7 +13,7 @@ from huy_registry.schemas import (
     RegionOut,
     RegionTreeNode,
 )
-from huy_registry.services import infrastructure_service, region_tree_service
+from huy_registry.services import audit, infrastructure_service, region_tree_service
 
 router = APIRouter(prefix="/api/v1/infrastructure-providers", tags=["infrastructure-providers"])
 
@@ -21,10 +21,17 @@ router = APIRouter(prefix="/api/v1/infrastructure-providers", tags=["infrastruct
 @router.post("", response_model=InfrastructureProviderOut, status_code=201)
 async def create_infrastructure_provider(
     body: InfrastructureProviderCreate,
-    _admin: PlatformAdminDep,
+    admin: PlatformAdminDep,
     session: SessionDep,
 ) -> InfrastructureProviderOut:
     row = await infrastructure_service.create_infrastructure_provider(session, body)
+    await audit.record_platform_audit(
+        actor_user_id=admin.user_id,
+        action="infrastructure_provider.create",
+        resource_type="infrastructure_provider",
+        resource_id=row.id,
+        message=row.slug,
+    )
     return InfrastructureProviderOut.model_validate(row)
 
 
@@ -68,16 +75,30 @@ async def delete_infrastructure_provider(
     )
     if not deleted:
         raise HTTPException(status_code=404, detail="Infrastructure provider not found")
+    await audit.record_platform_audit(
+        actor_user_id=_admin.user_id,
+        action="infrastructure_provider.delete",
+        resource_type="infrastructure_provider",
+        resource_id=infrastructure_provider_id,
+    )
 
 
 @router.post("/{infrastructure_provider_id}/regions", response_model=RegionOut, status_code=201)
 async def create_region(
     infrastructure_provider_id: str,
     body: RegionCreate,
-    _admin: PlatformAdminDep,
+    admin: PlatformAdminDep,
     session: SessionDep,
 ) -> RegionOut:
     row = await infrastructure_service.create_region(session, infrastructure_provider_id, body)
+    await audit.record_platform_audit(
+        actor_user_id=admin.user_id,
+        action="infrastructure_region.create",
+        resource_type="infrastructure_region",
+        resource_id=row.id,
+        message=row.slug,
+        labels={"infrastructure_provider_id": infrastructure_provider_id},
+    )
     return RegionOut.model_validate(row)
 
 
@@ -121,3 +142,10 @@ async def delete_region(
     )
     if not deleted:
         raise HTTPException(status_code=404, detail="Region not found")
+    await audit.record_platform_audit(
+        actor_user_id=_admin.user_id,
+        action="infrastructure_region.delete",
+        resource_type="infrastructure_region",
+        resource_id=region_id,
+        labels={"infrastructure_provider_id": infrastructure_provider_id},
+    )

@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from huy_telemetry import attach_fastapi_telemetry
 
 from huy_libvirt_agent import __version__
 from huy_libvirt_agent.api.errors import register_exception_handlers
 from huy_libvirt_agent.api.middleware.audit import AuditMiddleware
-from huy_libvirt_agent.api.middleware.request_context import RequestContextMiddleware
 from huy_libvirt_agent.api.routes import agent, cloud_init, dnat, health, images, networks, vms
 from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.config import get_settings
@@ -28,9 +28,11 @@ from huy_libvirt_agent.services.cloudinit_requirements import (
     cloud_init_schema_available,
 )
 from huy_libvirt_agent.services.tls_manager import ensure_tls_material
+from huy_libvirt_agent.services.otel_metrics_sync import sync_hypervisor_metrics_to_otel
 from huy_libvirt_agent.telemetry import setup_telemetry
 
 logger = structlog.get_logger(__name__)
+_otel_metrics_task: asyncio.Task | None = None
 
 OPENAPI_TAGS = [
     {"name": "agent", "description": "Agent identity and settings"},
@@ -43,11 +45,30 @@ OPENAPI_TAGS = [
 ]
 
 
+async def _otel_metrics_loop(app_state: AppState, interval_seconds: int) -> None:
+    while True:
+        try:
+            sync_hypervisor_metrics_to_otel(app_state)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("otel_metrics_sync_failed", error=str(exc))
+        await asyncio.sleep(interval_seconds)
+
+
 def create_app(state: AppState | None = None) -> FastAPI:
     settings = state.settings if state else get_settings()
+    otel_export_enabled = setup_telemetry(settings)
+    configure_logging(
+        settings.log_level,
+        settings.log_format,
+        service_name=settings.otel_service_name,
+    )
+    structlog.contextvars.bind_contextvars(
+        **{f"agent.{k}": v for k, v in settings.agent_labels.items()}
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        global _otel_metrics_task
         app_state = app.state.app_state
         if settings.cloud_init_validation == "schema":
             if cloud_init_schema_available():
@@ -68,12 +89,24 @@ def create_app(state: AppState | None = None) -> FastAPI:
         except Exception as e:
             logger.warning("libvirt_connect_failed", error=str(e))
         await app_state.monitor.start()
+        if otel_export_enabled and settings.metrics_enabled:
+            sync_hypervisor_metrics_to_otel(app_state)
+            _otel_metrics_task = asyncio.create_task(
+                _otel_metrics_loop(app_state, settings.status_poll_seconds)
+            )
         app_state.event_bus.publish(
             "huy.agent.started",
             f"/hypervisors/{app_state.hostname}",
             {"version": __version__, "labels": settings.agent_labels},
         )
         yield
+        if _otel_metrics_task is not None:
+            _otel_metrics_task.cancel()
+            try:
+                await _otel_metrics_task
+            except asyncio.CancelledError:
+                pass
+            _otel_metrics_task = None
         await app_state.monitor.stop()
         if app_state.libvirt is not None:
             app_state.libvirt.close()
@@ -105,12 +138,6 @@ def create_app(state: AppState | None = None) -> FastAPI:
     if settings.metrics_enabled:
         register_metrics_collector()
 
-    configure_logging(settings.log_level, settings.log_format)
-    setup_telemetry(settings)
-    structlog.contextvars.bind_contextvars(
-        **{f"agent.{k}": v for k, v in settings.agent_labels.items()}
-    )
-
     cors_origins = settings.cors_origin_list
     if cors_origins:
         app.add_middleware(
@@ -122,7 +149,8 @@ def create_app(state: AppState | None = None) -> FastAPI:
         )
 
     app.add_middleware(AuditMiddleware)
-    app.add_middleware(RequestContextMiddleware)
+    attach_fastapi_telemetry(app, export_enabled=otel_export_enabled)
+    app.state.otel_export_enabled = otel_export_enabled
     register_exception_handlers(app)
 
     app.include_router(health.router)
@@ -132,8 +160,6 @@ def create_app(state: AppState | None = None) -> FastAPI:
     app.include_router(vms.router)
     app.include_router(networks.router)
     app.include_router(dnat.router)
-
-    FastAPIInstrumentor.instrument_app(app)
 
     def custom_openapi():
         if app.openapi_schema:

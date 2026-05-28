@@ -20,6 +20,7 @@ os.environ.setdefault("BREAKOUT_SERVICE_TOKEN", "test-breakout-service-token")
 os.environ.setdefault("LINK_RECONCILE_ENABLED", "false")
 os.environ.setdefault("ASSIGNMENT_RECONCILE_ENABLED", "false")
 os.environ.setdefault("KAFKA_PUBLISH_ENABLED", "false")
+os.environ.setdefault("OTEL_SDK_DISABLED", "true")
 
 
 @pytest.fixture

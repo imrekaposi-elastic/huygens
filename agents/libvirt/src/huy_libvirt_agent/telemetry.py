@@ -1,34 +1,31 @@
-"""OpenTelemetry tracing and metrics setup."""
+"""OpenTelemetry setup for the libvirt agent (traces + OTLP metrics via huy_telemetry)."""
 
 from __future__ import annotations
 
-from opentelemetry import metrics, trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+import os
+
+from huy_telemetry import prepare_service_telemetry
 
 from huy_libvirt_agent.config import Settings
 
 
-def setup_telemetry(settings: Settings) -> None:
-    resource = Resource.create(
-        {
-            "service.name": settings.otel_service_name,
-            "huy.agent.country": settings.agent_country,
-            "huy.agent.city": settings.agent_city,
-            "huy.agent.company": settings.agent_company,
-        }
-    )
-    provider = TracerProvider(resource=resource)
+def _apply_otel_env(settings: Settings) -> None:
     if settings.otel_exporter_otlp_endpoint:
-        provider.add_span_processor(
-            BatchSpanProcessor(OTLPSpanExporter(endpoint=settings.otel_exporter_otlp_endpoint))
-        )
-    trace.set_tracer_provider(provider)
-    metrics.set_meter_provider(MeterProvider(resource=resource))
+        os.environ.setdefault("OTEL_EXPORTER_OTLP_ENDPOINT", settings.otel_exporter_otlp_endpoint)
 
 
-def get_tracer(name: str) -> trace.Tracer:
-    return trace.get_tracer(name)
+def agent_resource_attributes(settings: Settings) -> dict[str, str]:
+    return {
+        "huy.agent.country": settings.agent_country,
+        "huy.agent.city": settings.agent_city,
+        "huy.agent.company": settings.agent_company,
+    }
+
+
+def setup_telemetry(settings: Settings) -> bool:
+    """Configure structlog ECS fields, tracing, and OTLP export. Returns True when OTLP is active."""
+    _apply_otel_env(settings)
+    return prepare_service_telemetry(
+        settings.otel_service_name,
+        extra_resource=agent_resource_attributes(settings),
+    )

@@ -44,6 +44,14 @@ class Settings(BaseSettings):
     oidc_scopes: str = Field(default="openid profile email", alias="OIDC_SCOPES")
     oidc_post_login_redirect: str | None = Field(default=None, alias="OIDC_POST_LOGIN_REDIRECT")
 
+    kafka_bootstrap: str = Field(
+        default="kafka:9092",
+        alias="KAFKA_BOOTSTRAP",
+        description="Comma-separated Kafka bootstrap brokers",
+    )
+    kafka_client_id: str | None = Field(default=None, alias="KAFKA_CLIENT_ID")
+    kafka_publish_enabled: bool = Field(default=True, alias="KAFKA_PUBLISH_ENABLED")
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -11,6 +11,8 @@ os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-key-minimum-32-bytes!")
 os.environ.setdefault("JWT_ISSUER", "huy-iam")
 os.environ.setdefault("CHECK_ALERT_ENABLED", "false")
+os.environ.setdefault("OTEL_SDK_DISABLED", "true")
+os.environ.setdefault("KAFKA_PUBLISH_ENABLED", "false")
 
 
 @pytest.fixture

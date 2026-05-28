@@ -11,7 +11,8 @@ from huy_iam.api.deps import CurrentUserDep, SessionDep, SettingsDep
 from huy_iam.models import ApiKey
 from huy_iam.schemas import ApiKeyCreate, ApiKeyCreated, LoginRequest, TokenResponse, UserOut
 from huy_iam.security import create_access_token, generate_api_key_material
-from huy_iam.services import user_service
+from huy_iam.services import audit, user_service
+from huy_events import PLATFORM_AUDIT_ORG_ID
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -55,6 +56,15 @@ async def create_api_key(
     session.add(row)
     await session.commit()
     await session.refresh(row)
+    org_id = user.org_memberships[0].organization_id if user.org_memberships else PLATFORM_AUDIT_ORG_ID
+    await audit.record_audit(
+        organization_id=org_id,
+        actor_user_id=user.user_id,
+        action="api_key.create",
+        resource_type="api_key",
+        resource_id=row.id,
+        message=row.name,
+    )
     return ApiKeyCreated(
         id=row.id,
         name=row.name,

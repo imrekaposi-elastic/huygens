@@ -1,0 +1,38 @@
+# Dev stack: OTLP ingest for control-plane / agent telemetry (Phase 8).
+# Swap image to Elastic EDOT collector in production; config remains OTLP-standard.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+
+exporters:
+  debug:
+    verbosity: basic
+  elasticsearch:
+    endpoints: [http://elasticsearch:9200]
+    logs_index: huy-otel-logs
+    traces_index: huy-otel-traces
+    metrics_index: huy-otel-metrics
+    mapping:
+      mode: none
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug, elasticsearch]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug, elasticsearch]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug, elasticsearch]
