@@ -17,7 +17,16 @@ erDiagram
   OrgComplianceItem ||--o{ AssetCriticalityAssignment : references
   OrgComplianceItem ||--o{ InfrastructureProviderComplianceItemLink : references
   OrgComplianceItem ||--o{ RegionComplianceItemLink : references
+  Organization ||--o{ OrgQualitativeCharacteristic : defines
+  OrgQualitativeCharacteristic ||--o{ InfrastructureProviderCharacteristicLink : links
+  OrgQualitativeCharacteristic ||--o{ RegionCharacteristicLink : links
+  Organization ||--o{ OrgComplianceStandard : defines
+  OrgComplianceStandard ||--o{ OrgComplianceControl : contains
+  OrgComplianceStandard ||--o{ OrgComplianceCycle : has
+  OrgComplianceControl ||--o{ OrgControlEvidence : has
 ```
+
+GRC tables (`OrgComplianceStandard`, controls, cycles, evidence, packs) live in the same PostgreSQL database as placement catalog items; see [compliance/README.md](../../compliance/README.md).
 
 Regions form a **tree** (`parent_region_id`). Compliance standards on a parent region apply to agents placed in descendant regions.
 
@@ -31,8 +40,11 @@ Regions form a **tree** (`parent_region_id`). Compliance standards on a parent r
 | **Agent** | Region + Org | Hypervisor agent; `platform_admin` registers and connects |
 | **Project** | Org | Container for vnets, VMs, quotas, RBAC |
 | **ProjectResource** | Project + Agent | Exclusive assignment of vm / network / cloud_init by name |
-| **OrgComplianceItem** | Org | Standard catalog (MoSCoW, URL, description) |
-| **AssetCriticalityAssignment** | Resource | Direct links from VM/vnet/project to catalog items |
+| **OrgComplianceItem** | Org | Placement catalog (MoSCoW, URL, description) — Explorer + criticality |
+| **OrgQualitativeCharacteristic** | Org | Placement labels (MoSCoW, description); linked on provider/region |
+| **OrgComplianceStandard** / **Control** / **Cycle** | Org | GRC framework (audit-ready); separate from placement catalog slugs |
+| **OrgControlEvidence** | Control + cycle | Metadata in PG; file bytes in object store |
+| **AssetCriticalityAssignment** | Resource | Direct links from VM/vnet/project to **catalog** items |
 | **Project aggregate** | Derived | Not stored — catalog items where all child VMs/networks comply |
 
 ## Compliance membership (runtime)
@@ -40,7 +52,7 @@ Regions form a **tree** (`parent_region_id`). Compliance standards on a parent r
 | Kind | Meaning |
 |------|---------|
 | Direct | Explicit assignment on the resource |
-| Placement inherited | Provider and/or region catalog standards (including ancestor regions) |
+| Placement inherited | Provider/region **catalog** standards and **qualitative characteristics** (ancestor regions) |
 | Project aggregate | Intersection of effective compliance across all project VMs and networks |
 
 ## Desired vs actual state

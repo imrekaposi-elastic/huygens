@@ -163,7 +163,9 @@ flowchart TB
 | `RegionComplianceItemLink` | Catalog standards on a region — inherited by agents in that region and **sub-regions** |
 | `AssetCriticalityAssignment` | Direct catalog selection on VM, project, or network by **`compliance_engineer`** |
 | Project **aggregate** (derived) | Catalog item on project when **every** child VM/network has it in effective compliance |
-| `ProviderTrait` / `RegionTrait` | Legacy free-form traits (API only; console uses catalog links above) |
+| `OrgQualitativeCharacteristic` + provider/region links | Placement labels (MoSCoW, description); Explorer + inheritance (successor to legacy traits) |
+| `ProviderTrait` / `RegionTrait` | **Deprecated** (GET + `Deprecation`; writes 410); migrate via GRC |
+| GRC (`OrgComplianceStandard`, controls, cycles, evidence, packs, exports) | Audit-ready frameworks; see [compliance/README.md](compliance/README.md) |
 | `ComplianceCheck` | Owner, validity period, annual refresh; audited |
 
 PostgreSQL: authoritative config. Elasticsearch ECS: audit + compliance **search/dashboards** (strategic Elastic narrative).
@@ -433,22 +435,30 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - `local_peer` remains topology-managed (read-only in UI when a `local` link is active)
 - Agent validates uplink interface names; tests in `test_flat_breakout_schema.py`, `test_breakout_proxy.py`
 
-### Phase 7 — Compliance, asset criticality, and “know why” (MVP shipped)
-- **Status:** `services/compliance` (port **8086**), console `/compliance` (Overview, Explorer, Catalog, Checks), infrastructure standards on provider/region tree, VM **Why here?**; PG audit events (ES/Kibana deferred)
-- **Shipped:**
+### Phase 7 — Compliance, asset criticality, and “know why” (MVP + GRC shipped)
+- **Status:** `services/compliance` (port **8086**), console **Compliance** (Overview, Explorer, Catalog, Checks, **GRC**), infrastructure standards on provider/region tree, VM **Why here?**; PG audit events (ES/Kibana dashboards deferred)
+- **Shipped (placement / “know why”):**
   - Org compliance catalog + checks (CRUD, delete checks)
   - **Explorer** — filter by catalog slug, placement trait, resource type; project rows with aggregate membership
   - **Membership UI** — green direct, grey placement inherited, blue project aggregate (“all child objects are compliant”)
   - Infrastructure **catalog standards** on provider and region (region standards inherit to sub-regions)
+  - **Qualitative characteristics** on provider/region (GRC catalog + Infrastructure checkboxes); inherited as placement traits; legacy free-form trait **writes deprecated** (410) with migration endpoint
   - Asset criticality on project / VM / network; dialog auto-close on save
   - Placement rationale API; check alerter (structlog)
   - **Lifecycle guards** (in `projects`): network delete blocked when VMs / links / breakout attached; IP pool delete when allocations or overlay links in use
+- **Shipped (GRC extensions — console `/compliance/grc`):**
+  - Standards, controls, cycles (CRUD); **cycle status** (evidence coverage + check expiry counts)
+  - Evidence upload/list/download/delete (object store); supersede/versioning
+  - Compliance packs — dry-run validate + apply (creates standards/controls from JSON)
+  - PDF export (async job; console polls and auto-downloads)
 - **Remaining / deferred:**
-  - Kibana compliance pack spike; ES dashboards for `compliance_admin` / `auditor`
+  - Kibana compliance pack (product dashboards); ES views for `compliance_admin` / `auditor` — [spike](compliance/kibana/README.md)
   - `config_drift` on placement rationale (inventory integration)
-  - Free-form traits API — no console UI
+  - GRC **pie chart** / overall compliance status on Overview (KPI cards only today)
+  - Explorer filters for GRC standard/control/cycle/evidence gaps (placement catalog + traits only)
+  - Bundled ISO/BIO/DigiD pack artifacts shipped separately (format: [compliance/packs.md](compliance/packs.md))
   - Drift/criticality badges on resource list rows (not implemented)
-- **Ops:** [operations/phase7-compliance-and-lifecycle-guards.md](operations/phase7-compliance-and-lifecycle-guards.md)
+- **Ops:** [operations/phase7-compliance-and-lifecycle-guards.md](operations/phase7-compliance-and-lifecycle-guards.md) · [compliance/README.md](compliance/README.md)
 
 ### Phase 8 — Observability, EDOT, and graphs
 - **OpenTelemetry throughout** all control-plane services (traces, metrics, logs) per FRAMEWORK_PLAN

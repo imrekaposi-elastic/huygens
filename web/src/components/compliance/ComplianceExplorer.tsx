@@ -75,6 +75,7 @@ export function ComplianceExplorer({ organizationId }: Props) {
   const presets = useMemo(() => {
     const items = facets.data?.catalog_items ?? [];
     const traits = facets.data?.trait_keys ?? [];
+    const characteristics = facets.data?.qualitative_characteristics ?? [];
     const out: { label: string; apply: FilterState }[] = [];
     for (const item of items) {
       if (/bio/i.test(item.slug) || /bio/i.test(item.name)) {
@@ -88,7 +89,20 @@ export function ComplianceExplorer({ organizationId }: Props) {
         });
       }
     }
+    for (const c of characteristics) {
+      if (/eu|europe|sovereign/i.test(c.slug) || /eu|europe|sovereign/i.test(c.name)) {
+        out.push({
+          label: `Placed in ${c.name}`,
+          apply: {
+            ...DEFAULT_FILTER,
+            traitKey: c.slug,
+            traitMatch: "has",
+          },
+        });
+      }
+    }
     for (const key of traits) {
+      if (characteristics.some((c) => c.slug === key)) continue;
       if (/eu|europe|sovereign/i.test(key)) {
         out.push({
           label: `Placed in ${key}`,
@@ -218,9 +232,17 @@ export function ComplianceExplorer({ organizationId }: Props) {
             list="trait-keys"
           />
           <datalist id="trait-keys">
-            {(facets.data?.trait_keys ?? []).map((k) => (
-              <option key={k} value={k} />
+            {(facets.data?.qualitative_characteristics ?? []).map((c) => (
+              <option key={c.id} value={c.slug} label={`${c.name} (${c.moscow})`} />
             ))}
+            {(facets.data?.trait_keys ?? [])
+              .filter(
+                (k) =>
+                  !(facets.data?.qualitative_characteristics ?? []).some((c) => c.slug === k),
+              )
+              .map((k) => (
+                <option key={k} value={k} />
+              ))}
           </datalist>
         </label>
         <label className="text-sm">

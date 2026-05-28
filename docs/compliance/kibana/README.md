@@ -1,12 +1,12 @@
 # Kibana compliance pack (Phase 7 spike)
 
-Phase 7 ships transactional compliance in PostgreSQL (`huy-compliance`) and structured logs for catalog/check/criticality changes. Elasticsearch ECS views and a Kibana “Huygens Compliance” app remain optional (Phase 8+).
+Phase 7 ships transactional compliance in PostgreSQL (`huy-compliance`) and structured logs for catalog, checks, GRC (standards/controls/evidence/packs/exports), and criticality changes. Elasticsearch ECS views and a Kibana “Huygens Compliance” app remain optional (Phase 8+).
 
 ## Current PG/API sources (MVP — index later)
 
 | Source | Use in Kibana |
 |--------|----------------|
-| `compliance_audit` structlog events | Who changed catalog, checks, assignments |
+| `compliance_audit` structlog + `compliance_audit_log` (PG) | Who changed catalog, checks, GRC entities, assignments |
 | Compliance explorer aggregates | Gap analysis (missing standards) — via API or future sync |
 | Infrastructure provider/region profiles | Placement inheritance counts |
 | Project aggregate membership | Projects where all children satisfy a standard |

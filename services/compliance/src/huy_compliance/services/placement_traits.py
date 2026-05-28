@@ -8,6 +8,7 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from huy_compliance.schemas import ComplianceItemOut, TraitSummary
+from huy_compliance.services import characteristics_service
 from huy_compliance.services import infrastructure_compliance_service
 from huy_compliance.services.registry_client import RegistryClient
 from huy_compliance.services.region_tree import (
@@ -62,6 +63,23 @@ async def inherited_placement_for_agent(
                 )
             )
 
+        # Provider qualitative characteristics (successor to legacy free-form traits).
+        for ch in await characteristics_service.provider_characteristics(
+            session, organization_id, provider_id
+        ):
+            if any(t.scope == "provider" and t.trait_key == ch.slug for t in inherited_traits):
+                continue
+            inherited_traits.append(
+                TraitSummary(
+                    scope="provider",
+                    trait_key=ch.slug,
+                    title=ch.name,
+                    description=ch.description,
+                    moscow=ch.moscow,
+                    infrastructure_provider_id=provider_id,
+                )
+            )
+
     if region_id and provider_id:
         if provider_id not in region_parent_cache:
             try:
@@ -90,6 +108,23 @@ async def inherited_placement_for_agent(
                     title=item.name,
                     description=item.description,
                     moscow=item.moscow,
+                    region_id=source_region_id,
+                    region_name=names_by_id.get(source_region_id),
+                )
+            )
+
+        for source_region_id, ch in await characteristics_service.region_characteristics_for_lineage(
+            session, organization_id, lineage
+        ):
+            if any(t.scope == "region" and t.trait_key == ch.slug for t in inherited_traits):
+                continue
+            inherited_traits.append(
+                TraitSummary(
+                    scope="region",
+                    trait_key=ch.slug,
+                    title=ch.name,
+                    description=ch.description,
+                    moscow=ch.moscow,
                     region_id=source_region_id,
                     region_name=names_by_id.get(source_region_id),
                 )

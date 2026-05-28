@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 
 from huy_compliance.api.deps import (
     CurrentUserDep,
@@ -181,6 +181,19 @@ async def set_region_compliance_items(
     return row
 
 
+_LEGACY_TRAIT_DETAIL = (
+    "Legacy free-form traits are deprecated. Use /qualitative-characteristics and "
+    "provider/region /characteristics links (see POST .../migrate-from-legacy-traits)."
+)
+
+
+def _deprecation_headers() -> dict[str, str]:
+    return {
+        "Deprecation": "true",
+        "Link": '</api/v1/organizations/{organization_id}/qualitative-characteristics>; rel="successor-version"',
+    }
+
+
 @router.get(
     "/infrastructure-providers/{provider_id}/traits",
     response_model=list[TraitOut],
@@ -190,8 +203,10 @@ async def list_provider_traits(
     provider_id: str,
     user: CurrentUserDep,
     session: SessionDep,
+    response: Response,
 ) -> list[TraitOut]:
     authorization.require_compliance_read(user, organization_id)
+    response.headers.update(_deprecation_headers())
     return await catalog_service.list_provider_traits(session, organization_id, provider_id)
 
 
@@ -199,6 +214,7 @@ async def list_provider_traits(
     "/infrastructure-providers/{provider_id}/traits",
     response_model=TraitOut,
     status_code=201,
+    deprecated=True,
 )
 async def create_provider_trait(
     organization_id: str,
@@ -208,14 +224,10 @@ async def create_provider_trait(
     session: SessionDep,
 ) -> TraitOut:
     authorization.require_catalog_manage(user, organization_id)
-    row = await catalog_service.create_provider_trait(
-        session, organization_id, provider_id, body, actor_user_id=user.user_id
-    )
-    await session.commit()
-    return row
+    raise HTTPException(status_code=410, detail=_LEGACY_TRAIT_DETAIL)
 
 
-@router.delete("/traits/provider/{trait_id}", status_code=204)
+@router.delete("/traits/provider/{trait_id}", status_code=204, deprecated=True)
 async def delete_provider_trait(
     organization_id: str,
     trait_id: str,
@@ -223,10 +235,7 @@ async def delete_provider_trait(
     session: SessionDep,
 ) -> None:
     authorization.require_catalog_manage(user, organization_id)
-    await catalog_service.delete_provider_trait(
-        session, organization_id, trait_id, actor_user_id=user.user_id
-    )
-    await session.commit()
+    raise HTTPException(status_code=410, detail=_LEGACY_TRAIT_DETAIL)
 
 
 @router.get("/regions/{region_id}/traits", response_model=list[TraitOut])
@@ -235,12 +244,14 @@ async def list_region_traits(
     region_id: str,
     user: CurrentUserDep,
     session: SessionDep,
+    response: Response,
 ) -> list[TraitOut]:
     authorization.require_compliance_read(user, organization_id)
+    response.headers.update(_deprecation_headers())
     return await catalog_service.list_region_traits(session, organization_id, region_id)
 
 
-@router.post("/regions/{region_id}/traits", response_model=TraitOut, status_code=201)
+@router.post("/regions/{region_id}/traits", response_model=TraitOut, status_code=201, deprecated=True)
 async def create_region_trait(
     organization_id: str,
     region_id: str,
@@ -249,14 +260,10 @@ async def create_region_trait(
     session: SessionDep,
 ) -> TraitOut:
     authorization.require_catalog_manage(user, organization_id)
-    row = await catalog_service.create_region_trait(
-        session, organization_id, region_id, body, actor_user_id=user.user_id
-    )
-    await session.commit()
-    return row
+    raise HTTPException(status_code=410, detail=_LEGACY_TRAIT_DETAIL)
 
 
-@router.delete("/traits/region/{trait_id}", status_code=204)
+@router.delete("/traits/region/{trait_id}", status_code=204, deprecated=True)
 async def delete_region_trait(
     organization_id: str,
     trait_id: str,
@@ -264,10 +271,7 @@ async def delete_region_trait(
     session: SessionDep,
 ) -> None:
     authorization.require_catalog_manage(user, organization_id)
-    await catalog_service.delete_region_trait(
-        session, organization_id, trait_id, actor_user_id=user.user_id
-    )
-    await session.commit()
+    raise HTTPException(status_code=410, detail=_LEGACY_TRAIT_DETAIL)
 
 
 @router.get("/compliance-checks", response_model=list[ComplianceCheckOut])

@@ -9,6 +9,9 @@ from pydantic import BaseModel, Field, field_validator
 
 MoscowKind = Literal["must", "should", "could", "wont"]
 ResourceType = Literal["project", "vm", "network"]
+EvidenceCategory = Literal["design", "implementation", "operating"]
+CycleStatus = Literal["active", "planned", "closed"]
+ExportJobStatus = Literal["queued", "running", "completed", "failed"]
 
 
 class ComplianceItemCreate(BaseModel):
@@ -242,3 +245,224 @@ class ComplianceExplorerFacetsOut(BaseModel):
     organization_id: str
     catalog_items: list[ComplianceItemOut]
     trait_keys: list[str]
+    qualitative_characteristics: list[QualitativeCharacteristicOut] = Field(default_factory=list)
+
+
+# ----------------------------
+# Phase 7+ GRC schemas
+# ----------------------------
+
+
+class ComplianceStandardCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    slug: str | None = Field(default=None, max_length=64)
+    description: str | None = None
+    reference_url: str | None = Field(default=None, max_length=2048)
+    moscow: MoscowKind = "should"
+    target_level: str | None = Field(default=None, max_length=64)
+
+
+class ComplianceStandardUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    reference_url: str | None = Field(default=None, max_length=2048)
+    moscow: MoscowKind | None = None
+    target_level: str | None = Field(default=None, max_length=64)
+
+
+class ComplianceStandardOut(BaseModel):
+    id: str
+    organization_id: str
+    name: str
+    slug: str
+    description: str | None
+    reference_url: str | None
+    moscow: str
+    target_level: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ComplianceControlCreate(BaseModel):
+    control_code: str | None = Field(default=None, max_length=64)
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = None
+    rationale: str | None = None
+    moscow: MoscowKind = "should"
+
+
+class ComplianceControlUpdate(BaseModel):
+    control_code: str | None = Field(default=None, max_length=64)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    rationale: str | None = None
+    moscow: MoscowKind | None = None
+
+
+class ComplianceControlOut(BaseModel):
+    id: str
+    organization_id: str
+    standard_id: str
+    control_code: str | None
+    name: str
+    description: str | None
+    rationale: str | None
+    moscow: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class ComplianceCycleCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    status: CycleStatus = "active"
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+
+
+class ComplianceCycleUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    status: CycleStatus | None = None
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+
+
+class ComplianceCycleOut(BaseModel):
+    id: str
+    organization_id: str
+    standard_id: str
+    name: str
+    status: str
+    starts_at: datetime | None
+    ends_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ComplianceCycleStatusOut(BaseModel):
+    organization_id: str
+    cycle_id: str
+    standard_id: str
+    cycle_name: str
+    cycle_status: str
+
+    controls_total: int
+    controls_with_any_evidence: int
+
+    evidence_by_category: dict[str, int] = Field(default_factory=dict)
+    missing_evidence_controls_by_category: dict[str, int] = Field(default_factory=dict)
+
+    checks_active: int
+    checks_expiring_soon: int
+    checks_expired: int
+
+
+class ControlEvidenceOut(BaseModel):
+    id: str
+    organization_id: str
+    control_id: str
+    cycle_id: str | None
+    category: str
+    title: str
+    summary: str | None
+    file_name: str | None
+    content_type: str | None
+    size_bytes: int | None
+    sha256: str | None
+    tags: dict
+    uploaded_by: str
+    uploaded_at: datetime
+    supersedes_evidence_id: str | None
+
+
+class CompliancePackOut(BaseModel):
+    id: str
+    organization_id: str
+    pack_key: str
+    name: str
+    vendor: str | None
+    version: str | None
+    imported_by: str
+    imported_at: datetime
+
+
+class CompliancePackImportIn(BaseModel):
+    pack_key: str = Field(..., min_length=1, max_length=128)
+    name: str = Field(..., min_length=1, max_length=255)
+    vendor: str | None = Field(default=None, max_length=255)
+    version: str | None = Field(default=None, max_length=64)
+    payload: dict = Field(default_factory=dict, description="Raw pack JSON payload")
+
+
+class CompliancePackValidateOut(BaseModel):
+    pack_key: str
+    name: str
+    vendor: str | None = None
+    version: str | None = None
+
+    standards_to_create: int = 0
+    controls_to_create: int = 0
+    errors: list[str] = Field(default_factory=list)
+
+
+class ComplianceExportRequest(BaseModel):
+    export_type: Literal["pdf"] = "pdf"
+    standard_id: str | None = None
+    cycle_id: str | None = None
+
+
+class ComplianceExportJobOut(BaseModel):
+    id: str
+    organization_id: str
+    export_type: str
+    status: str
+    requested_by: str
+    standard_id: str | None
+    cycle_id: str | None
+    error_message: str | None
+    generated_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class QualitativeCharacteristicCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    slug: str | None = Field(default=None, max_length=64)
+    description: str | None = None
+    moscow: MoscowKind = "should"
+    kind: str = Field(default="placement", max_length=32)
+
+
+class QualitativeCharacteristicUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    moscow: MoscowKind | None = None
+    kind: str | None = Field(default=None, max_length=32)
+
+
+class QualitativeCharacteristicOut(BaseModel):
+    id: str
+    organization_id: str
+    name: str
+    slug: str
+    description: str | None
+    moscow: str
+    kind: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class CharacteristicLinkSet(BaseModel):
+    characteristic_ids: list[str] = Field(default_factory=list)
+
+    @field_validator("characteristic_ids")
+    @classmethod
+    def _unique_characteristics(cls, v: list[str]) -> list[str]:
+        return list(dict.fromkeys(v))
+
+
+class LegacyTraitsMigrateOut(BaseModel):
+    provider_traits_seen: int
+    region_traits_seen: int
+    characteristics_created: int
+    provider_links_added: int
+    region_links_added: int

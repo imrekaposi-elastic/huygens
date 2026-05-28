@@ -11,7 +11,7 @@ import uvicorn
 from fastapi import FastAPI
 
 from huy_compliance import __version__
-from huy_compliance.api.routes import health, org_compliance
+from huy_compliance.api.routes import health, org_compliance, org_grc
 from huy_compliance.config import get_settings
 from huy_compliance.db import dispose_db, get_engine, init_db
 from huy_compliance.db_schema import apply_schema_upgrades
@@ -51,6 +51,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(health.router)
     app.include_router(org_compliance.router)
+    app.include_router(org_grc.router)
     return app
 
 

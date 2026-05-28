@@ -1,7 +1,6 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
-import { ComplianceMembershipLegend } from "@/components/compliance/ComplianceMembershipLegend";
 import { PageTitle, CheckmarkIcon } from "@/components/icons/NavIcons";
 
 type Props = { organizationId: string };
@@ -11,6 +10,7 @@ const TABS = [
   { to: "/compliance/explorer" as const, label: "Explorer" },
   { to: "/compliance/catalog" as const, label: "Catalog" },
   { to: "/compliance/checks" as const, label: "Checks" },
+  { to: "/compliance/grc" as const, label: "GRC" },
 ] as const;
 
 export function ComplianceLayout({ organizationId }: Props) {
@@ -50,8 +50,6 @@ export function ComplianceLayout({ organizationId }: Props) {
           );
         })}
       </nav>
-
-      <ComplianceMembershipLegend className="-mt-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/50" />
 
       {onOverview && (
         <>

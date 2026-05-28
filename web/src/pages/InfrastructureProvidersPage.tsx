@@ -4,6 +4,7 @@ import { isValidOrgSlug, slugFromName } from "@/auth/setup";
 import { useAuth } from "@/auth/AuthContext";
 import { api, ApiError } from "@/api/client";
 import { InfrastructureCompliancePanel } from "@/components/compliance/InfrastructureCompliancePanel";
+import { InfrastructureCharacteristicsPanel } from "@/components/compliance/InfrastructureCharacteristicsPanel";
 import { CloudIcon, GlobeIcon, PageTitle } from "@/components/icons/NavIcons";
 import { RegionTreePanel } from "@/components/RegionTreePanel";
 
@@ -24,6 +25,16 @@ function ProviderDetail({
   const { data, isLoading } = useQuery({
     queryKey: ["infrastructure-provider", providerId],
     queryFn: () => api.infrastructureProvider(providerId),
+  });
+
+  const removeProvider = useMutation({
+    mutationFn: () => api.deleteInfrastructureProvider(providerId),
+    onSuccess: () => {
+      setErr(null);
+      void qc.invalidateQueries({ queryKey: ["infrastructure-provider", providerId] });
+      void qc.invalidateQueries({ queryKey: ["infrastructure-providers"] });
+    },
+    onError: (e) => setErr(e instanceof ApiError ? e.message : "Delete failed"),
   });
 
   const addRegion = useMutation({
@@ -47,6 +58,7 @@ function ProviderDetail({
   if (isLoading || !data) return <p className="text-slate-500 dark:text-slate-500">Loading tree…</p>;
 
   const regionOptions = flattenForParentSelect(data.region_tree);
+  const canDeleteProvider = data.total_agents === 0 && data.region_tree.length === 0;
 
   return (
     <div className="mt-4 border-t border-slate-200 dark:border-slate-800 pt-4">
@@ -59,13 +71,34 @@ function ProviderDetail({
           {data.operational ? "Provider operational" : "Not operational"}
         </span>
         <span className="text-xs text-slate-500 dark:text-slate-500">{data.total_agents} enrolled agent(s)</span>
+        <button
+          type="button"
+          disabled={!canDeleteProvider || removeProvider.isPending}
+          onClick={() => {
+            if (!canDeleteProvider) return;
+            if (window.confirm(`Delete provider "${data.name}"? This cannot be undone.`)) {
+              removeProvider.mutate();
+            }
+          }}
+          className="ml-auto rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/80 dark:text-red-300 dark:hover:bg-red-950/40"
+          title={
+            canDeleteProvider
+              ? "Delete provider"
+              : "Delete is only allowed when there are no regions and no enrolled agents"
+          }
+        >
+          {removeProvider.isPending ? "Deleting…" : "Delete provider"}
+        </button>
       </div>
       <h2 className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
         <GlobeIcon className="size-4 shrink-0 text-slate-500 dark:text-slate-500" />
         Regions
       </h2>
       {organizationId && (
-        <InfrastructureCompliancePanel organizationId={organizationId} providerId={providerId} />
+        <>
+          <InfrastructureCompliancePanel organizationId={organizationId} providerId={providerId} />
+          <InfrastructureCharacteristicsPanel organizationId={organizationId} providerId={providerId} />
+        </>
       )}
       <RegionTreePanel
         nodes={data.region_tree}

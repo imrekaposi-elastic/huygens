@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/api/client";
 import { InfrastructureCompliancePanel } from "@/components/compliance/InfrastructureCompliancePanel";
+import { InfrastructureCharacteristicsPanel } from "@/components/compliance/InfrastructureCharacteristicsPanel";
 import { GlobeIcon } from "@/components/icons/NavIcons";
 import type { RegionTreeNode } from "@/api/types";
 
@@ -104,11 +105,18 @@ export function RegionTreePanel({
               </ul>
             )}
             {organizationId && (
-              <InfrastructureCompliancePanel
-                organizationId={organizationId}
-                providerId={infrastructureProviderId}
-                regionId={node.id}
-              />
+              <>
+                <InfrastructureCompliancePanel
+                  organizationId={organizationId}
+                  providerId={infrastructureProviderId}
+                  regionId={node.id}
+                />
+                <InfrastructureCharacteristicsPanel
+                  organizationId={organizationId}
+                  providerId={infrastructureProviderId}
+                  regionId={node.id}
+                />
+              </>
             )}
             {node.children.length > 0 && (
               <RegionTreePanel

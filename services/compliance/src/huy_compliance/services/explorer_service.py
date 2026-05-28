@@ -14,7 +14,10 @@ from huy_compliance.models import (
     InfrastructureProviderCompliance,
     InfrastructureProviderComplianceItemLink,
     OrgComplianceItem,
+    OrgQualitativeCharacteristic,
     RegionComplianceItemLink,
+    InfrastructureProviderCharacteristicLink,
+    RegionCharacteristicLink,
 )
 from huy_compliance.resource_keys import ResourceRef
 from huy_compliance.schemas import (
@@ -26,7 +29,7 @@ from huy_compliance.schemas import (
     ComplianceItemOut,
     TraitSummary,
 )
-from huy_compliance.services import catalog_service
+from huy_compliance.services import catalog_service, characteristics_service
 from huy_compliance.services.placement_compliance import merge_catalog_items
 from huy_compliance.services.placement_traits import inherited_placement_for_agent
 from huy_compliance.services.project_aggregate_compliance import aggregate_items_for_project
@@ -508,15 +511,53 @@ async def build_facets(
             )
         )
     ).all()
+    catalog_trait_keys = {
+        slug_by_id[item_id]
+        for item_id in (*provider_item_ids, *region_item_ids)
+        if item_id in slug_by_id
+    }
+
+    provider_characteristic_slugs = (
+        await session.scalars(
+            select(OrgQualitativeCharacteristic.slug)
+            .join(
+                InfrastructureProviderCharacteristicLink,
+                InfrastructureProviderCharacteristicLink.characteristic_id
+                == OrgQualitativeCharacteristic.id,
+            )
+            .where(
+                InfrastructureProviderCharacteristicLink.organization_id == organization_id,
+                OrgQualitativeCharacteristic.organization_id == organization_id,
+            )
+        )
+    ).all()
+    region_characteristic_slugs = (
+        await session.scalars(
+            select(OrgQualitativeCharacteristic.slug)
+            .join(
+                RegionCharacteristicLink,
+                RegionCharacteristicLink.characteristic_id == OrgQualitativeCharacteristic.id,
+            )
+            .where(
+                RegionCharacteristicLink.organization_id == organization_id,
+                OrgQualitativeCharacteristic.organization_id == organization_id,
+            )
+        )
+    ).all()
+
+    qualitative_characteristics = await characteristics_service.list_characteristics(
+        session, organization_id
+    )
     trait_keys = sorted(
         {
-            slug_by_id[item_id]
-            for item_id in (*provider_item_ids, *region_item_ids)
-            if item_id in slug_by_id
+            *catalog_trait_keys,
+            *[s for s in (*provider_characteristic_slugs, *region_characteristic_slugs) if s],
+            *[c.slug for c in qualitative_characteristics if c.slug],
         }
     )
     return ComplianceExplorerFacetsOut(
         organization_id=organization_id,
         catalog_items=catalog,
         trait_keys=trait_keys,
+        qualitative_characteristics=qualitative_characteristics,
     )

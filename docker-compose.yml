@@ -200,6 +200,13 @@ services:
       PROJECTS_URL: http://projects:8084
       PROJECTS_SERVICE_TOKEN: ${PROJECTS_SERVICE_TOKEN:-dev-projects-service-token}
       CHECK_ALERT_ENABLED: ${CHECK_ALERT_ENABLED:-true}
+      OBJECT_STORE_KIND: ${OBJECT_STORE_KIND:-s3}
+      OBJECT_STORE_BUCKET: ${OBJECT_STORE_BUCKET:-huygens-dev}
+      OBJECT_STORE_ENDPOINT: ${OBJECT_STORE_ENDPOINT:-http://seaweed-s3:8333}
+      OBJECT_STORE_REGION: ${OBJECT_STORE_REGION:-us-east-1}
+      OBJECT_STORE_ACCESS_KEY_ID: ${OBJECT_STORE_ACCESS_KEY_ID:-huy-dev-access-key}
+      OBJECT_STORE_SECRET_ACCESS_KEY: ${OBJECT_STORE_SECRET_ACCESS_KEY:-huy-dev-secret-key}
+      OBJECT_STORE_PREFIX: ${OBJECT_STORE_PREFIX:-huy-compliance}
       HUY_COMPLIANCE_HOST: 0.0.0.0
       HUY_COMPLIANCE_PORT: "8086"
     depends_on:
@@ -209,12 +216,111 @@ services:
         condition: service_healthy
       projects:
         condition: service_healthy
+      seaweed-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8086/health')\""]
       interval: 10s
       timeout: 5s
       retries: 6
       start_period: 10s
+
+  # Development object store backend (S3-compatible, internal only; no published ports).
+  seaweed-master:
+    image: chrislusf/seaweedfs:latest
+    command: ["master", "-ip=seaweed-master", "-port=9333", "-mdir=/data"]
+    volumes:
+      - huygens-seaweed-master:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  seaweed-volume:
+    image: chrislusf/seaweedfs:latest
+    command:
+      [
+        "volume",
+        "-ip=seaweed-volume",
+        "-port=8080",
+        "-dir=/data",
+        "-max=0",
+        "-mserver=seaweed-master:9333"
+      ]
+    volumes:
+      - huygens-seaweed-volume:/data
+    depends_on:
+      seaweed-master:
+        condition: service_healthy
+    # The volume server has historically exposed different HTTP status paths across versions.
+    # For the dev stack, treat "container started" as sufficient; master/filer/s3 are still
+    # gated by their own health checks.
+    healthcheck:
+      test: ["CMD", "true"]
+
+  seaweed-filer:
+    image: chrislusf/seaweedfs:latest
+    command: ["filer", "-ip=seaweed-filer", "-port=8888", "-master=seaweed-master:9333"]
+    volumes:
+      - huygens-seaweed-filer:/data
+    depends_on:
+      seaweed-master:
+        condition: service_healthy
+      seaweed-volume:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8888/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  seaweed-s3:
+    image: chrislusf/seaweedfs:latest
+    command:
+      [
+        "s3",
+        "-filer=seaweed-filer:8888",
+        "-port=8333",
+        "-config=/config/s3.json"
+      ]
+    volumes:
+      - ./docker/seaweedfs/s3.json:/config/s3.json:ro
+    depends_on:
+      seaweed-filer:
+        condition: service_started
+    # The S3 gateway may not reliably return 200 on "/" across versions/config.
+    # For the dev stack, treat "container started" as sufficient; the init job
+    # will fail fast if the endpoint is actually unreachable.
+    healthcheck:
+      test: ["CMD", "true"]
+
+  # One-shot: create the default dev bucket and keep it private.
+  seaweed-init:
+    image: amazon/aws-cli:2.24.0
+    depends_on:
+      seaweed-s3:
+        condition: service_started
+    environment:
+      AWS_ACCESS_KEY_ID: ${OBJECT_STORE_ACCESS_KEY_ID:-huy-dev-access-key}
+      AWS_SECRET_ACCESS_KEY: ${OBJECT_STORE_SECRET_ACCESS_KEY:-huy-dev-secret-key}
+      AWS_DEFAULT_REGION: ${OBJECT_STORE_REGION:-us-east-1}
+      S3_ENDPOINT: ${OBJECT_STORE_ENDPOINT:-http://seaweed-s3:8333}
+      S3_BUCKET: ${OBJECT_STORE_BUCKET:-huygens-dev}
+    entrypoint:
+      [
+        "/bin/sh",
+        "-lc",
+        "set -euo pipefail; \
+         echo \"Initializing SeaweedFS S3 bucket: $$S3_BUCKET\"; \
+         aws --endpoint-url \"$$S3_ENDPOINT\" s3api create-bucket --bucket \"$$S3_BUCKET\" 2>/dev/null || true; \
+         aws --endpoint-url \"$$S3_ENDPOINT\" s3api put-bucket-acl --bucket \"$$S3_BUCKET\" --acl private >/dev/null 2>&1 || true; \
+         aws --endpoint-url \"$$S3_ENDPOINT\" s3 ls \"s3://$$S3_BUCKET\" >/dev/null; \
+         echo \"SeaweedFS bucket ready.\""
+      ]
+    restart: "no"
 
   web:
     build:
@@ -300,3 +406,6 @@ services:
 
 volumes:
   huygens-pgdata:
+  huygens-seaweed-master:
+  huygens-seaweed-volume:
+  huygens-seaweed-filer:

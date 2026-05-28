@@ -22,6 +22,13 @@ Base: `/api/v1/organizations/{organization_id}` (JWT from IAM).
 |------|---------|--------|
 | Catalog | `GET/POST/PATCH/DELETE .../compliance-catalog` | Org standards (slug, MoSCoW) |
 | Checks | `GET/POST/PATCH/DELETE .../compliance-checks` | Owner, validity, status |
+| GRC standards | `GET/POST/PATCH/DELETE .../compliance-standards` | Top-level standards (ISO/BIO/etc.) |
+| Controls | `GET/POST .../compliance-standards/{sid}/controls` + `PATCH/DELETE .../compliance-controls/{id}` | Controls under a standard |
+| Cycles | `GET/POST .../compliance-standards/{sid}/cycles` + `PATCH/DELETE .../compliance-cycles/{id}` | Repeated assessment cycles |
+| Evidence | `GET/POST .../compliance-controls/{cid}/evidence` + `GET .../compliance-evidence/{id}/download` | Upload/list/download evidence |
+| Packs | `GET .../compliance-packs` + `POST .../compliance-packs/validate` + `POST .../import` | Dry-run and apply JSON packs |
+| Exports | `POST .../compliance-export` + `GET .../compliance-export/{job_id}` + `GET .../download` | PDF export (poll status, one-time download) |
+| Qualitative characteristics | `GET/POST/PATCH/DELETE .../qualitative-characteristics` + provider/region link endpoints + `POST .../migrate-from-legacy-traits` | Placement traits for Explorer/inheritance |
 | Dashboard | `GET .../compliance-dashboard` | KPI counts |
 | Explorer | `GET .../compliance-explorer`, `.../facets`, `.../suggest` | Filters; pagination |
 | Placement rationale | `GET .../resources/{type}/placement-rationale` | Query: `project_id`, `agent_id`, `name` |
@@ -29,7 +36,7 @@ Base: `/api/v1/organizations/{organization_id}` (JWT from IAM).
 | Project criticality | `GET/PUT .../projects/{pid}/criticality` | Includes `aggregate_compliance_items` |
 | Provider compliance | `GET/PUT .../infrastructure-providers/{id}/compliance-profile` | Catalog item checkboxes |
 | Region compliance | `GET/PUT .../regions/{id}/compliance-items` | Per region node |
-| Traits (legacy) | `GET/POST .../traits`, region/provider trait routes | Free-form keys; **not used by console inheritance** |
+| Traits (legacy) | `GET .../traits` (deprecated), writes **410** | Use qualitative characteristics + `/migrate-from-legacy-traits` |
 
 ### Membership model
 
@@ -60,6 +67,13 @@ Requires `inventory:read` for registry agent lookups (explorer, rationale, inher
 | `PROJECTS_URL` | Resource assignments, project names |
 | `PROJECTS_SERVICE_TOKEN` | Internal projects API; also accepted by registry internal routes |
 | `CHECK_ALERT_ENABLED` | Background check expiry scan (default `true`) |
+| `OBJECT_STORE_KIND` | `local` (dev) or `s3` (S3-compatible / MinIO) |
+| `OBJECT_STORE_LOCAL_DIR` | Base directory for `local` storage (default `./data/object-store`) |
+| `OBJECT_STORE_BUCKET` | Bucket name for `s3` mode |
+| `OBJECT_STORE_ENDPOINT` | Optional S3 endpoint URL (e.g. MinIO) |
+| `OBJECT_STORE_REGION` | Optional AWS region |
+| `OBJECT_STORE_ACCESS_KEY_ID` / `OBJECT_STORE_SECRET_ACCESS_KEY` | Optional static credentials |
+| `OBJECT_STORE_PREFIX` | Key prefix for evidence/exports |
 
 Registry internal (service token): `GET /api/v1/internal/infrastructure-providers/{id}/regions` — flat regions with `parent_region_id` for lineage inheritance.
 

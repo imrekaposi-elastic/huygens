@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (Phase 0); **MVP implemented** in Phase 7 (`huy-compliance`, console)
+Accepted (Phase 0); **MVP + GRC extensions implemented** in Phase 7 (`huy-compliance`, console)
 
 ## Context
 
@@ -21,11 +21,15 @@ Strategic goal: *know where workloads run and why*. FRAMEWORK_PLAN adds `complia
 
 `GET /api/v1/organizations/{org_id}/resources/{resource_type}/placement-rationale?project_id=...&agent_id=...&name=...` returns structured JSON for the console.
 
-**Compliance explorer** filters workloads by effective catalog membership and placement trait slugs (derived from infrastructure profiles).
+**Compliance explorer** filters workloads by effective catalog membership and placement trait slugs (catalog items plus **qualitative characteristics** linked on providers/regions).
 
-### Legacy traits API
+### Qualitative characteristics (Phase 7+)
 
-Free-form `provider_traits` / `region_traits` tables and REST endpoints remain for future use. **Console inheritance and explorer do not read them** — use infrastructure compliance profiles instead.
+Org-defined characteristics (`/qualitative-characteristics`) replace free-form traits for console and inheritance. Link on provider/region via `/characteristics` endpoints; Explorer facets expose name, slug, and MoSCoW.
+
+### Legacy traits API (deprecated)
+
+`provider_traits` / `region_traits` REST **writes return 410**; GET remains for migration only (`Deprecation` header). Use `POST .../qualitative-characteristics/migrate-from-legacy-traits` to copy legacy rows into characteristics + links.
 
 ## Consequences
 

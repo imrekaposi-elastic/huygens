@@ -23,7 +23,6 @@ import type {
   ComplianceExplorerResult,
   ComplianceExplorerSuggestResult,
   ComplianceItem,
-  ComplianceTrait,
   InfrastructureProviderCompliance,
   RegionCompliance,
   FlatBreakoutConfig,
@@ -31,6 +30,13 @@ import type {
   PlacementRationale,
   MoscowKind,
   NetworkBreakout,
+  ComplianceStandard,
+  ComplianceControl,
+  ComplianceCycle,
+  ControlEvidence,
+  CompliancePack,
+  ComplianceExportJob,
+  QualitativeCharacteristic,
   TokenResponse,
   UserOut,
 } from "@/api/types";
@@ -42,6 +48,12 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+}
+
+function filenameFromContentDisposition(header: string | null): string | null {
+  if (!header) return null;
+  const m = /filename="([^"]+)"/.exec(header);
+  return m?.[1] ?? null;
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -818,48 +830,6 @@ export const api = {
       { method: "PUT", body: JSON.stringify(body) },
     ),
 
-  listProviderTraits: (organizationId: string, providerId: string) =>
-    request<ComplianceTrait[]>(
-      `/api/v1/organizations/${encodeURIComponent(organizationId)}/infrastructure-providers/${encodeURIComponent(providerId)}/traits`,
-    ),
-
-  createProviderTrait: (
-    organizationId: string,
-    providerId: string,
-    body: { trait_key: string; title: string; description?: string; moscow?: MoscowKind },
-  ) =>
-    request<ComplianceTrait>(
-      `/api/v1/organizations/${encodeURIComponent(organizationId)}/infrastructure-providers/${encodeURIComponent(providerId)}/traits`,
-      { method: "POST", body: JSON.stringify(body) },
-    ),
-
-  deleteProviderTrait: (organizationId: string, traitId: string) =>
-    request<void>(
-      `/api/v1/organizations/${encodeURIComponent(organizationId)}/traits/provider/${encodeURIComponent(traitId)}`,
-      { method: "DELETE" },
-    ),
-
-  listRegionTraits: (organizationId: string, regionId: string) =>
-    request<ComplianceTrait[]>(
-      `/api/v1/organizations/${encodeURIComponent(organizationId)}/regions/${encodeURIComponent(regionId)}/traits`,
-    ),
-
-  createRegionTrait: (
-    organizationId: string,
-    regionId: string,
-    body: { trait_key: string; title: string; description?: string; moscow?: MoscowKind },
-  ) =>
-    request<ComplianceTrait>(
-      `/api/v1/organizations/${encodeURIComponent(organizationId)}/regions/${encodeURIComponent(regionId)}/traits`,
-      { method: "POST", body: JSON.stringify(body) },
-    ),
-
-  deleteRegionTrait: (organizationId: string, traitId: string) =>
-    request<void>(
-      `/api/v1/organizations/${encodeURIComponent(organizationId)}/traits/region/${encodeURIComponent(traitId)}`,
-      { method: "DELETE" },
-    ),
-
   placementRationale: (
     organizationId: string,
     params: {
@@ -919,4 +889,361 @@ export const api = {
       { method: "PUT", body: JSON.stringify(body) },
     );
   },
+
+  // ---- Phase 7+ GRC APIs (huy-compliance) ----
+  listComplianceStandards: (organizationId: string) =>
+    request<ComplianceStandard[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-standards`,
+    ),
+
+  createComplianceStandard: (
+    organizationId: string,
+    body: {
+      name: string;
+      slug?: string;
+      description?: string | null;
+      reference_url?: string | null;
+      moscow?: MoscowKind;
+      target_level?: string | null;
+    },
+  ) =>
+    request<ComplianceStandard>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-standards`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  updateComplianceStandard: (
+    organizationId: string,
+    standardId: string,
+    body: {
+      name?: string;
+      description?: string | null;
+      reference_url?: string | null;
+      moscow?: MoscowKind;
+      target_level?: string | null;
+    },
+  ) =>
+    request<ComplianceStandard>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-standards/${encodeURIComponent(standardId)}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+
+  deleteComplianceStandard: (organizationId: string, standardId: string) =>
+    request<void>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-standards/${encodeURIComponent(standardId)}`,
+      { method: "DELETE" },
+    ),
+
+  listComplianceControls: (organizationId: string, standardId: string) =>
+    request<ComplianceControl[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-standards/${encodeURIComponent(standardId)}/controls`,
+    ),
+
+  createComplianceControl: (
+    organizationId: string,
+    standardId: string,
+    body: {
+      control_code?: string | null;
+      name: string;
+      description?: string | null;
+      rationale?: string | null;
+      moscow?: MoscowKind;
+    },
+  ) =>
+    request<ComplianceControl>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-standards/${encodeURIComponent(standardId)}/controls`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  updateComplianceControl: (
+    organizationId: string,
+    controlId: string,
+    body: {
+      control_code?: string | null;
+      name?: string;
+      description?: string | null;
+      rationale?: string | null;
+      moscow?: MoscowKind;
+    },
+  ) =>
+    request<ComplianceControl>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-controls/${encodeURIComponent(controlId)}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+
+  deleteComplianceControl: (organizationId: string, controlId: string) =>
+    request<void>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-controls/${encodeURIComponent(controlId)}`,
+      { method: "DELETE" },
+    ),
+
+  listComplianceCycles: (organizationId: string, standardId: string) =>
+    request<ComplianceCycle[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-standards/${encodeURIComponent(standardId)}/cycles`,
+    ),
+
+  createComplianceCycle: (
+    organizationId: string,
+    standardId: string,
+    body: { name: string; status?: string; starts_at?: string | null; ends_at?: string | null },
+  ) =>
+    request<ComplianceCycle>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-standards/${encodeURIComponent(standardId)}/cycles`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  updateComplianceCycle: (
+    organizationId: string,
+    cycleId: string,
+    body: { name?: string; status?: string; starts_at?: string | null; ends_at?: string | null },
+  ) =>
+    request<ComplianceCycle>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-cycles/${encodeURIComponent(cycleId)}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+
+  deleteComplianceCycle: (organizationId: string, cycleId: string) =>
+    request<void>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-cycles/${encodeURIComponent(cycleId)}`,
+      { method: "DELETE" },
+    ),
+
+  getComplianceCycleStatus: (organizationId: string, cycleId: string) =>
+    request<import("@/api/types").ComplianceCycleStatus>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-cycles/${encodeURIComponent(cycleId)}/status`,
+    ),
+
+  listControlEvidence: (organizationId: string, controlId: string, cycleId?: string) => {
+    const q = new URLSearchParams();
+    if (cycleId) q.set("cycle_id", cycleId);
+    // default is to hide superseded evidence server-side
+    const qs = q.toString();
+    return request<ControlEvidence[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-controls/${encodeURIComponent(controlId)}/evidence${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  uploadControlEvidence: async (
+    organizationId: string,
+    controlId: string,
+    body: {
+      file: File;
+      category: string;
+      title: string;
+      summary?: string | null;
+      cycle_id?: string | null;
+      supersedes_evidence_id?: string | null;
+    },
+  ) => {
+    const token = getAccessToken();
+    const form = new FormData();
+    form.set("file", body.file);
+    form.set("category", body.category);
+    form.set("title", body.title);
+    if (body.summary != null) form.set("summary", body.summary);
+    if (body.cycle_id != null) form.set("cycle_id", body.cycle_id);
+    if (body.supersedes_evidence_id != null) form.set("supersedes_evidence_id", body.supersedes_evidence_id);
+    const res = await fetch(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-controls/${encodeURIComponent(controlId)}/evidence`,
+      {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: form,
+      },
+    );
+    if (!res.ok) {
+      let detail = res.statusText;
+      try {
+        const json = (await res.json()) as { detail?: string };
+        if (json.detail) detail = json.detail;
+      } catch {
+        /* non-json */
+      }
+      throw new ApiError(detail, res.status);
+    }
+    return (await res.json()) as ControlEvidence;
+  },
+
+  evidenceDownloadUrl: (organizationId: string, evidenceId: string) =>
+    `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-evidence/${encodeURIComponent(evidenceId)}/download`,
+
+  downloadEvidence: async (organizationId: string, evidenceId: string) => {
+    const token = getAccessToken();
+    const res = await fetch(api.evidenceDownloadUrl(organizationId, evidenceId), {
+      method: "GET",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (res.status === 401) {
+      clearAccessToken();
+      window.location.href = "/login";
+      throw new ApiError("Unauthorized", 401);
+    }
+    if (!res.ok) {
+      let detail = res.statusText;
+      try {
+        const body = (await res.json()) as { detail?: string };
+        if (body.detail) detail = body.detail;
+      } catch {
+        /* non-json */
+      }
+      throw new ApiError(detail, res.status);
+    }
+    const blob = await res.blob();
+    const filename = filenameFromContentDisposition(res.headers.get("content-disposition"));
+    return { blob, filename };
+  },
+
+  deleteEvidence: (organizationId: string, evidenceId: string) =>
+    request<void>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-evidence/${encodeURIComponent(evidenceId)}`,
+      { method: "DELETE" },
+    ),
+
+  listCompliancePacks: (organizationId: string) =>
+    request<CompliancePack[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-packs`,
+    ),
+
+  importCompliancePack: (
+    organizationId: string,
+    body: { pack_key: string; name: string; vendor?: string | null; version?: string | null; payload: unknown },
+  ) =>
+    request<CompliancePack>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-packs/import`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  validateCompliancePack: (
+    organizationId: string,
+    body: { pack_key: string; name: string; vendor?: string | null; version?: string | null; payload: unknown },
+  ) =>
+    request<import("@/api/types").CompliancePackValidate>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-packs/validate`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  exportDownloadUrl: (organizationId: string, jobId: string) =>
+    `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-export/${encodeURIComponent(jobId)}/download`,
+
+  /** Request PDF export, poll until ready, then download once (no job list / retention). */
+  exportCompliancePdf: async (
+    organizationId: string,
+    body: { export_type?: "pdf"; standard_id?: string | null; cycle_id?: string | null },
+    options?: { pollIntervalMs?: number; timeoutMs?: number },
+  ) => {
+    const pollIntervalMs = options?.pollIntervalMs ?? 1500;
+    const timeoutMs = options?.timeoutMs ?? 5 * 60 * 1000;
+    const job = await request<ComplianceExportJob>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-export`,
+      { method: "POST", body: JSON.stringify(body) },
+    );
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const status = await request<ComplianceExportJob>(
+        `/api/v1/organizations/${encodeURIComponent(organizationId)}/compliance-export/${encodeURIComponent(job.id)}`,
+      );
+      if (status.status === "completed") {
+        return api.downloadComplianceExport(organizationId, job.id);
+      }
+      if (status.status === "failed") {
+        throw new ApiError(status.error_message ?? "Export failed", 500);
+      }
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
+    }
+    throw new ApiError("Export timed out", 504);
+  },
+
+  downloadComplianceExport: async (organizationId: string, jobId: string) => {
+    const token = getAccessToken();
+    const res = await fetch(api.exportDownloadUrl(organizationId, jobId), {
+      method: "GET",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (res.status === 401) {
+      clearAccessToken();
+      window.location.href = "/login";
+      throw new ApiError("Unauthorized", 401);
+    }
+    if (!res.ok) {
+      let detail = res.statusText;
+      try {
+        const body = (await res.json()) as { detail?: string };
+        if (body.detail) detail = body.detail;
+      } catch {
+        /* non-json */
+      }
+      throw new ApiError(detail, res.status);
+    }
+    const blob = await res.blob();
+    const filename = filenameFromContentDisposition(res.headers.get("content-disposition"));
+    return { blob, filename: filename ?? "compliance-export.pdf" };
+  },
+
+  listQualitativeCharacteristics: (organizationId: string) =>
+    request<QualitativeCharacteristic[]>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/qualitative-characteristics`,
+    ),
+
+  createQualitativeCharacteristic: (
+    organizationId: string,
+    body: { name: string; slug?: string; description?: string | null; moscow?: MoscowKind; kind?: string },
+  ) =>
+    request<QualitativeCharacteristic>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/qualitative-characteristics`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  updateQualitativeCharacteristic: (
+    organizationId: string,
+    characteristicId: string,
+    body: { name?: string; description?: string | null; moscow?: MoscowKind; kind?: string },
+  ) =>
+    request<QualitativeCharacteristic>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/qualitative-characteristics/${encodeURIComponent(characteristicId)}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+
+  migrateLegacyTraitsToCharacteristics: (organizationId: string) =>
+    request<{
+      provider_traits_seen: number;
+      region_traits_seen: number;
+      characteristics_created: number;
+      provider_links_added: number;
+      region_links_added: number;
+    }>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/qualitative-characteristics/migrate-from-legacy-traits`,
+      { method: "POST" },
+    ),
+
+  deleteQualitativeCharacteristic: (organizationId: string, characteristicId: string) =>
+    request<void>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/qualitative-characteristics/${encodeURIComponent(characteristicId)}`,
+      { method: "DELETE" },
+    ),
+
+  getProviderCharacteristics: (organizationId: string, providerId: string) =>
+    request<{ characteristic_ids: string[] }>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/infrastructure-providers/${encodeURIComponent(providerId)}/characteristics`,
+    ),
+
+  setProviderCharacteristics: (
+    organizationId: string,
+    providerId: string,
+    characteristic_ids: string[],
+  ) =>
+    request<void>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/infrastructure-providers/${encodeURIComponent(providerId)}/characteristics`,
+      { method: "PUT", body: JSON.stringify({ characteristic_ids }) },
+    ),
+
+  getRegionCharacteristics: (organizationId: string, regionId: string) =>
+    request<{ characteristic_ids: string[] }>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/regions/${encodeURIComponent(regionId)}/characteristics`,
+    ),
+
+  setRegionCharacteristics: (organizationId: string, regionId: string, characteristic_ids: string[]) =>
+    request<void>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/regions/${encodeURIComponent(regionId)}/characteristics`,
+      { method: "PUT", body: JSON.stringify({ characteristic_ids }) },
+    ),
 };

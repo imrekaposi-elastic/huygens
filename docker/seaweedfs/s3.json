@@ -1,0 +1,21 @@
+{
+  "identities": [
+    {
+      "name": "huygens_compliance_dev",
+      "credentials": [
+        {
+          "accessKey": "huy-dev-access-key",
+          "secretKey": "huy-dev-secret-key"
+        }
+      ],
+      "actions": [
+        "Admin",
+        "Read",
+        "List",
+        "Tagging",
+        "Write"
+      ]
+    }
+  ]
+}
+

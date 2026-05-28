@@ -470,6 +470,7 @@ export type ComplianceExplorerFacets = {
   organization_id: string;
   catalog_items: ComplianceItem[];
   trait_keys: string[];
+  qualitative_characteristics: QualitativeCharacteristic[];
 };
 
 export type PlacementRationale = {
@@ -498,4 +499,122 @@ export type PlacementRationale = {
   placement_note: string | null;
   related_checks: ComplianceCheck[];
   config_drift?: boolean | null;
+};
+
+export type ComplianceStandard = {
+  id: string;
+  organization_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  reference_url: string | null;
+  moscow: MoscowKind;
+  target_level: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ComplianceControl = {
+  id: string;
+  organization_id: string;
+  standard_id: string;
+  control_code: string | null;
+  name: string;
+  description: string | null;
+  rationale: string | null;
+  moscow: MoscowKind;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ComplianceCycle = {
+  id: string;
+  organization_id: string;
+  standard_id: string;
+  name: string;
+  status: string;
+  starts_at: string | null;
+  ends_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ComplianceCycleStatus = {
+  organization_id: string;
+  cycle_id: string;
+  standard_id: string;
+  cycle_name: string;
+  cycle_status: string;
+  controls_total: number;
+  controls_with_any_evidence: number;
+  evidence_by_category: Record<string, number>;
+  missing_evidence_controls_by_category: Record<string, number>;
+  checks_active: number;
+  checks_expiring_soon: number;
+  checks_expired: number;
+};
+
+export type ControlEvidence = {
+  id: string;
+  organization_id: string;
+  control_id: string;
+  cycle_id: string | null;
+  category: string;
+  title: string;
+  summary: string | null;
+  file_name: string | null;
+  content_type: string | null;
+  size_bytes: number | null;
+  sha256: string | null;
+  tags: Record<string, unknown>;
+  uploaded_by: string;
+  uploaded_at: string;
+  supersedes_evidence_id: string | null;
+};
+
+export type CompliancePack = {
+  id: string;
+  organization_id: string;
+  pack_key: string;
+  name: string;
+  vendor: string | null;
+  version: string | null;
+  imported_by: string;
+  imported_at: string;
+};
+
+export type CompliancePackValidate = {
+  pack_key: string;
+  name: string;
+  vendor: string | null;
+  version: string | null;
+  standards_to_create: number;
+  controls_to_create: number;
+  errors: string[];
+};
+
+export type ComplianceExportJob = {
+  id: string;
+  organization_id: string;
+  export_type: string;
+  status: string;
+  requested_by: string;
+  standard_id: string | null;
+  cycle_id: string | null;
+  error_message: string | null;
+  generated_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type QualitativeCharacteristic = {
+  id: string;
+  organization_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  moscow: MoscowKind;
+  kind: string;
+  created_at: string;
+  updated_at: string;
 };

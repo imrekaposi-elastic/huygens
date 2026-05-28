@@ -28,6 +28,18 @@ class Settings(BaseSettings):
     check_alert_interval_seconds: int = Field(default=3600, alias="CHECK_ALERT_INTERVAL_SECONDS")
     check_alert_enabled: bool = Field(default=True, alias="CHECK_ALERT_ENABLED")
 
+    # Evidence / export artifact storage (Phase 7+). Bytes stored out-of-DB.
+    object_store_kind: str = Field(default="local", alias="OBJECT_STORE_KIND")  # local|s3
+    object_store_bucket: str | None = Field(default=None, alias="OBJECT_STORE_BUCKET")
+    object_store_endpoint: str | None = Field(default=None, alias="OBJECT_STORE_ENDPOINT")
+    object_store_region: str | None = Field(default=None, alias="OBJECT_STORE_REGION")
+    object_store_access_key_id: str | None = Field(default=None, alias="OBJECT_STORE_ACCESS_KEY_ID")
+    object_store_secret_access_key: str | None = Field(
+        default=None, alias="OBJECT_STORE_SECRET_ACCESS_KEY"
+    )
+    object_store_prefix: str = Field(default="huy-compliance", alias="OBJECT_STORE_PREFIX")
+    object_store_local_dir: str = Field(default="./data/object-store", alias="OBJECT_STORE_LOCAL_DIR")
+
 
 @lru_cache
 def get_settings() -> Settings:

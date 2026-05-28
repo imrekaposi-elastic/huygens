@@ -274,7 +274,7 @@ def diagram_system_context() -> Diagram:
         size=14,
     )
 
-    d.box("cp-boundary", 40, 200, 760, 440, "", bg="#f8f9fa", stroke_style="dashed", underlay=True)
+    d.box("cp-boundary", 40, 200, 760, 500, "", bg="#f8f9fa", stroke_style="dashed", underlay=True)
     d.label("cp-lbl", 50, 206, "Control plane", size=14)
 
     d.box("operator", 320, 70, 160, 52, "Operator", bg=C_USER)
@@ -282,8 +282,10 @@ def diagram_system_context() -> Diagram:
     d.box("iam", 100, 250, 150, 64, "IAM", bg=C_SVC)
     d.box("projects", 500, 250, 170, 64, "Projects\n(proxy + CRUD)", bg=C_SVC)
     d.box("inventory-api", 300, 250, 150, 64, "Inventory\n(read API)", bg=C_SVC)
-    d.box("registry", 160, 370, 150, 64, "Registry", bg=C_SVC)
+    d.box("compliance", 100, 370, 170, 72, "Compliance\n(catalog · GRC)", bg=C_SVC)
+    d.box("registry", 300, 370, 150, 64, "Registry", bg=C_SVC)
     d.box("inventory-poller", 480, 370, 150, 64, "Inventory\npoller", bg=C_SVC)
+    d.box("object-store", 100, 490, 170, 56, "Object store\n(evidence · exports)", bg=C_DATA)
     d.box("kafka", 200, 490, 200, 56, "Kafka\n(event bus)", bg=C_BUS)
     d.box("es", 500, 490, 220, 56, "Elasticsearch\naudit · sessions · search", bg=C_DATA)
     d.box("pg", 120, 600, 560, 56, "PostgreSQL (system of record)", bg=C_DATA)
@@ -295,6 +297,7 @@ def diagram_system_context() -> Diagram:
     d.arrow("a2", "console", "iam", src_side="bottom", dst_side="top", label="auth")
     d.arrow("a3", "console", "projects", src_side="bottom", dst_side="top", label="mutate")
     d.arrow("a4", "console", "inventory-api", src_side="bottom", dst_side="top", label="read + SSE")
+    d.arrow("a4b", "console", "compliance", src_side="bottom", dst_side="top", label="compliance")
 
     # Projects → registry for agent connect (not inventory)
     d.arrow("a5", "projects", "registry", src_side="bottom", dst_side="top", label="connect")
@@ -315,6 +318,8 @@ def diagram_system_context() -> Diagram:
     d.arrow("a14", "registry", "pg", src_side="bottom", dst_side="top")
     d.arrow("a15", "inventory-poller", "pg", src_side="bottom", dst_side="top")
     d.arrow("a16", "inventory-api", "pg", src_side="bottom", dst_side="top")
+    d.arrow("a17", "compliance", "pg", src_side="bottom", dst_side="top")
+    d.arrow("a18", "compliance", "object-store", src_side="bottom", dst_side="top", label="artifacts")
     return d
 
 
@@ -328,19 +333,22 @@ def diagram_deployment() -> Diagram:
     d.box("libvirt", 60, 300, 130, 72, "libvirt / KVM", bg=C_INFRA)
     d.box("vms", 210, 300, 130, 72, "VMs + vnets\n(lab0, …)", bg=C_DATA)
     d.label("cluster-lbl", 410, 88, "Control plane (K8s or VMs, Phase 10+)", size=16)
-    d.box("cluster", 400, 80, 400, 380, "", bg="#f8f9fa", stroke_style="dashed", underlay=True)
+    d.box("cluster", 400, 80, 400, 440, "", bg="#f8f9fa", stroke_style="dashed", underlay=True)
     d.box("web", 420, 130, 115, 56, "web\n(nginx)", bg=C_UI)
     d.box("iam", 550, 130, 115, 56, "huy-iam", bg=C_SVC)
     d.box("reg", 680, 130, 100, 56, "huy-registry", bg=C_SVC)
     d.box("proj", 420, 210, 115, 56, "huy-projects", bg=C_SVC)
     d.box("inv", 550, 210, 115, 56, "huy-inventory", bg=C_SVC)
-    d.box("pg", 680, 210, 100, 56, "PostgreSQL", bg=C_DATA)
-    d.box("kafka", 420, 290, 115, 56, "Kafka", bg=C_BUS)
-    d.box("otel", 550, 290, 115, 56, "OTel / EDOT\n(optional)", bg=C_INFRA)
-    d.box("es", 680, 290, 100, 56, "Elasticsearch\n(optional)", bg=C_DATA)
+    d.box("comp", 680, 210, 100, 56, "huy-compliance\n:8086", bg=C_SVC)
+    d.box("pg", 420, 290, 360, 56, "PostgreSQL", bg=C_DATA)
+    d.box("kafka", 550, 370, 115, 56, "Kafka", bg=C_BUS)
+    d.box("obj", 680, 370, 100, 56, "Object store\n(S3/local)", bg=C_DATA)
+    d.box("otel", 420, 370, 115, 56, "OTel / EDOT\n(optional)", bg=C_INFRA)
+    d.box("es", 550, 450, 230, 56, "Elasticsearch\n(optional)", bg=C_DATA)
 
     d.arrow("d0", "web", "iam", label="proxy")
     d.arrow("d0b", "web", "proj", src_side="bottom", dst_side="top")
+    d.arrow("d0c", "web", "comp", src_side="bottom", dst_side="top")
     d.arrow("d1", "agent-api", "libvirt", label="write queue")
     d.arrow("d2", "agent-api", "vms", src_side="right", dst_side="left", label="read path")
     d.arrow("d3", "systemd", "agent-api")
@@ -350,6 +358,8 @@ def diagram_deployment() -> Diagram:
     d.arrow("d7", "reg", "pg")
     d.arrow("d8", "inv", "kafka")
     d.arrow("d9", "proj", "pg", src_side="bottom", dst_side="top")
+    d.arrow("d9b", "comp", "pg", src_side="bottom", dst_side="top")
+    d.arrow("d9c", "comp", "obj", src_side="bottom", dst_side="top")
     d.arrow("d10", "kafka", "es", dashed=True)
     return d
 
@@ -358,18 +368,20 @@ def diagram_tenancy() -> Diagram:
     d = Diagram()
     d.label("title", 40, 20, "Huygens — Tenancy model", size=28)
     d.box("org", 300, 60, 200, 56, "Organization", bg=C_USER)
-    d.box("provider", 80, 160, 160, 56, "Provider", bg=C_SVC)
-    d.box("region", 80, 260, 160, 56, "Region", bg=C_SVC)
-    d.box("agent", 80, 360, 160, 64, "Agent", bg=C_AGENT)
-    d.box("project", 480, 160, 160, 56, "Project\n(projects svc)", bg=C_SVC)
-    d.box("proj-api", 300, 260, 150, 56, "Projects API\n(proxy)", bg=C_SVC)
-    d.box("vnet", 400, 280, 140, 56, "VNet", bg=C_DATA)
-    d.box("vm", 560, 280, 140, 56, "VM", bg=C_DATA)
-    d.box("compliance", 480, 60, 200, 56, "Org compliance\ncatalog", bg=C_INFRA)
-    d.box("criticality", 560, 380, 180, 64, "Asset criticality\nassignment", bg=C_INFRA)
+    d.box("provider", 80, 150, 160, 56, "Provider", bg=C_SVC)
+    d.box("placement", 80, 230, 160, 64, "Placement profile\ncatalog + characteristics", bg=C_INFRA)
+    d.box("region", 80, 320, 160, 56, "Region", bg=C_SVC)
+    d.box("agent", 80, 410, 160, 64, "Agent", bg=C_AGENT)
+    d.box("project", 480, 150, 160, 56, "Project\n(projects svc)", bg=C_SVC)
+    d.box("proj-api", 300, 250, 150, 56, "Projects API\n(proxy)", bg=C_SVC)
+    d.box("vnet", 400, 270, 140, 56, "VNet", bg=C_DATA)
+    d.box("vm", 560, 270, 140, 56, "VM", bg=C_DATA)
+    d.box("compliance", 700, 60, 200, 80, "huy-compliance\n· catalog & checks\n· GRC / evidence", bg=C_SVC)
+    d.box("criticality", 560, 400, 180, 64, "Asset criticality\n(catalog items)", bg=C_INFRA)
 
     d.arrow("t1", "org", "provider", src_side="left", dst_side="top")
-    d.arrow("t2", "provider", "region")
+    d.arrow("t1b", "provider", "placement")
+    d.arrow("t2", "placement", "region", src_side="bottom", dst_side="top")
     d.arrow("t3", "region", "agent")
     d.arrow("t4", "org", "project", src_side="right", dst_side="top")
     d.arrow("t4b", "proj-api", "project", src_side="right", dst_side="left", label="CRUD")
@@ -378,8 +390,15 @@ def diagram_tenancy() -> Diagram:
     d.arrow("t6", "project", "vm", src_side="right", dst_side="left")
     d.arrow("t7", "org", "compliance", src_side="right", dst_side="left")
     d.arrow("t8", "vm", "criticality")
-    d.arrow("t9", "compliance", "criticality", src_side="bottom", dst_side="top", dashed=True)
-    d.label("note", 40, 460, "RBAC scoped by organization_id · platform_admin registers agents", size=14)
+    d.arrow("t9", "compliance", "criticality", src_side="bottom", dst_side="left", dashed=True, label="assign")
+    d.label(
+        "note",
+        40,
+        500,
+        "Placement inherits to agents (region tree) · GRC standards/controls separate from catalog slugs",
+        size=13,
+    )
+    d.label("note2", 40, 528, "RBAC scoped by organization_id · platform_admin registers agents", size=13)
     return d
 
 
@@ -492,7 +511,7 @@ def diagram_phases() -> Diagram:
         ("p4", "4\nIPAM", "done"),
         ("p5", "5\nConsole", "done"),
         ("p6", "6\nBreakout", "done"),
-        ("p7", "7\nCompliance", "planned"),
+        ("p7", "7\nCompliance\n+ GRC", "done"),
         ("p8", "8\nOTel", "planned"),
         ("p9", "9\nSSH VM", "planned"),
         ("p10", "10\nHardening", "planned"),
@@ -570,7 +589,7 @@ def diagram_phases() -> Diagram:
         "adr-note",
         40,
         y0_row3 + box_h + 28,
-        "ADR-linked: 0006/1b Agent I/O · 0010→7 know-why · 0011→2 SSO · 0012→6+6.1 links/flat UI · 0013→14–17 adoption",
+        "ADR-linked: 0006/1b Agent I/O · 0010→7 know-why+GRC ✅ · 0011→2 SSO · 0012→6+6.1 links · 0013→14–17 adoption",
         size=13,
     )
     d.label("p6-defer", x0 + 6 * (box_w + gap) + 4, y0_row2 + box_h + 6, "6.1 flat L2 UI", size=11)
@@ -583,7 +602,15 @@ def diagram_air_gapped() -> Diagram:
     d.box("boundary", 40, 70, 720, 420, "", bg="#fff5f5", stroke_style="dashed", underlay=True)
     d.label("b-lbl", 50, 78, "Customer network — no outbound internet", size=16)
     d.box("agents", 60, 120, 160, 80, "Agents\n(hypervisors)", bg=C_AGENT)
-    d.box("cp", 260, 120, 280, 80, "Control plane\nIAM · Registry · Inventory · Projects", bg=C_SVC)
+    d.box(
+        "cp",
+        260,
+        120,
+        280,
+        80,
+        "Control plane\nIAM · Registry · Inventory · Projects · Compliance",
+        bg=C_SVC,
+    )
     d.box("pg", 580, 120, 160, 80, "PostgreSQL", bg=C_DATA)
     d.box("kafka", 260, 240, 160, 72, "Kafka\n(on-site)", bg=C_BUS)
     d.box("es", 460, 240, 160, 72, "Elasticsearch\n(BYO, optional)", bg=C_DATA)

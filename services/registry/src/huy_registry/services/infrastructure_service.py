@@ -166,8 +166,11 @@ async def delete_infrastructure_provider(
     regions = await region_tree_service.list_all_regions_for_provider(
         session, infrastructure_provider_id
     )
-    for region in sorted(regions, key=lambda r: r.parent_region_id or "", reverse=True):
-        await session.delete(region)
+    if regions:
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete infrastructure provider while it still has regions",
+        )
     await session.delete(provider)
     await session.commit()
     return True

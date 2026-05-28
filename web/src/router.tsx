@@ -23,6 +23,7 @@ import { ComplianceOverviewPage } from "@/pages/compliance/ComplianceOverviewPag
 import { ComplianceExplorerPage } from "@/pages/compliance/ComplianceExplorerPage";
 import { ComplianceCatalogPage } from "@/pages/compliance/ComplianceCatalogPage";
 import { ComplianceChecksPage } from "@/pages/compliance/ComplianceChecksPage";
+import { ComplianceGrcPage } from "@/pages/compliance/ComplianceGrcPage";
 import { IpamGatePage } from "@/pages/ipam/IpamGatePage";
 import { TopologyGatePage } from "@/pages/topology/TopologyGatePage";
 import { AdminGatePage } from "@/pages/admin/AdminGatePage";
@@ -133,6 +134,12 @@ const complianceChecksRoute = createRoute({
   getParentRoute: () => complianceRoute,
   path: "/checks",
   component: ComplianceChecksPage,
+});
+
+const complianceGrcRoute = createRoute({
+  getParentRoute: () => complianceRoute,
+  path: "/grc",
+  component: ComplianceGrcPage,
 });
 
 const topologyRoute = createRoute({
@@ -287,6 +294,7 @@ const routeTree = rootRoute.addChildren([
       complianceExplorerRoute,
       complianceCatalogRoute,
       complianceChecksRoute,
+      complianceGrcRoute,
     ]),
     topologyRoute,
     adminRoute.addChildren([

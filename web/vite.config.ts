@@ -24,10 +24,10 @@ export default defineConfig({
             return "http://127.0.0.1:8084";
           }
           if (
-            /\/organizations\/[^/]+\/(compliance-catalog|compliance-checks|compliance-dashboard|compliance-explorer[^?]*|regions\/[^/]+\/(traits|compliance-items)|traits\/|projects\/[^/]+\/(criticality|resources)|resources\/)/.test(
+            /\/organizations\/[^/]+\/(compliance-catalog|compliance-checks|compliance-dashboard|compliance-explorer[^?]*|compliance-standards|compliance-controls|compliance-cycles|compliance-packs|compliance-export|compliance-evidence|qualitative-characteristics|regions\/[^/]+\/(traits|compliance-items|characteristics)|traits\/|projects\/[^/]+\/(criticality|resources)|resources\/)/.test(
               url,
             ) ||
-            /\/organizations\/[^/]+\/infrastructure-providers\/[^/]+\/(traits|compliance-profile)/.test(
+            /\/organizations\/[^/]+\/infrastructure-providers\/[^/]+\/(traits|compliance-profile|characteristics)/.test(
               url,
             )
           ) {

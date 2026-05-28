@@ -47,6 +47,20 @@ Icons in the gui should be intuitive like a vm, firewall rule object, cloud-init
                 SAML 
                 OIDC
     - Compliance notification alerter
+    - Compliance Standards are creatable items should have a general name (for example ISO27001)
+        - Subitems are controls that are linked to a compliance standard.
+            - Controls consist of a name, description, rationale (the context)
+            - Controls should have uploadable evidence, categorizable by: Design effectiveness, Implementation / existence and Operating effectiveness
+            - Strong auditing and versioning (who uploaded and when)
+            - Overall compliance status should be in dashboard overview (pie chart)
+            - Solution should be strong enough so that 1000+ controls + evidence still navigates quickly (no slow database upserts)
+            - Actual evidence should be stored in an object store, database just stores references
+            - A compliance export should be possible in PDF form
+        - A compliance cycle is repetitive, so you should clearly see for what compliance cycle the current environment is compliant
+    - An ogranization can be subject to multiple compliance standards.
+    - In the admin | compliance section, it should be possible to upload compliance packs. Those will be shipped seperately and jumpstarts organizations to start use this tool quickly. Examples are ISO27001, DIGID assessment, Pas Toe of Leg uit Lijst, BIO
+        - The pack will be json, think of a data model already. Perhaps use digid assessment requirements as template since it's relatively small
+
     - Ip address management module for projects
 
 - Operator section
@@ -61,4 +75,23 @@ Icons in the gui should be intuitive like a vm, firewall rule object, cloud-init
 - Operator section 2
     - ssh gateway 
         - session recording
+
+## Implementation map (Phase 7 — shipped in `huy-libvirt-agent`)
+
+Strategic requirements above are delivered incrementally. **Phase 7 MVP + GRC** status in [docs/PHASED_PLAN.md](docs/PHASED_PLAN.md) and [docs/operations/phase7-compliance-and-lifecycle-guards.md](docs/operations/phase7-compliance-and-lifecycle-guards.md).
+
+| FRAMEWORK_PLAN topic | Shipped | Service / console |
+|----------------------|---------|-------------------|
+| Qualitative characteristics on provider/region (MoSCoW, description) | Yes | `huy-compliance` — `/qualitative-characteristics`, Infrastructure link panel; Explorer inheritance |
+| Org standards + asset criticality (“know why”) | Yes | Catalog + Explorer + project/VM/network assignment |
+| Compliance checks (owner, validity) | Yes | `/compliance-checks`; alerter logs to structlog |
+| GRC standards / controls / evidence / cycles | Yes | **Compliance → GRC**; object store for evidence bytes |
+| Compliance packs (JSON bootstrap) | Yes | Validate + apply — [docs/compliance/packs.md](docs/compliance/packs.md) |
+| PDF compliance export | Yes | Async job; console auto-download |
+| Audit of compliance changes | Yes | PostgreSQL `compliance_audit_log` + structlog |
+| Dashboard pie chart (overall GRC status) | **Deferred** | Overview KPI cards only; charts backlog |
+| `config_drift` on all config objects | **Partial** | Placement rationale field reserved; inventory not wired |
+| Desired vs actual state everywhere | **Partial** | Topology link drift (Phase 6); compliance drift deferred |
+| Kibana / Elasticsearch compliance views | **Spike** | [docs/compliance/kibana/README.md](docs/compliance/kibana/README.md) |
+| Custom RBAC roles beyond built-ins | Later phases | IAM Phase 1a built-ins |
 

@@ -1,0 +1,374 @@
+"""Compliance exports (PDF first) - job creation and polling (Phase 7+)."""
+
+from __future__ import annotations
+
+import hashlib
+from datetime import UTC, datetime
+
+from fastapi import HTTPException
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from huy_compliance.config import Settings
+from huy_compliance.db import get_session_factory
+from huy_compliance.models import (
+    ComplianceAuditLog,
+    ComplianceExportJob,
+    OrgComplianceControl,
+    OrgComplianceCycle,
+    OrgComplianceStandard,
+    OrgControlEvidence,
+)
+from huy_compliance.schemas import ComplianceExportJobOut, ComplianceExportRequest
+from huy_compliance.services import audit
+from huy_compliance.services.object_store import ObjectStore
+
+
+def format_user_display_name(*, username: str, email: str, user_id: str) -> str:
+    """Human-readable label for PDF exports and audit-facing UI."""
+    name = (username or "").strip()
+    mail = (email or "").strip()
+    if name and mail and name.casefold() != mail.casefold():
+        return f"{name} ({mail})"
+    if name:
+        return name
+    if mail:
+        return mail
+    return user_id
+
+
+def _job_out(row: ComplianceExportJob) -> ComplianceExportJobOut:
+    return ComplianceExportJobOut(
+        id=row.id,
+        organization_id=row.organization_id,
+        export_type=row.export_type,
+        status=row.status,
+        requested_by=row.requested_by,
+        standard_id=row.standard_id,
+        cycle_id=row.cycle_id,
+        error_message=row.error_message,
+        generated_at=row.generated_at,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
+
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _pdf_bytes_from_lines(lines: list[str]) -> bytes:
+    """Minimal single-page PDF generator (no external deps)."""
+
+    def esc(s: str) -> str:
+        return s.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+    x = 50
+    y0 = 780
+    leading = 14
+
+    content_lines: list[str] = ["BT", "/F1 11 Tf", f"{x} {y0} Td"]
+    y = y0
+    for i, line in enumerate(lines):
+        if i == 0:
+            content_lines.append(f"({esc(line)}) Tj")
+        else:
+            y -= leading
+            content_lines.append(f"0 -{leading} Td ({esc(line)}) Tj")
+        if y < 60:
+            break
+    content_lines.append("ET")
+    content_stream = "\n".join(content_lines).encode("utf-8")
+
+    objs: list[bytes] = []
+
+    def obj(n: int, body: bytes) -> None:
+        objs.append(f"{n} 0 obj\n".encode() + body + b"\nendobj\n")
+
+    obj(1, b"<< /Type /Catalog /Pages 2 0 R >>")
+    obj(2, b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+    obj(
+        3,
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+        b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+    )
+    obj(4, b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+    obj(5, b"<< /Length " + str(len(content_stream)).encode() + b" >>\nstream\n" + content_stream + b"\nendstream")
+
+    header = b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n"
+    out = bytearray(header)
+    offsets = [0]
+    for o in objs:
+        offsets.append(len(out))
+        out.extend(o)
+    xref_start = len(out)
+    out.extend(f"xref\n0 {len(offsets)}\n".encode())
+    out.extend(b"0000000000 65535 f \n")
+    for off in offsets[1:]:
+        out.extend(f"{off:010d} 00000 n \n".encode())
+    out.extend(b"trailer\n")
+    out.extend(f"<< /Size {len(offsets)} /Root 1 0 R >>\n".encode())
+    out.extend(b"startxref\n")
+    out.extend(f"{xref_start}\n".encode())
+    out.extend(b"%%EOF\n")
+    return bytes(out)
+
+
+async def _render_export_pdf(
+    session: AsyncSession,
+    organization_id: str,
+    *,
+    job_id: str,
+    generated_by: str,
+    generated_at: datetime,
+    standard_id: str | None,
+    cycle_id: str | None,
+) -> bytes:
+    if standard_id:
+        std = await session.get(OrgComplianceStandard, standard_id)
+        if std is None or std.organization_id != organization_id:
+            raise HTTPException(status_code=404, detail="Standard not found for export")
+        if cycle_id is not None:
+            cy = await session.get(OrgComplianceCycle, cycle_id)
+            if cy is None or cy.organization_id != organization_id or cy.standard_id != std.id:
+                raise HTTPException(status_code=400, detail="Unknown cycle_id for standard")
+        controls = (
+            await session.scalars(
+                select(OrgComplianceControl)
+                .where(
+                    OrgComplianceControl.organization_id == organization_id,
+                    OrgComplianceControl.standard_id == standard_id,
+                )
+                .order_by(OrgComplianceControl.control_code, OrgComplianceControl.name)
+            )
+        ).all()
+        lines: list[str] = [
+            f"Compliance export: {std.name}",
+            f"Job: {job_id}",
+            f"Generated at (UTC): {generated_at.isoformat()}",
+            f"Generated by: {generated_by}",
+            f"Standard slug: {std.slug}",
+            f"Cycle: {cycle_id or '(all)'}",
+            "",
+        ]
+        # Evidence summary per control (for selected cycle if provided)
+        ev_map: dict[str, dict[str, int]] = {}
+        if controls:
+            evq = select(OrgControlEvidence.control_id, OrgControlEvidence.category, func.count()).where(
+                OrgControlEvidence.organization_id == organization_id,
+                OrgControlEvidence.control_id.in_([c.id for c in controls]),
+            )
+            if cycle_id is not None:
+                evq = evq.where(OrgControlEvidence.cycle_id == cycle_id)
+            evq = evq.group_by(OrgControlEvidence.control_id, OrgControlEvidence.category)
+            evrows = (await session.execute(evq)).all()
+            for cid, cat, cnt in evrows:
+                ev_map.setdefault(cid, {})[str(cat)] = int(cnt)
+
+        for c in controls:
+            code = (c.control_code or "").strip()
+            label = f"{code} {c.name}".strip()
+            counts = ev_map.get(c.id, {})
+            lines.append(
+                f"- {label} | ev: d={counts.get('design',0)} i={counts.get('implementation',0)} o={counts.get('operating',0)}"
+            )
+        if not controls:
+            lines.append("(No controls)")
+
+        # Audit summary (last 10 events in org)
+        audit_rows = (
+            await session.scalars(
+                select(ComplianceAuditLog)
+                .where(ComplianceAuditLog.organization_id == organization_id)
+                .order_by(ComplianceAuditLog.occurred_at.desc())
+                .limit(10)
+            )
+        ).all()
+        lines.append("")
+        lines.append("Recent audit events:")
+        if not audit_rows:
+            lines.append("(No audit events)")
+        else:
+            for a in audit_rows:
+                lines.append(f"- {a.occurred_at} {a.action} {a.entity_type}:{a.entity_id}")
+        return _pdf_bytes_from_lines(lines)
+
+    standards = (
+        await session.scalars(
+            select(OrgComplianceStandard)
+            .where(OrgComplianceStandard.organization_id == organization_id)
+            .order_by(OrgComplianceStandard.name)
+        )
+    ).all()
+    lines = ["Compliance export", f"Standards: {len(standards)}", ""]
+    for s in standards:
+        lines.append(f"- {s.name} ({s.slug})")
+    if not standards:
+        lines.append("(No standards)")
+    return _pdf_bytes_from_lines(lines)
+
+async def request_export(
+    session: AsyncSession,
+    settings: Settings,
+    organization_id: str,
+    body: ComplianceExportRequest,
+    *,
+    actor_user_id: str,
+    actor_display_name: str | None = None,
+) -> ComplianceExportJobOut:
+    # Increment 5: create async job (initially queued).
+    row = ComplianceExportJob(
+        organization_id=organization_id,
+        export_type=body.export_type,
+        status="queued",
+        requested_by=actor_user_id,
+        requested_by_name=(actor_display_name or "").strip() or None,
+        standard_id=body.standard_id,
+        cycle_id=body.cycle_id,
+    )
+    session.add(row)
+    await session.flush()
+    await audit.record_audit(
+        session,
+        organization_id=organization_id,
+        actor_user_id=actor_user_id,
+        action="export.request",
+        entity_type="compliance_export_job",
+        entity_id=row.id,
+        detail=row.export_type,
+    )
+    return _job_out(row)
+
+
+async def run_export_job(
+    session: AsyncSession,
+    settings: Settings,
+    organization_id: str,
+    job_id: str,
+    *,
+    actor_user_id: str,
+) -> ComplianceExportJobOut:
+    row = await session.get(ComplianceExportJob, job_id)
+    if row is None or row.organization_id != organization_id:
+        raise HTTPException(status_code=404, detail="Export job not found")
+    if row.status not in {"queued", "running"}:
+        return _job_out(row)
+
+    row.status = "running"
+    row.updated_at = _utc_now()
+
+    try:
+        generated_at = _utc_now()
+        generated_by = (row.requested_by_name or "").strip() or row.requested_by
+        pdf = await _render_export_pdf(
+            session,
+            organization_id,
+            job_id=row.id,
+            generated_by=generated_by,
+            generated_at=generated_at,
+            standard_id=row.standard_id,
+            cycle_id=row.cycle_id,
+        )
+        digest = hashlib.sha256(pdf).hexdigest()
+        store = ObjectStore(settings)
+        prefix = settings.object_store_prefix.strip("/") if settings.object_store_prefix else "huy-compliance"
+        key = f"{prefix}/orgs/{organization_id}/exports/{row.id}/compliance-export.pdf"
+        store.put_bytes(key=key, data=pdf)
+        row.artifact_object_key = key
+        row.artifact_content_type = "application/pdf"
+        row.artifact_size_bytes = len(pdf)
+        row.artifact_sha256 = digest
+        row.generated_at = generated_at
+        row.status = "completed"
+        row.error_message = None
+        row.updated_at = _utc_now()
+        await audit.record_audit(
+            session,
+            organization_id=organization_id,
+            actor_user_id=actor_user_id,
+            action="export.completed",
+            entity_type="compliance_export_job",
+            entity_id=row.id,
+            detail=row.export_type,
+        )
+    except HTTPException:
+        row.status = "failed"
+        row.error_message = "Export rendering failed"
+        row.updated_at = _utc_now()
+        raise
+    except Exception as exc:  # noqa: BLE001
+        row.status = "failed"
+        row.error_message = "Export rendering failed"
+        row.updated_at = _utc_now()
+        raise HTTPException(status_code=500, detail="Export rendering failed") from exc
+
+    return _job_out(row)
+
+
+async def run_export_job_detached(
+    settings: Settings,
+    organization_id: str,
+    job_id: str,
+    *,
+    actor_user_id: str,
+) -> None:
+    """Run an export job in its own DB session (safe for background tasks)."""
+    factory = get_session_factory()
+    async with factory() as session:
+        await run_export_job(
+            session,
+            settings,
+            organization_id,
+            job_id,
+            actor_user_id=actor_user_id,
+        )
+        await session.commit()
+
+
+async def get_export_job(
+    session: AsyncSession,
+    organization_id: str,
+    job_id: str,
+) -> ComplianceExportJobOut:
+    row = await session.get(ComplianceExportJob, job_id)
+    if row is None or row.organization_id != organization_id:
+        raise HTTPException(status_code=404, detail="Export job not found")
+    return _job_out(row)
+
+
+async def _export_filename(session: AsyncSession, row: ComplianceExportJob) -> str:
+    if row.standard_id:
+        std = await session.get(OrgComplianceStandard, row.standard_id)
+        if std is not None and std.slug:
+            return f"compliance-{std.slug}.pdf"
+    return "compliance-export.pdf"
+
+
+async def download_export(
+    session: AsyncSession,
+    settings: Settings,
+    organization_id: str,
+    job_id: str,
+) -> tuple[bytes, str]:
+    row = await session.get(ComplianceExportJob, job_id)
+    if row is None or row.organization_id != organization_id:
+        raise HTTPException(status_code=404, detail="Export job not found")
+    if row.status != "completed" or not row.artifact_object_key:
+        raise HTTPException(status_code=409, detail="Export is not ready")
+
+    store = ObjectStore(settings)
+    if settings.object_store_kind == "s3":
+        stream, _length = store.stream_bytes(key=row.artifact_object_key)
+        data = b"".join(stream)
+    else:
+        path = store.get_path(key=row.artifact_object_key)
+        data = path.read_bytes()
+
+    filename = await _export_filename(session, row)
+
+    # One-time download: remove stored artifact and job record after successful read.
+    store.delete(key=row.artifact_object_key)
+    await session.delete(row)
+
+    return data, filename
+
