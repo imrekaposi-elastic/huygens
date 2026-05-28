@@ -100,8 +100,33 @@ The control plane (Compose) and the libvirt agent **release together** for break
 topology features. After `git pull` on the control plane host, upgrade every hypervisor
 that participates in network links.
 
+### Sync hypervisor git checkout (e.g. dommel)
+
+If `git pull` fails with local changes to `path_safety.py`, `image_service.py`, etc., the
+hypervisor likely has **old manual patches** from before those fixes landed on `main`. The
+repository already contains the full versions — do not try to merge dommel’s copies.
+
+From the repo root on the hypervisor:
+
 ```bash
-# On the hypervisor (e.g. /opt/huygens)
+sudo bash /opt/huygens/scripts/sync-hypervisor-repo.sh /opt/huygens
+```
+
+Or manually:
+
+```bash
+cd /opt/huygens
+git fetch origin
+git reset --hard origin/main
+git clean -fd
+cd agents/libvirt && python3 -m pip install -e ".[libvirt]"
+sudo systemctl restart huy-libvirt-agent
+```
+
+```bash
+# On the hypervisor (e.g. /opt/huygens) after git is on origin/main
+# huy-telemetry is a monorepo package — install it before the agent (plain pip cannot resolve [tool.uv.sources])
+python3 -m pip install -e /opt/huygens/shared/huy_telemetry
 cd /opt/huygens/agents/libvirt
 python3 -m pip install -e ".[libvirt]"
 sudo systemctl restart huy-libvirt-agent

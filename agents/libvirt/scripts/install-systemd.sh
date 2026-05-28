@@ -28,6 +28,7 @@ fi
 
 echo "==> Sync repo and Python package"
 git -C "$REPO_DIR" pull origin main
+python3 -m pip install -e "$REPO_DIR/shared/huy_telemetry"
 python3 -m pip install -e "$AGENT_DIR[libvirt]"
 
 echo "==> Install systemd unit"

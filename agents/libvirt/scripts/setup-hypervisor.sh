@@ -34,6 +34,7 @@ fi
 git -C "$REPO_DIR" pull origin main
 
 echo "==> Installing agent"
+python3 -m pip install -e "$REPO_DIR/shared/huy_telemetry"
 python3 -m pip install -e "$REPO_DIR/agents/libvirt[libvirt]"
 
 mkdir -p /etc/huy-libvirt-agent /var/lib/huy-libvirt-agent

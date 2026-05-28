@@ -68,9 +68,14 @@ sudo pacman -S libvirt qemu-full cloud-init iptables-nft nftables wireguard-tool
 
 ## Python (pip)
 
+From the monorepo root (e.g. `/opt/huygens`):
+
 ```bash
+pip install -e shared/huy_telemetry
 pip install -e "agents/libvirt[libvirt]"
 ```
+
+`huy-telemetry` is not published to PyPI; plain `pip install` on the agent alone will fail.
 
 Pulls agent dependencies including `jsonschema` (used with the system `cloud-init` package for schema validation).
 
