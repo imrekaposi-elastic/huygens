@@ -1,0 +1,15 @@
+name: "Huygens CodeQL"
+
+# This repo is Python (services/agents), TypeScript (web), and Go (breakout-controller).
+# Do not analyze C/C++ — there is no application C/C++ source (only stray headers if a venv is committed).
+
+paths-ignore:
+  - .venv-ci-sim
+  - "**/.venv"
+  - "**/venv"
+  - "**/node_modules"
+  - "**/__pycache__"
+  - "**/.pytest_cache"
+  - web/dist
+  - agents/libvirt/data
+  - "**/*.egg-info"

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Iterable
 
 from fastapi import HTTPException
@@ -21,6 +21,19 @@ class ObjectRef:
     size_bytes: int | None = None
 
 
+def _resolve_local_path(base: Path, key: str) -> Path:
+    """Map an object key to a path under base, rejecting traversal and absolute keys."""
+    if not key or key.startswith("/") or "\\" in key:
+        raise HTTPException(status_code=400, detail="Invalid object key")
+    relative = PurePosixPath(key)
+    if relative.is_absolute() or ".." in relative.parts or relative.drive:
+        raise HTTPException(status_code=400, detail="Invalid object key")
+    path = (base.joinpath(*relative.parts)).resolve()
+    if not path.is_relative_to(base):
+        raise HTTPException(status_code=400, detail="Invalid object key")
+    return path
+
+
 class ObjectStore:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
@@ -28,7 +41,7 @@ class ObjectStore:
     def put_bytes(self, *, key: str, data: bytes) -> ObjectRef:
         if self._settings.object_store_kind == "local":
             base = Path(self._settings.object_store_local_dir).resolve()
-            path = base / key
+            path = _resolve_local_path(base, key)
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp_path = path.with_suffix(path.suffix + ".tmp")
             tmp_path.write_bytes(data)
@@ -46,7 +59,7 @@ class ObjectStore:
     def delete(self, *, key: str) -> None:
         if self._settings.object_store_kind == "local":
             base = Path(self._settings.object_store_local_dir).resolve()
-            path = base / key
+            path = _resolve_local_path(base, key)
             # Best-effort: object might already be gone; DB is the source of truth.
             try:
                 path.unlink(missing_ok=True)
@@ -71,7 +84,7 @@ class ObjectStore:
         if self._settings.object_store_kind != "local":
             raise HTTPException(status_code=400, detail="Path access only supported for local object store")
         base = Path(self._settings.object_store_local_dir).resolve()
-        path = base / key
+        path = _resolve_local_path(base, key)
         if not path.exists():
             raise HTTPException(status_code=404, detail="Object not found")
         return path

@@ -75,6 +75,12 @@ Conventions:
 
 Projects unit tests use **SQLite**; production Compose uses **PostgreSQL**. Column additions (e.g. `ip_pools.pool_kind`) are applied via `apply_schema_upgrades` on projects startup. After pulling schema changes, restart `projects` against existing volumes — or use `docker compose down -v` for a clean dev DB.
 
+## CodeQL
+
+Workflow [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml) analyzes **Python**, **JavaScript/TypeScript**, and **Go** only. This repository has no C/C++ application source; do not enable the `cpp` language (a committed virtualenv once caused CodeQL to index vendored `.h` files and fail autobuild).
+
+Use `make venv` or CI’s Python setup for local tests — never commit `.venv-ci-sim/` or other venv directories.
+
 ## Adding tests for a new phase
 
 1. Add service unit tests under `services/<name>/tests/`.
