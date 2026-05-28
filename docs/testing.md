@@ -34,6 +34,7 @@ This executes pytest in each service:
 | Package | Directory |
 |---------|-----------|
 | huy-events | `shared/huy_events` |
+| huy-telemetry | `shared/huy_telemetry` |
 | IAM | `services/iam` |
 | Registry | `services/registry` |
 | Inventory | `services/inventory` |
@@ -42,7 +43,7 @@ This executes pytest in each service:
 | Breakout controller | `services/breakout-controller` (`go test ./...`) |
 | Console | `web` (`npm test`) |
 
-Shared packages `huy_auth` and `huy_events` are installed once via `make test-deps` before services that depend on them.
+Shared packages `huy_auth`, `huy_events`, and `huy_telemetry` are installed once via `make test-deps` before services that depend on them (`[tool.uv.sources]` path deps are not resolved by plain `pip` alone).
 
 Each service uses in-memory SQLite, mocked HTTP (respx where needed), and synthetic JWTs signed with a test secret.
 

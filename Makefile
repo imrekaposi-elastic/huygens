@@ -1,5 +1,5 @@
 .PHONY: compose-up compose-down compose-logs compose-ps test test-unit test-integration test-ci test-deps venv \
-	test-huy-auth test-huy-events test-iam test-registry test-inventory test-projects test-compliance \
+	test-huy-auth test-huy-events test-huy-telemetry test-iam test-registry test-inventory test-projects test-compliance \
 	test-agent-libvirt test-breakout-controller test-web wait-stack
 
 VENV ?= $(CURDIR)/.venv
@@ -30,7 +30,7 @@ test: test-unit
 # Matches default GitHub Actions CI (unit + integration).
 test-ci: test-unit test-integration
 
-test-unit: venv test-deps test-huy-auth test-huy-events test-iam test-registry test-inventory test-projects test-compliance test-agent-libvirt test-breakout-controller test-web
+test-unit: venv test-deps test-huy-auth test-huy-events test-huy-telemetry test-iam test-registry test-inventory test-projects test-compliance test-agent-libvirt test-breakout-controller test-web
 
 wait-stack:
 	bash scripts/wait-for-stack.sh
@@ -38,6 +38,7 @@ wait-stack:
 test-deps: venv
 	$(PIP) install -q -e shared/huy_auth
 	$(PIP) install -q -e "shared/huy_events[dev]"
+	$(PIP) install -q -e "shared/huy_telemetry[dev]"
 
 test-huy-auth: venv
 	$(PIP) install -q -e "shared/huy_auth[dev]" 2>/dev/null || $(PIP) install -q -e shared/huy_auth pytest
@@ -47,7 +48,11 @@ test-huy-events: venv
 	$(PIP) install -q -e "shared/huy_events[dev]"
 	cd shared/huy_events && $(PYTEST) -q
 
-test-iam: venv
+test-huy-telemetry: venv
+	$(PIP) install -q -e "shared/huy_telemetry[dev]"
+	cd shared/huy_telemetry && $(PYTEST) -q
+
+test-iam: venv test-deps
 	$(PIP) install -q -e "services/iam[dev]"
 	cd services/iam && $(PYTEST) -q
 
@@ -67,7 +72,7 @@ test-compliance: venv test-deps
 	$(PIP) install -q -e "services/compliance[dev]"
 	cd services/compliance && $(PYTEST) -q
 
-test-agent-libvirt: venv
+test-agent-libvirt: venv test-deps
 	$(PIP) install -q -e "agents/libvirt[dev]"
 	cd agents/libvirt && $(PYTEST) -q
 
