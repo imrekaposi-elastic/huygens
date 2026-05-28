@@ -77,9 +77,7 @@ Projects unit tests use **SQLite**; production Compose uses **PostgreSQL**. Colu
 
 ## CodeQL
 
-Workflow [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml) analyzes **Python**, **JavaScript/TypeScript**, and **Go** only. This repository has no C/C++ application source; do not enable the `cpp` language (a committed virtualenv once caused CodeQL to index vendored `.h` files and fail autobuild).
-
-Use `make venv` or CI’s Python setup for local tests — never commit `.venv-ci-sim/` or other venv directories.
+See [operations/codeql.md](operations/codeql.md). This repo uses GitHub **default** CodeQL setup plus [`.github/codeql/codeql-config.yml`](../.github/codeql/codeql-config.yml) — not a custom CodeQL workflow (default and advanced setups cannot both upload SARIF).
 
 ## Adding tests for a new phase
 
