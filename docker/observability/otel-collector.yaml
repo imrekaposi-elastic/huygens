@@ -1,5 +1,6 @@
-# Dev stack: OTLP ingest for control-plane / agent telemetry (Phase 8).
-# Swap image to Elastic EDOT collector in production; config remains OTLP-standard.
+# Legacy: contrib OpenTelemetry Collector (Discover-only; no Kibana service map).
+# The observability Compose profile uses edot-collector-gateway.yaml (EDOT Collector) instead.
+# Keep this file for reference or custom non-Elastic OTLP backends.
 receivers:
   otlp:
     protocols:
@@ -16,11 +17,10 @@ exporters:
     verbosity: basic
   elasticsearch:
     endpoints: [http://elasticsearch:9200]
-    logs_index: huy-otel-logs
-    traces_index: huy-otel-traces
-    metrics_index: huy-otel-metrics
+    # Omit traces_index / logs_index / metrics_index so the exporter creates
+    # OTel data streams (static index names + mapping.mode none/ecs → index_not_found).
     mapping:
-      mode: none
+      mode: otel
 
 service:
   pipelines:

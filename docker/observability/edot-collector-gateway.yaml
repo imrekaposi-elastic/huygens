@@ -1,0 +1,52 @@
+# Huygens dev: EDOT Collector gateway (Elastic 9.4.x).
+# Based on elastic-agent v9.4.1 internal/edot/samples/linux/gateway.yml
+# Requires elasticapm processor + connector for Kibana Applications / service map.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+connectors:
+  elasticapm: {}
+
+processors:
+  batch:
+    send_batch_size: 1000
+    timeout: 1s
+    send_batch_max_size: 1500
+  batch/metrics:
+    send_batch_max_size: 0
+    timeout: 1s
+  elasticapm: {}
+
+exporters:
+  debug:
+    verbosity: basic
+  elasticsearch/otel:
+    endpoints:
+      - ${env:ELASTIC_ENDPOINT}
+    # Dev stack has xpack.security.enabled=false; omit api_key. Production: set ELASTIC_API_KEY.
+    mapping:
+      mode: otel
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch/metrics]
+      exporters: [debug, elasticsearch/otel]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug, elasticapm, elasticsearch/otel]
+    traces:
+      receivers: [otlp]
+      processors: [batch, elasticapm]
+      exporters: [debug, elasticapm, elasticsearch/otel]
+    metrics/aggregated-otel-metrics:
+      receivers: [elasticapm]
+      processors: []
+      exporters: [debug, elasticsearch/otel]

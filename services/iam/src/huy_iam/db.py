@@ -7,6 +7,8 @@ from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from huy_telemetry.db import register_async_sqlalchemy_engine
+
 from huy_iam.config import Settings
 
 _engine = None
@@ -26,6 +28,7 @@ def init_db(settings: Settings) -> None:
         connect_args=connect_args,
         **engine_kwargs,
     )
+    register_async_sqlalchemy_engine(_engine)
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
 
 

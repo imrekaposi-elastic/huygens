@@ -5,8 +5,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 )
+
+func TestMain(m *testing.M) {
+	_ = os.Setenv("OTEL_SDK_DISABLED", "true")
+	os.Exit(m.Run())
+}
 
 const testToken = "test-breakout-token"
 
@@ -35,6 +41,9 @@ func TestHealth(t *testing.T) {
 	}
 	if body["status"] != "ok" || body["service"] != "huy-breakout-controller" {
 		t.Fatalf("unexpected body: %v", body)
+	}
+	if got := rec.Header().Get("X-Request-Id"); got == "" {
+		t.Fatal("expected X-Request-Id response header")
 	}
 }
 

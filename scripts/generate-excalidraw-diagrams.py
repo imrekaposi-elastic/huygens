@@ -332,7 +332,7 @@ def diagram_deployment() -> Diagram:
     d.box("agent-api", 60, 210, 280, 64, "FastAPI agent :8080", bg=C_AGENT)
     d.box("libvirt", 60, 300, 130, 72, "libvirt / KVM", bg=C_INFRA)
     d.box("vms", 210, 300, 130, 72, "VMs + vnets\n(lab0, …)", bg=C_DATA)
-    d.label("cluster-lbl", 410, 88, "Control plane (K8s or VMs, Phase 10+)", size=16)
+    d.label("cluster-lbl", 410, 88, "Control plane (K8s or VMs, Phase 11+)", size=16)
     d.box("cluster", 400, 80, 400, 440, "", bg="#f8f9fa", stroke_style="dashed", underlay=True)
     d.box("web", 420, 130, 115, 56, "web\n(nginx)", bg=C_UI)
     d.box("iam", 550, 130, 115, 56, "huy-iam", bg=C_SVC)
@@ -491,12 +491,12 @@ def diagram_event_flow() -> Diagram:
 
 def diagram_phases() -> Diagram:
     d = Diagram()
-    d.label("title", 40, 20, "Huygens — Delivery phases 0–17", size=28)
+    d.label("title", 40, 20, "Huygens — Delivery phases 0–18", size=28)
     d.label(
         "legend",
         40,
         52,
-        "Yellow = complete  ·  Blue = planned  ·  Grey = adoption track 14–17 (lowest priority, RO)",
+        "Yellow = complete  ·  Blue = planned  ·  Grey = adoption track 15–18 (lowest priority, RO)",
         size=14,
     )
 
@@ -512,16 +512,17 @@ def diagram_phases() -> Diagram:
         ("p5", "5\nConsole", "done"),
         ("p6", "6\nBreakout", "done"),
         ("p7", "7\nCompliance\n+ GRC", "done"),
-        ("p8", "8\nOTel", "planned"),
+        ("p8", "8\nOTel", "done"),
         ("p9", "9\nSSH VM", "planned"),
-        ("p10", "10\nHardening", "planned"),
-        ("p11", "11\nK8s inv", "planned"),
-        ("p12", "12\nK8s access", "planned"),
-        ("p13", "13\nPlaybooks", "planned"),
-        ("p14", "14\nProxmox", "low"),
-        ("p15", "15\nAWS (RO)", "low"),
-        ("p16", "16\nGCP (RO)", "low"),
-        ("p17", "17\nAzure (RO)", "low"),
+        ("p10", "10\nLogs/Prom", "planned"),
+        ("p11", "11\nHardening", "planned"),
+        ("p12", "12\nK8s inv", "planned"),
+        ("p13", "13\nK8s access", "planned"),
+        ("p14", "14\nPlaybooks", "planned"),
+        ("p15", "15\nProxmox", "low"),
+        ("p16", "16\nAWS (RO)", "low"),
+        ("p17", "17\nGCP (RO)", "low"),
+        ("p18", "18\nAzure (RO)", "low"),
     ]
 
     status_bg = {"done": C_DONE, "planned": C_SVC, "low": C_LOW}
@@ -581,7 +582,7 @@ def diagram_phases() -> Diagram:
         "row3-lbl",
         x0,
         y0_row3 - 22,
-        "Adoption track (after 0–13) — inventory read-only; no arrow from Phase 13",
+        "Adoption track (after 0–14) — inventory read-only; no arrow from Phase 14",
         size=12,
     )
 
@@ -589,7 +590,7 @@ def diagram_phases() -> Diagram:
         "adr-note",
         40,
         y0_row3 + box_h + 28,
-        "ADR-linked: 0006/1b Agent I/O · 0010→7 know-why+GRC ✅ · 0011→2 SSO · 0012→6+6.1 links · 0013→14–17 adoption",
+        "ADR-linked: 0006/1b Agent I/O · 0010→7 know-why+GRC ✅ · 0011→2 SSO · 0012→6+6.1 links · 0013→15–18 adoption",
         size=13,
     )
     d.label("p6-defer", x0 + 6 * (box_w + gap) + 4, y0_row2 + box_h + 6, "6.1 flat L2 UI", size=11)

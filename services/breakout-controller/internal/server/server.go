@@ -3,6 +3,8 @@ package server
 import (
 	"net/http"
 	"strings"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type Server struct {
@@ -19,7 +21,8 @@ func New(serviceToken string) *Server {
 }
 
 func (s *Server) Handler() http.Handler {
-	return s.mux
+	h := otelhttp.NewHandler(s.mux, "huy-breakout-controller")
+	return requestContextMiddleware(h)
 }
 
 func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {

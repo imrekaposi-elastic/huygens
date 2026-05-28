@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (Phase 0); amended Phase 8 (P8-0)
+Accepted (Phase 0); amended Phase 8 (P8-0) — **Phase 8 complete** (traces, EDOT, client dependency spans). **Phase 10** (planned): operational logs in Kibana + Prometheus scrape into Elastic — see [phase10-observability-logs-and-prometheus.md](../../operations/phase10-observability-logs-and-prometheus.md).
 
 ## Context
 
@@ -16,7 +16,7 @@ FRAMEWORK_PLAN requires OpenTelemetry throughout, EDOT-friendly export for Elast
 - Export via **OTLP** (gRPC or HTTP) — no proprietary Elastic agent required in Huygens.
 - Document **EDOT Collector** (or Elastic Agent with `ELASTIC_AGENT_OTEL`) as recommended path to Elasticsearch/Kibana Observability.
 - **Operational logs:** structlog → **ECS-shaped JSON** on stdout; correlate with `trace.id` / `transaction.id`.
-- **OTel logs** (OTLP) optional later; do not replace audit trail.
+- **OTel logs** (OTLP) and **Prometheus scrape** into Elastic are **Phase 10**; Phase 8 ships stdout ECS structlog only. Do not replace audit trail with logs-only pipelines.
 
 ### Standard resource attributes
 
@@ -50,7 +50,7 @@ Set via `OTEL_RESOURCE_ATTRIBUTES` or `configure_otel(..., extra_resource={...})
 | `transaction.id` | Active span id (16 hex) |
 | `http.request.id` | `X-Request-Id` middleware |
 
-Implemented in [`shared/huy_telemetry`](../../../shared/huy_telemetry).
+Implemented in [`shared/huy_telemetry`](../../../shared/huy_telemetry). PostgreSQL (SQLAlchemy), Kafka (`huy_events`), and S3/SeaweedFS (`s3_client_span` in compliance object store) client instrumentation for Kibana service map dependencies.
 
 ### Audit vs OTel (three channels)
 
@@ -61,8 +61,8 @@ Implemented in [`shared/huy_telemetry`](../../../shared/huy_telemetry).
 ### Implementation
 
 - Shared package: `shared/huy_telemetry` (FastAPI + httpx instrumentation).
-- Libvirt agent: existing `telemetry.py` aligned in Phase 8; keep Prometheus `/metrics` (ADR 0006).
-- Go breakout-controller: OTel SDK in Phase 8.
+- Libvirt agent: `telemetry.py` aligned in Phase 8; **`GET /metrics`** (Prometheus) on host (ADR 0006); **scrape into Elastic** is Phase 10.
+- Go breakout-controller: OTel SDK (P8-5a) — `internal/telemetry`, `otelhttp`, same `OTEL_*` contract as Python.
 
 Agent today: FastAPI instrumentation + OTLP traces; registry pilot uses `huy_telemetry` (Phase 8).
 
@@ -74,6 +74,7 @@ Agent today: FastAPI instrumentation + OTLP traces; registry pilot uses `huy_tel
 
 ## References
 
-- [phase8-observability.md](../../operations/phase8-observability.md)
+- [phase8-observability.md](../../operations/phase8-observability.md) (complete)
+- [phase10-observability-logs-and-prometheus.md](../../operations/phase10-observability-logs-and-prometheus.md) (planned)
 - [observability-stack.md](../../operations/observability-stack.md)
 - [Elastic EDOT](https://www.elastic.co/docs/reference/opentelemetry)

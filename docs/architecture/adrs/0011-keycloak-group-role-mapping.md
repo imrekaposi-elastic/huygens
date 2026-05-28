@@ -107,7 +107,7 @@ IAM does **not** call LDAP directly. Optional future: Admin API to list Keycloak
 
 | Risk | Mitigation |
 |------|------------|
-| Keycloak operational burden | Compose profile; Helm in Phase 10; BYO IdP |
+| Keycloak operational burden | Compose profile; Helm in Phase 11; BYO IdP |
 | Wrong group mapper → empty `groups` | Admin “last seen groups” on user; docs + health check warning |
 | Over-privilege via broad regex | Audit mapping changes; require `platform_admin` for platform mappings |
 | Token size with many groups | Map only required groups in Keycloak; limit claim size |

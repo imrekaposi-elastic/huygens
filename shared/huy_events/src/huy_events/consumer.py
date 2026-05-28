@@ -10,6 +10,7 @@ import structlog
 from aiokafka import AIOKafkaConsumer
 
 from huy_events.config import KafkaSettings
+from huy_events.tracing import kafka_consumer_span
 
 logger = structlog.get_logger(__name__)
 
@@ -61,7 +62,11 @@ class HuyBroadcastConsumer:
             raise RuntimeError(msg)
         async for message in self._consumer:
             try:
-                await self._handler(message.value)
+                with kafka_consumer_span(
+                    message.topic,
+                    bootstrap=self._settings.kafka_bootstrap,
+                ):
+                    await self._handler(message.value)
             except Exception as exc:
                 logger.exception(
                     "kafka_message_handler_failed",

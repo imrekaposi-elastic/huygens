@@ -11,6 +11,7 @@ from pathlib import Path, PurePosixPath
 from typing import Iterable
 
 from fastapi import HTTPException
+from huy_telemetry.s3 import s3_client_span
 
 from huy_compliance.config import Settings
 
@@ -52,7 +53,13 @@ class ObjectStore:
             if not bucket:
                 raise HTTPException(status_code=500, detail="OBJECT_STORE_BUCKET is required for s3")
             client = _s3_client(self._settings)
-            client.put_object(Bucket=bucket, Key=key, Body=data)
+            with s3_client_span(
+                "PutObject",
+                bucket=bucket,
+                key=key,
+                endpoint=self._settings.object_store_endpoint,
+            ):
+                client.put_object(Bucket=bucket, Key=key, Body=data)
             return ObjectRef(key=key, size_bytes=len(data))
         raise HTTPException(status_code=500, detail="Unknown OBJECT_STORE_KIND")
 
@@ -73,7 +80,13 @@ class ObjectStore:
                 raise HTTPException(status_code=500, detail="OBJECT_STORE_BUCKET is required for s3")
             client = _s3_client(self._settings)
             try:
-                client.delete_object(Bucket=bucket, Key=key)
+                with s3_client_span(
+                    "DeleteObject",
+                    bucket=bucket,
+                    key=key,
+                    endpoint=self._settings.object_store_endpoint,
+                ):
+                    client.delete_object(Bucket=bucket, Key=key)
             except Exception:  # noqa: BLE001
                 # Best-effort; S3 delete is idempotent.
                 return
@@ -98,11 +111,17 @@ class ObjectStore:
         if not bucket:
             raise HTTPException(status_code=500, detail="OBJECT_STORE_BUCKET is required for s3")
         client = _s3_client(self._settings)
-        return client.generate_presigned_url(
-            ClientMethod="get_object",
-            Params={"Bucket": bucket, "Key": key},
-            ExpiresIn=expires_seconds,
-        )
+        with s3_client_span(
+            "GetObject",
+            bucket=bucket,
+            key=key,
+            endpoint=self._settings.object_store_endpoint,
+        ):
+            return client.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={"Bucket": bucket, "Key": key},
+                ExpiresIn=expires_seconds,
+            )
 
     def stream_bytes(self, *, key: str, chunk_size: int = 1024 * 1024) -> tuple[Iterable[bytes], int | None]:
         """Stream object bytes from the backing store.
@@ -116,20 +135,26 @@ class ObjectStore:
         if not bucket:
             raise HTTPException(status_code=500, detail="OBJECT_STORE_BUCKET is required for s3")
         client = _s3_client(self._settings)
-        try:
-            res = client.get_object(Bucket=bucket, Key=key)
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=404, detail="Object not found") from exc
+        with s3_client_span(
+            "GetObject",
+            bucket=bucket,
+            key=key,
+            endpoint=self._settings.object_store_endpoint,
+        ):
+            try:
+                res = client.get_object(Bucket=bucket, Key=key)
+            except Exception as exc:  # noqa: BLE001
+                raise HTTPException(status_code=404, detail="Object not found") from exc
 
-        length = res.get("ContentLength")
-        body = res["Body"]
+            length = res.get("ContentLength")
+            body = res["Body"]
 
-        def gen() -> Iterable[bytes]:
-            for chunk in body.iter_chunks(chunk_size=chunk_size):
-                if chunk:
-                    yield chunk
+            def gen() -> Iterable[bytes]:
+                for chunk in body.iter_chunks(chunk_size=chunk_size):
+                    if chunk:
+                        yield chunk
 
-        return gen(), int(length) if length is not None else None
+            return gen(), int(length) if length is not None else None
 
 
 def _s3_client(settings: Settings):

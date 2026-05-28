@@ -6,6 +6,7 @@ from typing import Any
 
 from huy_telemetry.logging_ecs import configure_structlog_ecs
 from huy_telemetry.middleware import install_request_context_middleware
+from huy_telemetry.db import instrument_sqlalchemy
 from huy_telemetry.otel import configure_otel, instrument_fastapi, instrument_httpx
 
 
@@ -18,6 +19,7 @@ def prepare_service_telemetry(
     configure_structlog_ecs(service_name=service_name)
     export_enabled = configure_otel(service_name, extra_resource=extra_resource)
     instrument_httpx()
+    instrument_sqlalchemy()
     return export_enabled
 
 

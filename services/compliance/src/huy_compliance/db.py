@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from huy_telemetry.db import register_async_sqlalchemy_engine
+
 from huy_compliance.config import Settings
 
 _engine: AsyncEngine | None = None
@@ -20,6 +22,7 @@ _session_factory: async_sessionmaker[AsyncSession] | None = None
 def init_db(settings: Settings) -> None:
     global _engine, _session_factory
     _engine = create_async_engine(settings.database_url, echo=False)
+    register_async_sqlalchemy_engine(_engine)
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
 
 

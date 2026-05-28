@@ -9,7 +9,7 @@ Excalidraw source files for Huygens. Open in [excalidraw.com](https://excalidraw
 | [03-tenancy.excalidraw](03-tenancy.excalidraw) | Tenancy: placement profiles (catalog + characteristics), **huy-compliance**, criticality |
 | [04-agent-dual-io.excalidraw](04-agent-dual-io.excalidraw) | Libvirt write queue vs read path |
 | [05-event-flow.excalidraw](05-event-flow.excalidraw) | Kafka topics, producers, and consumers (incl. `huy.network.links`) |
-| [06-phase-roadmap.excalidraw](06-phase-roadmap.excalidraw) | Phases 0–17 — **Phase 7 Compliance + GRC** marked complete (yellow) |
+| [06-phase-roadmap.excalidraw](06-phase-roadmap.excalidraw) | Phases 0–18 — **Phases 0–8** complete (yellow); **9** SSH; **10** logs/Prometheus |
 | [07-air-gapped.excalidraw](07-air-gapped.excalidraw) | Offline install topology (control plane includes Compliance) |
 
 Regenerate from repo root after editing the builder:

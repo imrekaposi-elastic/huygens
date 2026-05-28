@@ -1,13 +1,17 @@
 # Phase 8 — OpenTelemetry rollout
 
-Operational guide for Huygens observability (Phase 8). Normative decisions live in [ADR 0008](../architecture/adrs/0008-opentelemetry-and-edot.md).
+**Status:** Complete.
+
+Operational guide for the Phase 8 **OTel + EDOT foundation**. Normative decisions live in [ADR 0008](../architecture/adrs/0008-opentelemetry-and-edot.md).
+
+**Next:** [Phase 10 — logs & Prometheus](phase10-observability-logs-and-prometheus.md) (application logs in Kibana, Prometheus scrape into Elastic). Phase **9** is audited VM SSH.
 
 ## Three telemetry channels
 
 | Channel | Purpose | System of record | Export |
 |---------|---------|------------------|--------|
 | **Audit** | Who changed what (compliance, IAM, registry) | PostgreSQL (+ optional Kafka) | `huy.audit.events` → Elasticsearch (`huy-audit-*`) |
-| **Operational logs** | Debug, pollers, errors | stdout (structlog JSON) | ECS fields; optional OTLP logs later |
+| **Operational logs** | Debug, pollers, errors | stdout (structlog JSON) | ECS fields; **Phase 10** → Kibana Logs |
 | **OTel signals** | Traces, metrics, SRE | Collector / Elastic Observability | OTLP gRPC or HTTP |
 
 Audit must never depend on OTLP delivery alone. Use `trace.id` on audit mirrors for correlation.
@@ -47,9 +51,9 @@ OTEL_EXPORTER_OTLP_PROTOCOL=grpc
 
 | Component | OTel traces/metrics | ECS structlog | Notes |
 |-----------|-------------------|---------------|-------|
-| registry, iam, inventory, projects, compliance | P8-1 / P8-3 | Yes | Audit Kafka includes `trace_id` where applicable |
+| registry, iam, inventory, projects, compliance | P8-1 / P8-3 | Yes | SQLAlchemy → PostgreSQL; Kafka (`peer.service=kafka`); compliance S3 → SeaweedFS (`peer.service=seaweedfs`) |
 | libvirt agent | P8-4 | Yes | OTLP traces + host/VM metrics; ECS structlog; `/metrics` Prometheus unchanged |
-| breakout-controller (Go) | P8-5 | Planned | |
+| breakout-controller (Go) | P8-5a | Yes | OTLP traces + metrics; `X-Trace-Id` on HTTP |
 
 ## Libvirt agent (hypervisor)
 
@@ -66,4 +70,14 @@ Resource attributes include `huy.agent.country`, `huy.agent.city`, `huy.agent.co
 
 ## EDOT / production
 
-Customer-facing Elastic path: [EDOT integration](edot-integration.md) (P8-5b). Air-gap: [install/air-gapped.md](../install/air-gapped.md).
+Customer-facing Elastic path: [EDOT integration](edot-integration.md). The local observability profile uses the **EDOT Collector** gateway (`elasticapm` processor + connector) so **Applications** and **service map** work in Kibana. Air-gap: [install/air-gapped.md](../install/air-gapped.md).
+
+## Deferred to Phase 10
+
+| Item | Phase 8 | Phase 10 |
+|------|---------|----------|
+| Application logs in **Observability → Logs** | stdout ECS JSON only | OTLP logs and/or collector filelog |
+| Agent Prometheus in Elastic | `GET /metrics` on host | EDOT `prometheus` receiver + discovery |
+| Console VM/hypervisor charts | — | Optional (was P8-6) |
+
+Detail: [phase10-observability-logs-and-prometheus.md](phase10-observability-logs-and-prometheus.md).

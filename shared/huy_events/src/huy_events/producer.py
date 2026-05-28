@@ -9,6 +9,7 @@ import structlog
 from aiokafka import AIOKafkaProducer
 
 from huy_events.config import KafkaSettings
+from huy_events.tracing import kafka_producer_span
 
 logger = structlog.get_logger(__name__)
 
@@ -46,4 +47,5 @@ class HuyKafkaProducer:
             msg = "Kafka producer not started; call start() first"
             raise RuntimeError(msg)
         key_bytes = key.encode("utf-8") if key is not None else None
-        await self._producer.send_and_wait(topic, envelope, key=key_bytes)
+        with kafka_producer_span(topic, bootstrap=self._settings.kafka_bootstrap):
+            await self._producer.send_and_wait(topic, envelope, key=key_bytes)

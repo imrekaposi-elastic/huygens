@@ -1,6 +1,6 @@
 # Kibana compliance pack (Phase 7 spike)
 
-Phase 7 ships transactional compliance in PostgreSQL (`huy-compliance`) and structured logs for catalog, checks, GRC (standards/controls/evidence/packs/exports), and criticality changes. Elasticsearch ECS views and a Kibana “Huygens Compliance” app remain optional (Phase 8+).
+Phase 7 ships transactional compliance in PostgreSQL (`huy-compliance`) and structured logs for catalog, checks, GRC (standards/controls/evidence/packs/exports), and criticality changes. Elasticsearch ECS views and a Kibana “Huygens Compliance” app remain optional (Phase 7 audit in ES today; control-plane log shipping **Phase 10**).
 
 ## Current PG/API sources (MVP — index later)
 
@@ -23,7 +23,7 @@ Console MVP: [phase7 operations](../../operations/phase7-compliance-and-lifecycl
 
 ## Next steps
 
-1. Index `compliance_audit` events from control-plane OTLP/log shipping (Phase 8).
+1. Index `compliance_audit` events from control-plane OTLP/log shipping (Phase 10).
 2. Prototype Lens/ES|QL dashboards: checks expiring in 30 days, assignments by project.
 3. Map Kibana roles to Huygens `compliance_admin`, `compliance_reader`, `auditor` via OIDC group claims.
 

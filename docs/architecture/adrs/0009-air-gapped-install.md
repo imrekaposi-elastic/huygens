@@ -19,7 +19,7 @@ Government and critical infrastructure require offline install — same strategi
 
 ## Consequences
 
-- Phase 10 documents verification checklist.
+- Phase 11 documents verification checklist.
 - License Apache 2.0 allows offline redistribution of binaries/images.
 
 See [../../install/air-gapped.md](../../install/air-gapped.md).

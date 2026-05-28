@@ -153,6 +153,9 @@ services:
     environment:
       HUY_BREAKOUT_HOST: 0.0.0.0:8085
       BREAKOUT_SERVICE_TOKEN: ${BREAKOUT_SERVICE_TOKEN:-dev-breakout-service-token}
+      OTEL_SERVICE_NAME: huy-breakout-controller
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8085/health || exit 1"]
       interval: 10s
@@ -471,14 +474,18 @@ services:
       start_period: 90s
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:${OTEL_COLLECTOR_VERSION:-0.153.0}
+    image: docker.elastic.co/elastic-agent/elastic-otel-collector:${EDOT_COLLECTOR_VERSION:-9.4.1}
     profiles: [observability]
     command: ["--config=/etc/otelcol/config.yaml"]
     depends_on:
       elasticsearch:
         condition: service_healthy
+    environment:
+      ELASTIC_ENDPOINT: http://elasticsearch:9200
+      # Set when Elasticsearch security is enabled (production / Elastic Cloud).
+      ELASTIC_API_KEY: ${ELASTIC_API_KEY:-}
     volumes:
-      - ./docker/observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+      - ./docker/observability/edot-collector-gateway.yaml:/etc/otelcol/config.yaml:ro
     ports:
       - "4317:4317"
       - "4318:4318"

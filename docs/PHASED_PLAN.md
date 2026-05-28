@@ -1,6 +1,6 @@
 # Huygens platform — phased subprojects (v3)
 
-Canonical delivery roadmap for the monorepo (phases 0–17). For requirements detail see
+Canonical delivery roadmap for the monorepo (phases 0–18). For requirements detail see
 [FRAMEWORK_PLAN.md](../FRAMEWORK_PLAN.md); for ADRs and diagrams see
 [architecture/](architecture/README.md).
 
@@ -16,14 +16,14 @@ The strategic proposal and the build plan share one delivery model: **Huygens is
 
 | Strategic promise | Technical expression in phases |
 |-------------------|-------------------------------|
-| Know **where** workloads run | Phase 1 inventory; provider/region/agent/project; Phase 11 K8s node placement; Phases 14–17 optional adoption (Proxmox, AWS/GCP/Azure RO) |
+| Know **where** workloads run | Phase 1 inventory; provider/region/agent/project; Phase 12 K8s node placement; Phases 15–18 optional adoption (Proxmox, AWS/GCP/Azure RO) |
 | Know **why** | Phase 7 ✅: org catalog + asset criticality + infrastructure placement standards (provider/region, incl. sub-regions) |
 | **Compliant** | Phase 7 checks, owners, validity periods; drift flags from Phase 1 |
 | **Who changed** | ECS audit (ES); RBAC including `auditor`, `compliance_engineer` |
 | **How connected** | Phase 6 overlay/breakout + topology UI (MVP ✅; GA criteria in [operations/phase6-release-and-validation.md](operations/phase6-release-and-validation.md)) |
-| **Audited access** | Phase 9 VM SSH; Phase 12 K8s exec/k9s via API proxy; Phase 13 playbooks; sessions → ES |
-| **Elastic-correlatable telemetry** | ECS logs; inventory/drift/events Kafka → ES; metrics Phase 8 |
-| **Under Kubernetes, not instead of it** | **Phase 11** (crucial) |
+| **Audited access** | Phase 9 VM SSH; Phase 13 K8s exec/k9s via API proxy; Phase 14 playbooks; sessions → ES |
+| **Elastic-correlatable telemetry** | Phase 8 ✅ OTLP traces + EDOT; Phase 10 logs + Prometheus in Elastic (planned) |
+| **Under Kubernetes, not instead of it** | **Phase 12** (crucial) |
 | **Open source** | Phase 0: LICENSE, CONTRIBUTING, public API/agent contracts, OSS governance |
 
 ---
@@ -42,10 +42,10 @@ The strategic proposal and the build plan share one delivery model: **Huygens is
 | Overlay / topology | Yes | WG breakout, drag-and-drop | Phase 6 | MVP ✅ (manual cross-host validation) |
 | platform_admin onboarding | — | — | Phase 1 | Documented |
 | Open source | **Explicit** | — | **Phase 0** | Was implicit; now explicit |
-| Kubernetes | **Explicit section** | — | **Phase 11** | Was missing; now crucial |
+| Kubernetes | **Explicit section** | — | **Phase 12** | Was missing; now crucial |
 | OSS + existing infra | Yes | Agents subdirectory | `agents/` + `services/` | Aligned |
 | Ticketing | — | — | Out of scope (SNOW/Jira plugin later) | Aligned |
-| Multi-technology inventory (cloud + other hypervisors) | Implied (multi-provider estates) | Agents subdirectory | **Phases 14–17** | **Lowest priority** — adoption track after 0–13 |
+| Multi-technology inventory (cloud + other hypervisors) | Implied (multi-provider estates) | Agents subdirectory | **Phases 15–18** | **Lowest priority** — adoption track after 0–14 |
 
 ---
 
@@ -68,7 +68,7 @@ Based on [FRAMEWORK_PLAN.md](../FRAMEWORK_PLAN.md) and your iteration:
 | **Elasticsearch ECS** | Audit logs, compliance search/views, operator/auditor queries — not primary transactional store |
 | MVP | Registry + inventory + **projects proxy** (Phase 3) + **console** (Phase 5) — **done** |
 | **Open source** | Entire monorepo OSS; Phase 0 **license ADR** (align Elastic: Apache 2.0 vs AGPLv3 — see below) |
-| **Air-gapped install** | No mandatory cloud; offline bundles (containers/Helm/packages); Phase 0 ADR + Phase 10 runbook — **strategic link** alongside OSS self-hosted |
+| **Air-gapped install** | No mandatory cloud; offline bundles (containers/Helm/packages); Phase 0 ADR + Phase 11 runbook — **strategic link** alongside OSS self-hosted |
 | **Observability** | **OpenTelemetry throughout**, **EDOT-friendly** (FRAMEWORK_PLAN); ECS logs + OTLP to Elastic Observability or any OTLP backend |
 | **Asset criticality** | Org-level compliance catalog; `compliance_engineer` assigns criticality/requirements to resources from that catalog (Phase 7) |
 | **Know why** | Placement/explainability = infrastructure catalog standards (provider/region lineage) + direct assignments + project aggregate when all children comply |
@@ -108,14 +108,14 @@ Same thread as strategic doc (“self-hosted”, “disconnected environments”
 | Requirement | Phase |
 |-------------|--------|
 | No install-time call-home to Elastic Cloud or Huygens SaaS | 0 ADR, all phases |
-| **Offline artifacts:** container images, Helm chart, deb/rpm or tarball, vendored Python wheels | Phase 10 (+ agent from Phase 1b) |
+| **Offline artifacts:** container images, Helm chart, deb/rpm or tarball, vendored Python wheels | Phase 11 (+ agent from Phase 1b) |
 | **Bundled or BYO** dependencies: PostgreSQL, Kafka, Elasticsearch (optional for compliance views) | Documented matrix |
 | Agent runs with local `data_dir`, TLS, token — no external deps except libvirt/qemu on host | Existing `agents/libvirt` |
 | Control plane **inventory poller** works against internal agent URLs only | Phase 1 |
-| Kafka required in default stack; air-gap degraded poll-only (ADR) | Phase 5 prep / 10 |
-| **Install guide:** `docs/install/air-gapped.md` | Phase 10 deliverable |
+| Kafka required in default stack; air-gap degraded poll-only (ADR) | Phase 5 prep / 11 |
+| **Install guide:** `docs/install/air-gapped.md` | Phase 11 deliverable |
 
-Phase 11 K8s: document **disconnected clusters** (agents reach control plane via allowed egress only, or store-and-forward).
+Phase 12 K8s: document **disconnected clusters** (agents reach control plane via allowed egress only, or store-and-forward).
 
 ---
 
@@ -329,7 +329,7 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 | `03-tenancy.excalidraw` | Org → provider → region → agent; project → vnet/VM |
 | `04-agent-dual-io.excalidraw` | Write queue vs read path |
 | `05-event-flow.excalidraw` | Kafka topics and consumers |
-| `06-phase-roadmap.excalidraw` | Delivery phases 0–17 (yellow through Phase 6; grey 14–17 adoption track) |
+| `06-phase-roadmap.excalidraw` | Delivery phases 0–18 (yellow through Phase 6; grey 15–18 adoption track) |
 | `07-air-gapped.excalidraw` | Offline / customer-network topology |
 
 ---
@@ -460,28 +460,40 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
   - Drift/criticality badges on resource list rows (not implemented)
 - **Ops:** [operations/phase7-compliance-and-lifecycle-guards.md](operations/phase7-compliance-and-lifecycle-guards.md) · [compliance/README.md](compliance/README.md)
 
-### Phase 8 — Observability, EDOT, and graphs
-- **OpenTelemetry throughout** all control-plane services (traces, metrics, logs) per FRAMEWORK_PLAN
-- **EDOT-friendly:** standard OTLP export; document pairing with [Elastic Distribution of OpenTelemetry](https://www.elastic.co/docs/reference/opentelemetry) (EDOT Collector → Elasticsearch/Kibana APM/Observability); no Elastic-proprietary agent lock-in
-- Shared resource attributes: `service.name`, `huy.org.id`, `huy.agent.id`, `huy.project.id` (align with existing agent `huy.agent.*` labels on libvirt agent)
-- structlog → ECS JSON logs; trace/log correlation (`trace_id` in ECS)
-- Scrape Prometheus `/metrics` from agents via read path; 30s (min 10s) alignment
-- VM and hypervisor charts in console + Elastic Observability when EDOT stack present
-- **Deliverable:** OTel on all services; EDOT integration guide; graphs in UI
+### Phase 8 — OpenTelemetry & EDOT foundation ✅
+
+**Status:** Complete.
+
+- **OpenTelemetry** on control-plane services, breakout-controller (Go), and libvirt agent (traces; agent keeps Prometheus **`/metrics`** pull endpoint per ADR 0006)
+- **EDOT-friendly:** OTLP → EDOT Collector gateway → Elasticsearch; [EDOT integration guide](operations/edot-integration.md); local [observability stack](operations/observability-stack.md) profile
+- **`shared/huy_telemetry`:** FastAPI/httpx traces, ECS structlog, SQLAlchemy → PostgreSQL, Kafka producer spans, compliance S3 → SeaweedFS spans
+- **Audit:** `huy.audit.events` → Logstash → `huy-audit-*` (PostgreSQL remains system of record)
+- **Kibana:** Applications, service map, TPM/latency (trace-derived via `elasticapm` connector)
+- **Ops:** [phase8-observability.md](operations/phase8-observability.md) · ADR [0008](architecture/adrs/0008-opentelemetry-and-edot.md)
+
+**Deferred to Phase 10:** operational logs in Observability UI, Prometheus scrape into Elastic, console VM/hypervisor metric graphs.
 
 ### Phase 9 — Audited SSH access (VMs)
 - **`ssh_access` project role** — SSH to project VMs (libvirt guests); no direct hypervisor admin SSH for org users
-- **`ssh-gateway` service** (Go): jump/proxy, PTY **session recording**, metadata (user, org, project, target VM) → **Elasticsearch ECS** (same session index family as Phase 12)
+- **`ssh-gateway` service** (Go): jump/proxy, PTY **session recording**, metadata (user, org, project, target VM) → **Elasticsearch ECS** (same session index family as Phase 13)
 - Console or CLI obtains **short-lived credentials** via IAM; all access RBAC-scoped to project
-- **Not in scope:** Kubernetes pod exec, `kubectl`, or **k9s** (those use the K8s API — see Phase 12)
+- **Not in scope:** Kubernetes pod exec, `kubectl`, or **k9s** (those use the K8s API — see Phase 13)
 - **Deliverable:** Recorded VM SSH sessions searchable in ES
 
-### Phase 10 — Hardening, air-gapped, and scale
+### Phase 10 — Observability depth (logs & Prometheus)
+
+- **Application / container logs** in Kibana Observability (stdout ECS JSON and/or OTLP logs)
+- **Prometheus scrape** of libvirt agent `/metrics` (via inventory/registry targets) into Elasticsearch
+- Optional: console deep-links and dashboards; align scrape with poller interval (30s default, 10s min)
+- **Deliverable:** Logs + Prometheus-style metrics in Elastic alongside Phase 8 traces
+- **Detail:** [operations/phase10-observability-logs-and-prometheus.md](operations/phase10-observability-logs-and-prometheus.md)
+
+### Phase 11 — Hardening, air-gapped, and scale
 - HA control plane, Kafka cluster ops, secrets rotation for agent tokens
 - **`docs/install/air-gapped.md`:** offline images, Helm, config matrix (PG/Kafka/ES BYO), verification checklist
 - **Deliverable:** Production + air-gapped runbooks
 
-### Phase 11 — Kubernetes awareness (crucial — strategic alignment)
+### Phase 12 — Kubernetes awareness (crucial — strategic alignment)
 *Addresses strategic doc: “underneath and alongside Kubernetes.”*
 
 - **Not** a Kubernetes distribution or cluster scheduler replacement
@@ -492,11 +504,11 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - **Audit:** cluster-scoped infra changes feed Kafka → ES ECS (same pipeline as VM events)
 - Optional later: `agents/k8s` observer agent (read-only) — polyglot per bounded context
 - **Disconnected clusters:** ADR for reachability (air-gapped / one-way) — same install model as hypervisor agents
-- **Interactive pod shell / k9s:** not Phase 11 — see **Phase 12** (audited K8s API access)
+- **Interactive pod shell / k9s:** not Phase 12 — see **Phase 13** (audited K8s API access)
 - **Deliverable:** Console shows cluster ↔ hypervisor ↔ region; answers strategic K8s bullet list at infra layer
 
-### Phase 12 — Audited Kubernetes access (exec, k9s)
-*Depends on Phase 11 (cluster registry) and Phase 9 (session recording + ES patterns).*
+### Phase 13 — Audited Kubernetes access (exec, k9s)
+*Depends on Phase 12 (cluster registry) and Phase 9 (session recording + ES patterns).*
 
 - **Kubernetes API proxy** (or dedicated access service): project/cluster RBAC; short-lived **kubeconfig** or token from IAM
 - **Recorded sessions:** `exec` / `attach` / `port-forward` WebSocket streams → same ECS session documents as Phase 9 (searchable in Elasticsearch)
@@ -505,43 +517,43 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 - Reuse `ssh_access` or add **`k8s_access`** role; map namespaces/workloads to **project** scope from Phase 11
 - **Deliverable:** Audited pod exec and k9s-via-proxy with sessions in ES
 
-### Phase 13 — Session playbooks and runbooks
-*Depends on Phase 9 and/or Phase 12 (stable session objects in ES).*
+### Phase 14 — Session playbooks and runbooks
+*Depends on Phase 9 and/or Phase 13 (stable session objects in ES).*
 
-- **Playbooks:** org-defined allow-listed command sequences or guided steps for VM SSH (9) and/or K8s exec (12)
+- **Playbooks:** org-defined allow-listed command sequences or guided steps for VM SSH (9) and/or K8s exec (13)
 - Tie sessions to playbook runs; optional approval workflow (future)
 - **Search & replay metadata** in Elasticsearch / Kibana (full PTY replay storage policy in ADR)
 - Console or API to launch playbook-bound sessions
 - **Deliverable:** Playbook catalog, enforced commands on gateway/proxy, playbook-linked sessions searchable in ES
 
-### Phases 14–17 — Platform adoption track (lowest priority)
-*After Phases 0–13. **Not** chained from Phase 13 on the roadmap diagram — a separate adoption track. **Read-only (RO)** inventory for public cloud; libvirt remains the only mutation and Phase 6 breakout path until a later phase.*
+### Phases 15–18 — Platform adoption track (lowest priority)
+*After Phases 0–14. **Not** chained from Phase 14 on the roadmap diagram — a separate adoption track. **Read-only (RO)** inventory for public cloud; libvirt remains the only mutation and Phase 6 breakout path until a later phase.*
 
 **Shared prerequisites:** Phase 1 registry (`agent_technologies`), Phase 1 inventory poller, Phase 5 console (capability gating).
 
-**Shared foundation (before or with Phase 14):** ADR 0013 (multi-technology agents), inventory snapshot v2, technology-aware poller dispatch, platform capability tokens (`inventory.read` only on this track). Hypervisor connect: `base_url` + bearer; cloud connect: IAM/role + vault (extends ADR 0005).
+**Shared foundation (before or with Phase 15):** ADR 0013 (multi-technology agents), inventory snapshot v2, technology-aware poller dispatch, platform capability tokens (`inventory.read` only on this track). Hypervisor connect: `base_url` + bearer; cloud connect: IAM/role + vault (extends ADR 0005).
 
-**Explicitly out of scope (Phases 14–17):**
+**Explicitly out of scope (Phases 15–18):**
 
 - Public-cloud **CRUD** from Huygens UI
 - Phase 6 **network links** across cloud ↔ libvirt (peering/TGW/VPN is a separate ADR)
 - Full **proxmox-agent** parity with libvirt write queue + breakout
 
-### Phase 14 — Proxmox adoption
+### Phase 15 — Proxmox adoption
 - `proxmox-inventory` (or proxmox-agent read path): Proxmox VE API — VMs, SDNs, cluster nodes
 - Console inventory under provider/region; **no** create/delete VM or network from Huygens
 - **Deliverable:** Proxmox estate visible in registry + inventory; capability-gated UI
 
-### Phase 15 — AWS adoption (read-only)
+### Phase 16 — AWS adoption (read-only)
 - `aws-inventory` connector: EC2 + VPC/subnet describe per account/region (boto3)
 - **Deliverable:** AWS workloads in inventory console; RO only
 
-### Phase 16 — GCP adoption (read-only)
+### Phase 17 — GCP adoption (read-only)
 - `gcp-inventory` connector: Compute Engine + VPC describe (per project/region)
-- Reuses snapshot v2 + poller dispatch established in Phases 14–15
+- Reuses snapshot v2 + poller dispatch established in Phases 15–16
 - **Deliverable:** GCP workloads in inventory console; RO only
 
-### Phase 17 — Azure adoption (read-only)
+### Phase 18 — Azure adoption (read-only)
 - `azure-inventory` connector: VMs + VNet/subnet describe (per subscription/region)
 - **Deliverable:** Azure workloads in inventory console; RO only
 
@@ -573,41 +585,43 @@ flowchart LR
   P4 --> P6[Phase6_Breakout]
   P5 --> P6
   P1a --> P7[Phase7_Compliance]
-  P1 --> P8[Phase8_Metrics]
+  P1 --> P8[Phase8_OTel_EDOT]
   P5 --> P8
-  P3 --> P9[Phase9_SSH_VM]
+  P8 --> P9[Phase9_SSH_VM]
   P5 --> P9
-  P5 --> P10[Phase10_HA]
-  P6 --> P11[Phase11_K8s_inventory]
-  P7 --> P11
-  P8 --> P11
-  P9 --> P12[Phase12_K8s_access]
-  P11 --> P12
-  P5 --> P12
-  P9 --> P13[Phase13_Playbooks]
+  P8 --> P10[Phase10_Logs_Prom]
+  P5 --> P10
+  P5 --> P11[Phase11_HA]
+  P6 --> P12[Phase12_K8s_inventory]
+  P7 --> P12
+  P8 --> P12
+  P9 --> P13[Phase13_K8s_access]
   P12 --> P13
-  P1 --> P14[Phase14_Proxmox]
-  P5 --> P14
-  P14 --> P15[Phase15_AWS_RO]
-  P15 --> P16[Phase16_GCP_RO]
-  P16 --> P17[Phase17_Azure_RO]
+  P5 --> P13
+  P9 --> P14[Phase14_Playbooks]
+  P13 --> P14
+  P1 --> P15[Phase15_Proxmox]
+  P5 --> P15
+  P15 --> P16[Phase16_AWS_RO]
+  P16 --> P17[Phase17_GCP_RO]
+  P17 --> P18[Phase18_Azure_RO]
 ```
 
 **MVP critical path:** Phase 0 → 1a + 1b (parallel) → Phase 1 → **Phase 3** (operator API). Phases 2 (SSO) and 5 (console) can follow in parallel where useful.
 
-**Strategic completeness path:** Phases 0–10 deliver FRAMEWORK_PLAN + OSS platform; **Phase 11** K8s inventory/placement; **Phases 12–13** audited K8s/k9s access and playbooks; **Phases 14–17** optional adoption track (lowest priority).
+**Strategic completeness path:** Phases 0–8 ✅ deliver OTel/EDOT foundation; Phases 0–11 platform + OSS (9 SSH, 10 logs/Prometheus optional, 11 HA/air-gap); **Phase 12** K8s inventory/placement; **Phases 13–14** audited K8s/k9s access and playbooks; **Phases 15–18** optional adoption track (lowest priority).
 
-**Lowest priority:** Phases **14–17** (adoption track) — do not start until Phases **0–13** (or an explicit PO cut-down of 11–13) are accepted; order **14 → 15 → 16 → 17**; libvirt operator path remains canonical for CRUD and breakout.
+**Lowest priority:** Phases **15–18** (adoption track) — do not start until Phases **0–14** (or an explicit PO cut-down of 12–14) are accepted; order **15 → 16 → 17 → 18**; libvirt operator path remains canonical for CRUD and breakout.
 
-### Access-plane phases (9, 12, 13)
+### Access-plane phases (9, 13, 14)
 
 | Phase | Protocol | Tools |
 |-------|----------|--------|
 | **9** | SSH → project VMs | `ssh`, console terminal |
-| **12** | Kubernetes API (exec/attach/port-forward) | `kubectl exec`, **k9s** (via proxy kubeconfig) |
-| **13** | Policy on top of 9/12 | Playbooks, allow-lists, ES/Kibana search |
+| **13** | Kubernetes API (exec/attach/port-forward) | `kubectl exec`, **k9s** (via proxy kubeconfig) |
+| **14** | Policy on top of 9/13 | Playbooks, allow-lists, ES/Kibana search |
 
-Phase **9** can ship before **11** (VM-only). Phase **12** requires **11** (cluster/project binding). Phase **13** follows **9** and **12**.
+Phase **9** can ship before **12** (VM-only). Phase **13** requires **12** (cluster/project binding). Phase **14** follows **9** and **13**.
 
 ---
 
@@ -625,12 +639,12 @@ Phase **9** can ship before **11** (VM-only). Phase **12** requires **11** (clus
 | `api-gateway` | Go/Kong | Auth, routing |
 | `web` | React/TS | **Phase 5 ✅** Console SPA → IAM, projects, inventory (nginx in Compose) |
 | `ssh-gateway` | Go | Phase 9 — audited VM SSH, PTY recording → ES |
-| `k8s-access` | Go | Phase 12 — K8s API proxy, exec recording, k9s-compatible |
+| `k8s-access` | Go | Phase 13 — K8s API proxy, exec recording, k9s-compatible |
 | `agents/libvirt` | Python | Write queue + read path |
-| `connectors/proxmox` | Python | Phase 14 — Proxmox adoption (inventory RO) |
-| `connectors/aws` | Python | Phase 15 — AWS adoption (inventory RO) |
-| `connectors/gcp` | Python | Phase 16 — GCP adoption (inventory RO) |
-| `connectors/azure` | Python | Phase 17 — Azure adoption (inventory RO) |
+| `connectors/proxmox` | Python | Phase 15 — Proxmox adoption (inventory RO) |
+| `connectors/aws` | Python | Phase 16 — AWS adoption (inventory RO) |
+| `connectors/gcp` | Python | Phase 17 — GCP adoption (inventory RO) |
+| `connectors/azure` | Python | Phase 18 — Azure adoption (inventory RO) |
 
 ---
 
@@ -649,12 +663,13 @@ Phase **9** can ship before **11** (VM-only). Phase **12** requires **11** (clus
 
 - Keycloak SSO + group→role mapping — **done** Phase 2; see [ADR 0011](architecture/adrs/0011-keycloak-group-role-mapping.md)
 - Drag-and-drop network graph (Phase 6)
-- Audited VM SSH (Phase 9); K8s exec / k9s via proxy (Phase 12); session playbooks (Phase 13)
-- Multi-region control-plane HA (Phase 10)
+- Audited VM SSH (Phase 9); K8s exec / k9s via proxy (Phase 13); session playbooks (Phase 14)
+- Multi-region control-plane HA (Phase 11)
+- Observability logs + Prometheus in Elastic (Phase 10)
 - **Ticketing** — SNOW/Jira plugin only if needed later
 - **Kibana compliance dashboards** — Phase 7 spike only; PG/console MVP shipped
-- **Kubernetes inventory** — Phase 11 (not deferred indefinitely; **crucial** after core platform)
-- **Proxmox / AWS / GCP / Azure adoption** — Phases 14–17 (inventory RO; **lowest priority**; not before Phase 13)
+- **Kubernetes inventory** — Phase 12 (not deferred indefinitely; **crucial** after core platform)
+- **Proxmox / AWS / GCP / Azure adoption** — Phases 15–18 (inventory RO; **lowest priority**; not before Phase 14)
 
 ---
 
@@ -666,10 +681,10 @@ Phase **9** can ship before **11** (VM-only). Phase **12** requires **11** (clus
 4. **Compliance transactional data** in PostgreSQL; **searchable audit/compliance views** in Elasticsearch ECS.
 5. **Open source** is the delivery model for the whole monorepo (Phase 0), matching the strategic proposal.
 6. **`compliance_engineer`** maps org compliance items to per-resource **asset criticality** (Phase 7) — core to “know why.”
-7. **Phase 11 Kubernetes** is required for close alignment with the strategic document, not optional future work.
-12. **Phase 9** = VM SSH only; **Phase 12** = K8s API + k9s (not SSH); **Phase 13** = playbooks on recorded sessions.
+7. **Phase 12 Kubernetes** is required for close alignment with the strategic document, not optional future work.
+12. **Phase 9** = VM SSH only; **Phase 13** = K8s API + k9s (not SSH); **Phase 14** = playbooks on recorded sessions.
 8. **License:** **Apache 2.0** (chosen); OSPO/Legal sign-off before public launch.
-9. **Air-gapped install** is a first-class deliverable (Phase 0 ADR + Phase 10 docs), not an afterthought.
+9. **Air-gapped install** is a first-class deliverable (Phase 0 ADR + Phase 11 docs), not an afterthought.
 10. **Kibana compliance node** replaces “SIEM index templates” as the Elastic UX integration path (Phase 7/8 optional pack).
-11. **OTel + EDOT-friendly** across platform (Phase 0 ADR, Phase 8 full rollout; agent has partial OTel today).
-13. **Phases 14–17** = adoption track: **14 Proxmox**, **15 AWS (RO)**, **16 GCP (RO)**, **17 Azure (RO)**; libvirt-only for CRUD and Phase 6 links; **lowest roadmap priority**; not dependent on Phase 13 completion (separate track).
+11. **OTel + EDOT-friendly** across platform (Phase 0 ADR, **Phase 8 ✅** traces/EDOT; **Phase 10** = logs + Prometheus in Elastic).
+13. **Phases 15–18** = adoption track: **15 Proxmox**, **16 AWS (RO)**, **17 GCP (RO)**, **18 Azure (RO)**; libvirt-only for CRUD and Phase 6 links; **lowest roadmap priority**; not dependent on Phase 14 completion (separate track).

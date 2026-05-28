@@ -1,7 +1,7 @@
 # Air-gapped installation
 
 Huygens is designed for environments without outbound internet access. This guide
-covers Phase 0–1 expectations; full Helm/offline bundles ship in Phase 10.
+covers Phase 0–1 expectations; full Helm/offline bundles ship in Phase 11.
 
 ## Principles
 
@@ -23,7 +23,7 @@ covers Phase 0–1 expectations; full Helm/offline bundles ship in Phase 10.
 ```
 huygens-offline-<version>/
   images/           # OCI tarballs (registry, iam, inventory, agent)
-  charts/           # Helm chart (Phase 10)
+  charts/           # Helm chart (Phase 11)
   python-wheels/    # Optional pip offline index
   schemas/          # Kafka JSON schemas (copy from repo)
   docs/             # This guide + architecture ADRs

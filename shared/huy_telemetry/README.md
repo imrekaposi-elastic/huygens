@@ -16,6 +16,7 @@ from huy_telemetry import (
 configure_structlog_ecs(service_name="huy-registry")
 configure_otel("huy-registry")
 instrument_httpx()
+# SQLAlchemy: call register_async_sqlalchemy_engine(engine) in init_db after create_async_engine
 
 app = FastAPI(...)
 install_request_context_middleware(app)

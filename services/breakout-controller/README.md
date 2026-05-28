@@ -24,6 +24,13 @@ Included in root `docker-compose.yml`. Health: `http://localhost:8085/health`.
 |----------|-------------|
 | `HUY_BREAKOUT_HOST` | Bind address (default `0.0.0.0:8085`) |
 | `BREAKOUT_SERVICE_TOKEN` | Must match `projects` `BREAKOUT_SERVICE_TOKEN` |
+| `OTEL_SERVICE_NAME` | Default `huy-breakout-controller` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector URL (unset = traces/metrics in-process only) |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | `grpc` (default) or `http/protobuf` |
+| `OTEL_RESOURCE_ATTRIBUTES` | Extra resource labels (`key=value`, comma-separated) |
+| `OTEL_SDK_DISABLED` | `true` in unit tests |
+
+HTTP responses include `X-Request-Id` and `X-Trace-Id` when a span is active ([ADR 0008](../../docs/architecture/adrs/0008-opentelemetry-and-edot.md)).
 
 ## Tests
 
