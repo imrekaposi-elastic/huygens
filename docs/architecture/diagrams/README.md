@@ -11,6 +11,7 @@ Excalidraw source files for Huygens. Open in [excalidraw.com](https://excalidraw
 | [05-event-flow.excalidraw](05-event-flow.excalidraw) | Kafka topics, producers, and consumers (incl. `huy.network.links`) |
 | [06-phase-roadmap.excalidraw](06-phase-roadmap.excalidraw) | Phases 0–18 — **Phases 0–8** complete (yellow); **9** SSH; **10** logs/Prometheus |
 | [07-air-gapped.excalidraw](07-air-gapped.excalidraw) | Offline install topology (control plane includes Compliance) |
+| [08-ssh-access.excalidraw](08-ssh-access.excalidraw) | Phase 9 audited SSH gateway (gateway → relay → VM, Kafka → ES) |
 
 Regenerate from repo root after editing the builder:
 

@@ -111,6 +111,14 @@ class Settings(BaseSettings):
     tls_cert_dir: Path | None = None
     tls_cert_file: Path | None = None
     tls_key_file: Path | None = None
+    ssh_relay_enabled: bool = Field(default=True, validation_alias="SSH_RELAY_ENABLED")
+    ssh_relay_bind: str = Field(default="127.0.0.1", validation_alias="SSH_RELAY_BIND")
+    ssh_relay_port: int = Field(default=9122, validation_alias="SSH_RELAY_PORT")
+    ssh_gateway_service_token: str = Field(
+        default="",
+        validation_alias="SSH_GATEWAY_SERVICE_TOKEN",
+    )
+    agent_id: str = Field(default="local-agent", validation_alias="HUY_AGENT_ID")
 
     @field_validator("tls_cert_dir", "tls_cert_file", "tls_key_file", mode="before")
     @classmethod

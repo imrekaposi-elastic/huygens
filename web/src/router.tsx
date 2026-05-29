@@ -31,6 +31,7 @@ import { AdminUsersTab } from "@/pages/admin/AdminUsersTab";
 import { AdminIdpMappingsTab } from "@/pages/admin/AdminIdpMappingsTab";
 import { AdminAuthenticationTab } from "@/pages/admin/AdminAuthenticationTab";
 import { AdminRbacTab } from "@/pages/admin/AdminRbacTab";
+import { AccessSessionsPage } from "@/pages/access/AccessSessionsPage";
 
 const rootRoute = createRootRoute({ component: RootLayout });
 
@@ -193,6 +194,12 @@ const adminFabricRoute = createRoute({
   component: AgentTechnologiesGatePage,
 });
 
+const accessRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/access",
+  component: AccessSessionsPage,
+});
+
 const projectsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/projects",
@@ -297,6 +304,7 @@ const routeTree = rootRoute.addChildren([
       complianceGrcRoute,
     ]),
     topologyRoute,
+    accessRoute,
     adminRoute.addChildren([
       adminIndexRoute,
       adminFabricRoute,

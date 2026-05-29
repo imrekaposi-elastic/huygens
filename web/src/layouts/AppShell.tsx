@@ -5,6 +5,7 @@ import {
   canAccessCompliance,
   canAccessIpam,
   canAccessTopology,
+  canAccessSsh,
 } from "@/auth/permissions";
 import { isPlatformAdmin, getAccessToken } from "@/auth/token";
 import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
@@ -28,6 +29,7 @@ export function AppShell() {
   const showIpam = canAccessIpam(user, selectedOrgId, showAgents);
   const showCompliance = canAccessCompliance(user, selectedOrgId, showAgents);
   const showTopology = canAccessTopology(user, selectedOrgId, showAgents);
+  const showAccess = canAccessSsh(user, selectedOrgId, showAgents);
   const showAdmin = canAccessAdmin(user, selectedOrgId, showAgents);
 
   useInventoryEvents(selectedOrgId, !!selectedOrgId);
@@ -95,6 +97,14 @@ export function AppShell() {
               label="Topology"
               icon={<NetworkIcon />}
               active={pathname.startsWith("/topology")}
+            />
+          )}
+          {showAccess && (
+            <NavItem
+              to="/access"
+              label="SSH access"
+              icon={<ShieldIcon />}
+              active={pathname.startsWith("/access")}
             />
           )}
           {showAdmin && (

@@ -474,11 +474,29 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 **Deferred to Phase 10:** operational logs in Observability UI, Prometheus scrape into Elastic, console VM/hypervisor metric graphs.
 
 ### Phase 9 — Audited SSH access (VMs)
-- **`ssh_access` project role** — SSH to project VMs (libvirt guests); no direct hypervisor admin SSH for org users
-- **`ssh-gateway` service** (Go): jump/proxy, PTY **session recording**, metadata (user, org, project, target VM) → **Elasticsearch ECS** (same session index family as Phase 13)
+
+**Status:** MVP shipped (architecture + core services).
+
+Hybrid **ssh-gateway** (Go) + **libvirt agent ssh-relay**; IAM policy (account mappings, access groups, sudo rules, org SSH CA); sessions → Kafka `huy.session.events` → ES `huy-sessions-*`.
+
+| ID | Deliverable |
+|----|-------------|
+| P9-0 | [ADR 0014](architecture/adrs/0014-ssh-gateway-and-session-recording.md) |
+| P9-1 | IAM SSH policy CRUD + RBAC (`ssh_access`, `ssh:connect`, `ssh:policy_manage`) |
+| P9-2 | IAM internal authorize + OpenSSH cert sign (`/internal/v1/ssh/*`) |
+| P9-3 | Agent VM SSH trust bootstrap (`PUT .../ssh-trust`) |
+| P9-4 | Agent ssh-relay (`9122`) |
+| P9-5 | `services/ssh-gateway` — sessions API, WebSocket PTY, recording |
+| P9-6 | Kafka topics + Logstash → `huy-sessions-*` |
+| P9-7 | CLI `tools/huy-cli/huy ssh` |
+| P9-8 | Console **SSH access** page |
+| P9-9 | [phase9-ssh-gateway.md](operations/phase9-ssh-gateway.md), diagram `08-ssh-access` |
+
+- **`ssh_access` project role** — SSH to project VMs; no direct hypervisor admin SSH for org users
+- **`ssh-gateway` service** (Go): jump/proxy, PTY **session recording**, metadata → **Elasticsearch ECS** (same session index family as Phase 13)
 - Console or CLI obtains **short-lived credentials** via IAM; all access RBAC-scoped to project
-- **Not in scope:** Kubernetes pod exec, `kubectl`, or **k9s** (those use the K8s API — see Phase 13)
-- **Deliverable:** Recorded VM SSH sessions searchable in ES
+- **Not in scope:** Kubernetes pod exec (Phase 13); gateway command allow-list enforcement (Phase 14 playbooks)
+- **Ops:** [phase9-ssh-gateway.md](operations/phase9-ssh-gateway.md)
 
 ### Phase 10 — Observability depth (logs & Prometheus)
 

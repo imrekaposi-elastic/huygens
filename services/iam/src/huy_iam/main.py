@@ -12,7 +12,7 @@ from huy_events import start_audit_kafka_producer, stop_audit_kafka_producer
 from huy_telemetry import attach_fastapi_telemetry, prepare_service_telemetry
 
 from huy_iam import __version__
-from huy_iam.api.routes import auth, health, idp_mappings, oidc, organizations, users
+from huy_iam.api.routes import auth, health, idp_mappings, oidc, organizations, ssh_internal, ssh_policy, users
 from huy_iam.bootstrap import bootstrap_platform_admin
 from huy_iam.config import get_settings
 from huy_iam.db import dispose_db, get_engine, get_session_factory, init_db
@@ -69,6 +69,8 @@ def create_app() -> FastAPI:
     app.include_router(idp_mappings.auth_router)
     app.include_router(organizations.router)
     app.include_router(users.router)
+    app.include_router(ssh_policy.router)
+    app.include_router(ssh_internal.router)
     return app
 
 

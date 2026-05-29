@@ -45,6 +45,9 @@ PERM_PROJECT_OPERATE = "project:operate"
 PERM_COMPLIANCE_READ = "compliance:read"
 PERM_COMPLIANCE_CATALOG_MANAGE = "compliance:catalog_manage"
 PERM_COMPLIANCE_ASSIGN = "compliance:assign"
+PERM_SSH_CONNECT = "ssh:connect"
+PERM_SSH_SESSION_READ = "ssh:session_read"
+PERM_SSH_POLICY_MANAGE = "ssh:policy_manage"
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     PlatformRole.PLATFORM_ADMIN.value: frozenset(
@@ -63,6 +66,9 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_COMPLIANCE_READ,
             PERM_COMPLIANCE_CATALOG_MANAGE,
             PERM_COMPLIANCE_ASSIGN,
+            PERM_SSH_CONNECT,
+            PERM_SSH_SESSION_READ,
+            PERM_SSH_POLICY_MANAGE,
         }
     ),
     OrgRole.ADMIN.value: frozenset(
@@ -76,6 +82,9 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_COMPLIANCE_READ,
             PERM_COMPLIANCE_CATALOG_MANAGE,
             PERM_COMPLIANCE_ASSIGN,
+            PERM_SSH_CONNECT,
+            PERM_SSH_SESSION_READ,
+            PERM_SSH_POLICY_MANAGE,
         }
     ),
     OrgRole.COMPLIANCE_ADMIN.value: frozenset(
@@ -100,6 +109,9 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_PROJECT_READ,
             PERM_PROJECT_MANAGE,
             PERM_PROJECT_OPERATE,
+            PERM_SSH_CONNECT,
+            PERM_SSH_SESSION_READ,
+            PERM_SSH_POLICY_MANAGE,
         }
     ),
     ProjectRole.OPERATOR.value: frozenset(
@@ -109,9 +121,23 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         {PERM_ORG_READ, PERM_PROJECT_READ, PERM_PROJECT_OPERATE}
     ),
     ProjectRole.AUDITOR.value: frozenset(
-        {PERM_ORG_READ, PERM_INVENTORY_READ, PERM_COMPLIANCE_READ}
+        {PERM_ORG_READ, PERM_INVENTORY_READ, PERM_COMPLIANCE_READ, PERM_SSH_SESSION_READ}
+    ),
+    ProjectRole.SSH_ACCESS.value: frozenset(
+        {PERM_ORG_READ, PERM_PROJECT_READ, PERM_SSH_CONNECT}
+    ),
+    ProjectRole.SECURITY_ENGINEER.value: frozenset(
+        {
+            PERM_ORG_READ,
+            PERM_PROJECT_READ,
+            PERM_SSH_CONNECT,
+            PERM_SSH_POLICY_MANAGE,
+        }
     ),
     ProjectRole.COMPLIANCE_READER.value: frozenset(
         {PERM_ORG_READ, PERM_INVENTORY_READ, PERM_COMPLIANCE_READ}
+    ),
+    ProjectRole.COMPLIANCE_ENGINEER.value: frozenset(
+        {PERM_ORG_READ, PERM_INVENTORY_READ, PERM_COMPLIANCE_READ, PERM_COMPLIANCE_ASSIGN}
     ),
 }

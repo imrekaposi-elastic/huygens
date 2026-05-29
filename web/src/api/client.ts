@@ -1247,3 +1247,70 @@ export const api = {
       { method: "PUT", body: JSON.stringify({ characteristic_ids }) },
     ),
 };
+
+export type SshSession = {
+  id: string;
+  organization_id: string;
+  project_id: string;
+  vm_name: string;
+  agent_id: string;
+  guest_ip: string;
+  linux_user: string;
+  user_id: string;
+  user_email: string;
+  user_username: string;
+  status: string;
+  started_at: string;
+  ended_at?: string;
+  recording_uri: string;
+};
+
+export async function listSshSessions(organizationId: string): Promise<SshSession[]> {
+  return request<SshSession[]>(
+    `/api/v1/ssh/sessions?organization_id=${encodeURIComponent(organizationId)}`,
+  );
+}
+
+export async function createSshSession(body: {
+  organization_id: string;
+  project_id: string;
+  vm_name: string;
+}): Promise<SshSession> {
+  return request<SshSession>("/api/v1/ssh/sessions", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteSshSession(sessionId: string): Promise<void> {
+  return request<void>(`/api/v1/ssh/sessions/${encodeURIComponent(sessionId)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function downloadSshRecording(sessionId: string): Promise<{ blob: Blob; filename: string }> {
+  const token = getAccessToken();
+  const res = await fetch(`/api/v1/ssh/sessions/${encodeURIComponent(sessionId)}/recording`, {
+    method: "GET",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (res.status === 401) {
+    clearAccessToken();
+    window.location.href = "/login";
+    throw new ApiError("Unauthorized", 401);
+  }
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      const body = (await res.json()) as { detail?: string };
+      if (body.detail) detail = body.detail;
+    } catch {
+      /* non-json */
+    }
+    throw new ApiError(detail, res.status);
+  }
+  const blob = await res.blob();
+  const filename =
+    filenameFromContentDisposition(res.headers.get("content-disposition")) ?? `${sessionId}.cast`;
+  return { blob, filename };
+}

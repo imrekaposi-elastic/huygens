@@ -21,6 +21,8 @@ Event-driven architecture for inventory updates, audit fan-out, and console live
 | `huy.agent.events` | Agents | Registry, inventory, console |
 | `huy.inventory.snapshots` | Inventory poller | Registry DB, console (SSE via broadcast consumer) |
 | `huy.network.links` | Projects (link reconciler) | None in MVP (future: audit/ES, automation) |
+| `huy.session.events` | ssh-gateway | Logstash → `huy-sessions-*` |
+| `huy.session.recording` | ssh-gateway (optional chunks) | Future: object-store ingest |
 | `huy.audit.events` | All services (audit mutations) | ES ingest (audit-ingest / Logstash) |
 
 - Payload: **CloudEvents 1.0** envelope + JSON `data` (schemas in `schemas/kafka/`).

@@ -1,0 +1,4 @@
+- pipeline.id: audit
+  path.config: "/usr/share/logstash/pipeline/logstash.conf"
+- pipeline.id: sessions
+  path.config: "/usr/share/logstash/pipeline/logstash-sessions.conf"

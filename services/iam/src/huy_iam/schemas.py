@@ -125,3 +125,120 @@ class IdpGroupsOut(BaseModel):
 
 class OidcAuthorizeOut(BaseModel):
     authorization_url: str
+
+
+# --- Phase 9 SSH policy ---
+
+
+class SshAccountMappingCreate(BaseModel):
+    user_id: str
+    linux_username: str = Field(min_length=1, max_length=64, pattern=r"^[a-z_][a-z0-9_-]*$")
+    project_id: str | None = None
+    default_shell: str = "/bin/bash"
+    auto_provision: bool = True
+
+
+class SshAccountMappingOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    organization_id: str
+    user_id: str
+    project_id: str | None
+    linux_username: str
+    default_shell: str
+    auto_provision: bool
+    created_at: datetime
+
+
+class SshAccessGroupCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    description: str | None = None
+    idp_group_name: str | None = None
+
+
+class SshAccessGroupOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    organization_id: str
+    name: str
+    description: str | None
+    idp_group_name: str | None
+    created_at: datetime
+    member_user_ids: list[str] = Field(default_factory=list)
+
+
+class SshAccessGroupMemberAdd(BaseModel):
+    user_id: str
+
+
+class SshSudoRuleCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    command_allow_list: list[str] = Field(default_factory=list)
+    sudoers_fragment: str | None = None
+    allow_root: bool = False
+
+
+class SshSudoRuleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    organization_id: str
+    name: str
+    command_allow_list: list[str]
+    sudoers_fragment: str | None
+    allow_root: bool
+    enabled: bool
+    created_at: datetime
+    group_ids: list[str] = Field(default_factory=list)
+
+
+class SshSudoRuleGroupBind(BaseModel):
+    group_id: str
+
+
+class SshCaPublicOut(BaseModel):
+    organization_id: str
+    public_key_openssh: str
+
+
+class SshAuthorizeRequest(BaseModel):
+    organization_id: str
+    project_id: str
+    vm_name: str
+    vm_assigned_to_project: bool = True
+    user_id: str
+    user_email: str = ""
+    user_username: str = ""
+    platform_roles: list[str] = Field(default_factory=list)
+    org_memberships: list[OrgMembershipOut] = Field(default_factory=list)
+    project_roles: list[ProjectRoleOut] = Field(default_factory=list)
+
+
+class SshAuthorizeResponse(BaseModel):
+    allowed: bool
+    reason: str
+    linux_username: str | None = None
+    sudoers_lines: list[str] = Field(default_factory=list)
+    ca_public_key: str | None = None
+
+
+class SshSignCertRequest(BaseModel):
+    organization_id: str
+    linux_username: str
+    session_id: str
+    public_key_openssh: str
+
+
+class SshSignCertResponse(BaseModel):
+    certificate_openssh: str
+    valid_after: int
+    valid_before: int
+
+
+class SshPolicySnapshotOut(BaseModel):
+    organization_id: str
+    ca_public_key_openssh: str
+    mappings: list[SshAccountMappingOut]
+    sudo_rules: list[SshSudoRuleOut]

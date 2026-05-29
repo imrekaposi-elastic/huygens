@@ -51,6 +51,19 @@ class Settings(BaseSettings):
     )
     kafka_client_id: str | None = Field(default=None, alias="KAFKA_CLIENT_ID")
     kafka_publish_enabled: bool = Field(default=True, alias="KAFKA_PUBLISH_ENABLED")
+    iam_service_token: str = Field(
+        default="dev-iam-service-token",
+        alias="IAM_SERVICE_TOKEN",
+    )
+    ssh_gateway_service_token: str = Field(
+        default="dev-ssh-gateway-service-token",
+        alias="SSH_GATEWAY_SERVICE_TOKEN",
+    )
+    ssh_ca_encryption_key: str = Field(
+        default="dev-ssh-ca-encryption-key-change-me-32",
+        alias="SSH_CA_ENCRYPTION_KEY",
+    )
+    ssh_cert_ttl_seconds: int = Field(default=900, alias="SSH_CERT_TTL_SECONDS")
 
 
 @lru_cache

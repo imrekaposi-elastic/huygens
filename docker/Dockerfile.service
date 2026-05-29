@@ -7,7 +7,7 @@ ARG SERVICE_DIR=services/iam
 ARG RUN_SCRIPT=huy-iam
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc libpq-dev \
+    && apt-get install -y --no-install-recommends gcc libpq-dev openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

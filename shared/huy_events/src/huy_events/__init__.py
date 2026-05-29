@@ -19,6 +19,8 @@ from huy_events.topics import (
     TOPIC_AUDIT_EVENTS,
     TOPIC_INVENTORY_SNAPSHOTS,
     TOPIC_NETWORK_LINKS,
+    TOPIC_SESSION_EVENTS,
+    TOPIC_SESSION_RECORDING,
 )
 
 __all__ = [
@@ -32,6 +34,8 @@ __all__ = [
     "TOPIC_AUDIT_EVENTS",
     "TOPIC_INVENTORY_SNAPSHOTS",
     "TOPIC_NETWORK_LINKS",
+    "TOPIC_SESSION_EVENTS",
+    "TOPIC_SESSION_RECORDING",
     "build_audit_data",
     "build_envelope",
     "configure_audit_publisher",

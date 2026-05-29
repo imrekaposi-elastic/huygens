@@ -628,6 +628,27 @@ def diagram_air_gapped() -> Diagram:
     return d
 
 
+def diagram_ssh_access() -> Diagram:
+    d = Diagram()
+    d.label("title", 40, 20, "Phase 9 — Audited SSH access", size=28)
+    d.box("cli", 40, 90, 120, 48, "huy ssh\n/ Console", bg=C_USER)
+    d.box("gw", 200, 90, 140, 56, "ssh-gateway\nrecord PTY", bg=C_SVC)
+    d.box("iam", 380, 90, 120, 48, "IAM\npolicy + CA", bg=C_SVC)
+    d.box("inv", 540, 90, 120, 48, "Inventory\ntarget", bg=C_SVC)
+    d.box("relay", 200, 190, 140, 48, "agent ssh-relay\n:9122", bg=C_AGENT)
+    d.box("vm", 380, 190, 120, 48, "Guest VM\nsshd", bg=C_INFRA)
+    d.box("kafka", 540, 190, 120, 48, "huy.session\n.events", bg=C_BUS)
+    d.box("es", 700, 190, 120, 48, "huy-sessions-*\nplayback", bg=C_DATA)
+    d.arrow("a1", "cli", "gw")
+    d.arrow("a2", "gw", "iam", label="authorize")
+    d.arrow("a3", "gw", "inv", label="resolve")
+    d.arrow("a4", "gw", "relay")
+    d.arrow("a5", "relay", "vm")
+    d.arrow("a6", "gw", "kafka")
+    d.arrow("a7", "kafka", "es")
+    return d
+
+
 DIAGRAMS = [
     ("01-system-context", diagram_system_context),
     ("02-deployment", diagram_deployment),
@@ -636,6 +657,7 @@ DIAGRAMS = [
     ("05-event-flow", diagram_event_flow),
     ("06-phase-roadmap", diagram_phases),
     ("07-air-gapped", diagram_air_gapped),
+    ("08-ssh-access", diagram_ssh_access),
 ]
 
 

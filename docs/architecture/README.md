@@ -28,6 +28,7 @@ Architecture decisions, diagrams, and contracts for the Huygens platform.
 | [0011](adrs/0011-sse-auth-via-authorization-header.md) | SSE: Bearer header only; no `EventSource ?token=` |
 | [0011](adrs/0011-keycloak-group-role-mapping.md) | Keycloak SSO and IdP group → role mapping (duplicate number — distinguish by filename) |
 | [0012](adrs/0012-hybrid-breakout-and-network-linking.md) | Phase 6: hybrid breakout, network links, topology |
+| [0014](adrs/0014-ssh-gateway-and-session-recording.md) | Phase 9: SSH gateway, relay, session recording |
 
 ## Phase map
 

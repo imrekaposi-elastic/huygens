@@ -21,6 +21,10 @@ class Settings(BaseSettings):
         default="dev-inventory-service-token",
         alias="INVENTORY_SERVICE_TOKEN",
     )
+    ssh_gateway_service_token: str = Field(
+        default="dev-ssh-gateway-service-token",
+        alias="SSH_GATEWAY_SERVICE_TOKEN",
+    )
     jwt_secret: str = Field(default="change-me-in-production", alias="JWT_SECRET")
     jwt_issuer: str = Field(default="huy-iam", alias="JWT_ISSUER")
     poll_interval_seconds: int = Field(default=30, ge=10, alias="POLL_INTERVAL_SECONDS")

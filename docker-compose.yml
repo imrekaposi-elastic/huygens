@@ -52,6 +52,9 @@ services:
       OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-http://127.0.0.1:8081/api/v1/auth/oidc/callback}
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
       KAFKA_PUBLISH_ENABLED: ${KAFKA_PUBLISH_ENABLED:-true}
+      IAM_SERVICE_TOKEN: ${IAM_SERVICE_TOKEN:-dev-iam-service-token}
+      SSH_GATEWAY_SERVICE_TOKEN: ${SSH_GATEWAY_SERVICE_TOKEN:-dev-ssh-gateway-service-token}
+      SSH_CA_ENCRYPTION_KEY: ${SSH_CA_ENCRYPTION_KEY:-dev-ssh-ca-encryption-key-change-me-32}
       OTEL_SERVICE_NAME: huy-iam
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
@@ -123,6 +126,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me-minimum-32-chars}
       JWT_ISSUER: ${JWT_ISSUER:-huy-iam}
       INVENTORY_SERVICE_TOKEN: ${INVENTORY_SERVICE_TOKEN:-dev-inventory-service-token}
+      SSH_GATEWAY_SERVICE_TOKEN: ${SSH_GATEWAY_SERVICE_TOKEN:-dev-ssh-gateway-service-token}
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
       POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-30}
       OTEL_SERVICE_NAME: huy-inventory
@@ -162,6 +166,43 @@ services:
       timeout: 5s
       retries: 6
       start_period: 5s
+
+  ssh-gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ssh-gateway
+    ports:
+      - "8087:8087"
+    volumes:
+      - huygens-ssh-recordings:/data/ssh-recordings
+    environment:
+      HUY_SSH_GATEWAY_HOST: 0.0.0.0:8087
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me-minimum-32-chars}
+      JWT_ISSUER: ${JWT_ISSUER:-huy-iam}
+      IAM_URL: http://iam:8081
+      IAM_SERVICE_TOKEN: ${IAM_SERVICE_TOKEN:-dev-iam-service-token}
+      INVENTORY_URL: http://inventory:8083
+      INVENTORY_SERVICE_TOKEN: ${INVENTORY_SERVICE_TOKEN:-dev-inventory-service-token}
+      SSH_GATEWAY_SERVICE_TOKEN: ${SSH_GATEWAY_SERVICE_TOKEN:-dev-ssh-gateway-service-token}
+      SSH_RECORDING_DIR: /data/ssh-recordings
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
+      KAFKA_PUBLISH_ENABLED: ${KAFKA_PUBLISH_ENABLED:-true}
+      OTEL_SERVICE_NAME: huy-ssh-gateway
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      iam:
+        condition: service_healthy
+      inventory:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8087/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
 
   projects:
     build:
@@ -500,12 +541,15 @@ services:
         condition: service_healthy
     volumes:
       - ./docker/observability/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ./docker/observability/logstash-sessions.conf:/usr/share/logstash/pipeline/logstash-sessions.conf:ro
+      - ./docker/observability/logstash-pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
     environment:
       LS_JAVA_OPTS: -Xms256m -Xmx256m
 
 volumes:
   huygens-pgdata:
   huygens-esdata:
+  huygens-ssh-recordings:
   huygens-seaweed-master:
   huygens-seaweed-volume:
   huygens-seaweed-filer:

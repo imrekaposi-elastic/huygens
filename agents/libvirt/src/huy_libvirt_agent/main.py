@@ -14,7 +14,8 @@ from huy_telemetry import attach_fastapi_telemetry
 from huy_libvirt_agent import __version__
 from huy_libvirt_agent.api.errors import register_exception_handlers
 from huy_libvirt_agent.api.middleware.audit import AuditMiddleware
-from huy_libvirt_agent.api.routes import agent, cloud_init, dnat, health, images, networks, vms
+from huy_libvirt_agent.api.routes import agent, cloud_init, dnat, health, images, networks, ssh, vms
+from huy_libvirt_agent.services.ssh_relay import start_relay_server
 from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.config import get_settings
 from huy_libvirt_agent.openapi_servers import openapi_servers
@@ -33,6 +34,7 @@ from huy_libvirt_agent.telemetry import setup_telemetry
 
 logger = structlog.get_logger(__name__)
 _otel_metrics_task: asyncio.Task | None = None
+_ssh_relay_server = None
 
 OPENAPI_TAGS = [
     {"name": "agent", "description": "Agent identity and settings"},
@@ -68,7 +70,7 @@ def create_app(state: AppState | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        global _otel_metrics_task
+        global _otel_metrics_task, _ssh_relay_server
         app_state = app.state.app_state
         if settings.cloud_init_validation == "schema":
             if cloud_init_schema_available():
@@ -99,7 +101,18 @@ def create_app(state: AppState | None = None) -> FastAPI:
             f"/hypervisors/{app_state.hostname}",
             {"version": __version__, "labels": settings.agent_labels},
         )
+        if settings.ssh_relay_enabled and settings.ssh_gateway_service_token:
+            _ssh_relay_server = await start_relay_server(
+                host=settings.ssh_relay_bind,
+                port=settings.ssh_relay_port,
+                secret=settings.ssh_gateway_service_token,
+                agent_id=settings.agent_id,
+            )
         yield
+        if _ssh_relay_server is not None:
+            _ssh_relay_server.close()
+            await _ssh_relay_server.wait_closed()
+            _ssh_relay_server = None
         if _otel_metrics_task is not None:
             _otel_metrics_task.cancel()
             try:
@@ -158,6 +171,7 @@ def create_app(state: AppState | None = None) -> FastAPI:
     app.include_router(images.router)
     app.include_router(cloud_init.router)
     app.include_router(vms.router)
+    app.include_router(ssh.router)
     app.include_router(networks.router)
     app.include_router(dnat.router)
 

@@ -1,0 +1,16 @@
+FROM golang:1.25-bookworm AS build
+WORKDIR /src
+COPY services/ssh-gateway/go.mod services/ssh-gateway/go.sum* ./services/ssh-gateway/
+WORKDIR /src/services/ssh-gateway
+RUN go mod download
+COPY services/ssh-gateway/ ./
+RUN CGO_ENABLED=0 go build -o /huy-ssh-gateway ./cmd/huy-ssh-gateway
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget \
+    && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /data/ssh-recordings && chmod 750 /data/ssh-recordings
+COPY --from=build /huy-ssh-gateway /usr/local/bin/huy-ssh-gateway
+EXPOSE 8087
+VOLUME ["/data/ssh-recordings"]
+ENTRYPOINT ["/usr/local/bin/huy-ssh-gateway"]

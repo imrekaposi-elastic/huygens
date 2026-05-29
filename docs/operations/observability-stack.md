@@ -32,7 +32,7 @@ Pinned in [compose.env.example](../../compose.env.example): `ELASTIC_STACK_VERSI
 2. Open Kibana → **Discover** → data view `huy-audit-*` (create if prompted).
 3. Filter `event_kind: audit` or `audit_action: *`.
 
-Audit remains **durable in PostgreSQL** first; Kafka + ES is the search plane ([ADR 0004](../architecture/adrs/0004-kafka-event-bus.md)).
+Audit remains **durable in PostgreSQL** first; Kafka + ES is the search plane ([ADR 0004](../architecture/adrs/0004-kafka-event-bus.md)). SSH sessions use `huy.session.events` → `huy-sessions-*` ([ADR 0014](../architecture/adrs/0014-ssh-gateway-and-session-recording.md)).
 
 ## OTLP (Phase 8)
 

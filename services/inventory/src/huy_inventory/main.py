@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from huy_telemetry import attach_fastapi_telemetry, prepare_service_telemetry
 
 from huy_inventory import __version__
-from huy_inventory.api.routes import events, health, internal, inventory
+from huy_inventory.api.routes import events, health, internal, inventory, ssh_internal
 from huy_inventory.config import get_settings
 from huy_inventory.db import dispose_db, get_engine, get_session_factory, init_db
 from huy_inventory.models import Base
@@ -89,6 +89,7 @@ def create_app() -> FastAPI:
     attach_fastapi_telemetry(app, export_enabled=otel_export)
     app.include_router(health.router)
     app.include_router(internal.router)
+    app.include_router(ssh_internal.router)
     app.include_router(inventory.router)
     app.include_router(events.router)
     return app

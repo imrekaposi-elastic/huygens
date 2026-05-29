@@ -182,3 +182,118 @@ class OidcLoginState(Base):
         ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class SshOrgCa(Base):
+    """Per-organization SSH certificate authority (Phase 9)."""
+
+    __tablename__ = "ssh_org_cas"
+
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), primary_key=True
+    )
+    public_key_openssh: Mapped[str] = mapped_column(Text, nullable=False)
+    private_key_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SshAccountMapping(Base):
+    __tablename__ = "ssh_account_mappings"
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id",
+            "user_id",
+            "project_id",
+            name="uq_ssh_account_mapping",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    linux_username: Mapped[str] = mapped_column(String(64), nullable=False)
+    default_shell: Mapped[str] = mapped_column(String(128), nullable=False, default="/bin/bash")
+    auto_provision: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class SshAccessGroup(Base):
+    __tablename__ = "ssh_access_groups"
+    __table_args__ = (UniqueConstraint("organization_id", "name", name="uq_ssh_access_group_name"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    idp_group_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    members: Mapped[list[SshAccessGroupMember]] = relationship(
+        back_populates="group", cascade="all, delete-orphan"
+    )
+    sudo_bindings: Mapped[list[SshSudoRuleGroupBinding]] = relationship(
+        back_populates="group", cascade="all, delete-orphan"
+    )
+
+
+class SshAccessGroupMember(Base):
+    __tablename__ = "ssh_access_group_members"
+    __table_args__ = (UniqueConstraint("group_id", "user_id", name="uq_ssh_group_member"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    group_id: Mapped[str] = mapped_column(
+        ForeignKey("ssh_access_groups.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    group: Mapped[SshAccessGroup] = relationship(back_populates="members")
+
+
+class SshSudoRule(Base):
+    __tablename__ = "ssh_sudo_rules"
+    __table_args__ = (UniqueConstraint("organization_id", "name", name="uq_ssh_sudo_rule_name"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    sudoers_fragment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    command_allow_list: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    allow_root: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    group_bindings: Mapped[list[SshSudoRuleGroupBinding]] = relationship(
+        back_populates="rule", cascade="all, delete-orphan"
+    )
+
+
+class SshSudoRuleGroupBinding(Base):
+    __tablename__ = "ssh_sudo_rule_group_bindings"
+    __table_args__ = (UniqueConstraint("rule_id", "group_id", name="uq_ssh_sudo_rule_group"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    rule_id: Mapped[str] = mapped_column(
+        ForeignKey("ssh_sudo_rules.id", ondelete="CASCADE"), nullable=False
+    )
+    group_id: Mapped[str] = mapped_column(
+        ForeignKey("ssh_access_groups.id", ondelete="CASCADE"), nullable=False
+    )
+
+    rule: Mapped[SshSudoRule] = relationship(back_populates="group_bindings")
+    group: Mapped[SshAccessGroup] = relationship(back_populates="sudo_bindings")

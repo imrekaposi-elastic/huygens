@@ -12,6 +12,8 @@ TOPICS=(
   huy.inventory.snapshots
   huy.audit.events
   huy.network.links
+  huy.session.events
+  huy.session.recording
 )
 
 echo "Ensuring Kafka topics on ${BOOTSTRAP} (partitions=${PARTITIONS}, replication=${REPLICATION})"

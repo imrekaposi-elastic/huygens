@@ -18,6 +18,7 @@ CloudEvents 1.0 envelope with JSON `data` payloads. Producers set:
 | `huy.inventory.snapshots` | [inventory-snapshot.schema.json](inventory-snapshot.schema.json) |
 | `huy.network.links` | [com.huygens.network.link.v1.json](com.huygens.network.link.v1.json) |
 | `huy.audit.events` | [audit-event.schema.json](audit-event.schema.json) |
+| `huy.session.events` | [session-event.schema.json](session-event.schema.json) |
 
 Producers: compliance (PG + Kafka), IAM, registry via [`shared/huy_events`](../../shared/huy_events). Platform-scoped actions (global infrastructure catalog) use `organization_id` `00000000-0000-0000-0000-000000000001` (`PLATFORM_AUDIT_ORG_ID`). Ingest to Elasticsearch: `docker compose --profile observability` + Logstash — see [observability-stack.md](../../docs/operations/observability-stack.md).
 

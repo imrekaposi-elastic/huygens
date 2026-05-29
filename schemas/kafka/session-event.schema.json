@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://huygens.dev/schemas/kafka/session-event.schema.json",
+  "title": "HuygensSessionEventData",
+  "description": "CloudEvents data payload for huy.session.events",
+  "type": "object",
+  "required": ["version", "session_id", "organization_id", "action", "timestamp"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "session_id": { "type": "string" },
+    "organization_id": { "type": "string", "format": "uuid" },
+    "project_id": { "type": "string" },
+    "vm_name": { "type": "string" },
+    "agent_id": { "type": "string" },
+    "user_id": { "type": "string" },
+    "user_email": { "type": "string" },
+    "linux_user": { "type": "string" },
+    "action": { "type": "string", "enum": ["session.open", "session.close", "session.chunk"] },
+    "recording_uri": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}
