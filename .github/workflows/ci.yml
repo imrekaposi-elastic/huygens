@@ -57,25 +57,24 @@ jobs:
         run: make ${{ matrix.target }}
 
   integration:
-    name: Integration (${{ matrix.service }})
+  # One Compose stack for all integration tests (avoids Docker Hub rate limits from
+  # parallel matrix jobs each pulling postgres, kafka, seaweedfs, etc.).
+    name: Integration tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        service:
-          - stack
-          - iam
-          - registry
-          - inventory
-          - projects
-          - web
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Log in to Docker Hub
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Prepare Compose env
         run: cp compose.env.example .env
@@ -86,8 +85,23 @@ jobs:
       - name: Wait for healthy services
         run: bash scripts/wait-for-stack.sh
 
-      - name: Run integration tests
-        run: make test-integration-${{ matrix.service }}
+      - name: Integration (stack)
+        run: make test-integration-stack
+
+      - name: Integration (iam)
+        run: make test-integration-iam
+
+      - name: Integration (registry)
+        run: make test-integration-registry
+
+      - name: Integration (inventory)
+        run: make test-integration-inventory
+
+      - name: Integration (projects)
+        run: make test-integration-projects
+
+      - name: Integration (web)
+        run: make test-integration-web
 
       - name: Compose logs on failure
         if: failure()

@@ -103,4 +103,4 @@ Requires **one connected agent** with two vnets on **different projects** (or sa
 
 ## CI
 
-Every PR and push to `main` runs one integration job per service (`make test-integration-<service>`) after the Compose stack is healthy (`scripts/wait-for-stack.sh`). See [docs/testing.md](../docs/testing.md).
+Every PR and push to `main` starts **one** Compose stack, then runs `make test-integration-<service>` in separate CI steps (same runner — avoids Docker Hub rate limits from parallel pulls). See [docs/testing.md](../docs/testing.md).

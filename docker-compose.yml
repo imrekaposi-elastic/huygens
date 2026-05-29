@@ -13,7 +13,8 @@ name: huygens
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # AWS public ECR mirror of Docker Official Images (avoids Hub rate limits in CI).
+    image: public.ecr.aws/docker/library/postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-huy}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-huy}
@@ -368,7 +369,7 @@ services:
 
   # One-shot: create the default dev bucket and keep it private.
   seaweed-init:
-    image: amazon/aws-cli:2.24.0
+    image: public.ecr.aws/aws-cli/aws-cli:2.24.0
     depends_on:
       seaweed-s3:
         condition: service_started

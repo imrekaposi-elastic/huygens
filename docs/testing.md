@@ -7,7 +7,9 @@ GitHub Actions workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml
 | Job | Command | Notes |
 |-----|---------|--------|
 | **unit** (`Unit (test-*)`) | `make test-<target>` | One job per shared lib, Python service, Go service, and console |
-| **integration** (`Integration (<service>)`) | `make test-integration-<service>` | Compose stack per job; `stack`, `iam`, `registry`, `inventory`, `projects`, `web` |
+| **integration** | `make test-integration-<service>` | One Compose stack per workflow run; separate CI steps per service (`stack`, `iam`, `registry`, `inventory`, `projects`, `web`) |
+
+Optional: set repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` for authenticated pulls (`apache/kafka`, `chrislusf/seaweedfs` still use Docker Hub).
 
 Reproduce CI locally:
 
