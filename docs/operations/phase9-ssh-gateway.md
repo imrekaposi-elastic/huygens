@@ -16,7 +16,7 @@ Operational guide for Phase 9 **audited VM SSH**. Architecture: [ADR 0014](../ar
 
 ```bash
 docker compose up -d --build ssh-gateway iam inventory projects web
-# Hypervisor: upgrade libvirt agent (ssh-relay on 9122)
+# Hypervisor: upgrade libvirt agent (ssh-relay + WebSocket relay on :8765/api/v1/ssh/relay/ws)
 # Optional ES ingest:
 docker compose --profile observability up -d logstash
 ```
@@ -28,7 +28,12 @@ docker compose --profile observability up -d logstash
 1. **Org SSH CA** — auto-created on first `GET /api/v1/organizations/{org}/ssh/ca`.
 2. **Account mapping** — `POST .../ssh/account-mappings` maps Huygens user → `linux_username`.
 3. **Access group** — bind users or IdP group names; attach **sudo rules** with command allow lists.
-4. **VM trust** — console **SSH trust** on project VM row (`POST .../ssh-trust/setup` via projects → IAM CA + agent), agent `PUT /api/v1/vms/{name}/ssh-trust`, or cloud-init on create.
+4. **VM trust**
+   - **New VMs:** projects merges org SSH CA + linux user into cloud-init on create.
+   - **Existing VMs (any hypervisor):** download **Onboard script** from the console or
+     `GET .../vms/{name}/guest-onboard` — run the script **on the guest as root** via your
+     own admin path (console, CM, break-glass SSH). See [scripts/guest/README.md](../../scripts/guest/README.md).
+   - Optional profile: `agents/libvirt/templates/cloud-init/huy-ssh-access.yaml`.
 5. **Project RBAC** — grant `ssh_access` role on the project.
 
 **Dev bootstrap (one shot):**
@@ -57,7 +62,9 @@ export HUY_SSH_GATEWAY_URL=http://127.0.0.1:5173   # Vite dev, or :8087 direct
 ### Console
 
 1. **Projects** → select project → **VMs** → **Connect** (audited terminal).
-2. **SSH access** → session list, replay download, **Open** on active sessions.
+2. **SSH access** → session list, **Play** (in-browser asciicast), **Download**, **Open** on active sessions.
+3. **New VMs:** cloud-init profile + **Merge org SSH CA** (default on).
+4. **Existing VMs:** **Onboard script** → copy to guest → `sudo bash huy-ssh-onboard-*.sh` (works on any hypervisor).
 
 ## Session pipeline
 

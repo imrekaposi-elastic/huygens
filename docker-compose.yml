@@ -218,6 +218,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-huy}:${POSTGRES_PASSWORD:-huy}@postgres:5432/${POSTGRES_DB:-huy}
       REGISTRY_URL: http://registry:8082
       IAM_URL: http://iam:8081
+      DEFAULT_SSH_LINUX_USERNAME: ${DEFAULT_SSH_LINUX_USERNAME:-huygens}
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me-minimum-32-chars}
       JWT_ISSUER: ${JWT_ISSUER:-huy-iam}
       AGENT_TOKEN_ENCRYPTION_KEY: ${AGENT_TOKEN_ENCRYPTION_KEY:-dev-agent-token-encryption-key-change-me}

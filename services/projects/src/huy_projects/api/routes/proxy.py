@@ -63,6 +63,34 @@ async def setup_vm_ssh_trust(
     )
 
 
+@router.get("/vms/{name}/guest-onboard")
+async def get_vm_guest_onboard(
+    project: ReadableProjectDep,
+    agent_id: str,
+    name: str,
+    user: CurrentUserDep,
+    session: SessionDep,
+    settings: SettingsDep,
+    bearer: BearerTokenDep,
+    linux_username: str | None = None,
+) -> dict[str, Any]:
+    """Hypervisor-agnostic guest onboarding script (run on the VM as root)."""
+    authorization.require_ssh_trust_setup(user, project)
+    await project_scope.require_resource_in_project(
+        session, project, agent_id=agent_id, resource_type="vm", name=name
+    )
+    return await ssh_trust_service.get_vm_guest_onboard_bundle(
+        settings,
+        organization_id=project.organization_id,
+        project_id=project.id,
+        project_name=project.name,
+        user_id=user.user_id,
+        bearer_token=bearer,
+        vm_name=name,
+        linux_username=linux_username,
+    )
+
+
 @router.put("/vms/{name}/ssh-trust", response_model=dict[str, Any])
 async def apply_vm_ssh_trust(
     project: ReadableProjectDep,
@@ -120,9 +148,19 @@ async def create_vm(
     user: CurrentUserDep,
     proxy: AgentProxyDep,
     session: SessionDep,
+    settings: SettingsDep,
+    bearer: BearerTokenDep,
     body: dict[str, Any] = Body(...),
 ) -> dict[str, Any]:
     authorization.require_project_operate(user, project)
+    body = await ssh_trust_service.inject_ssh_trust_into_vm_create(
+        settings,
+        organization_id=project.organization_id,
+        project_id=project.id,
+        user_id=user.user_id,
+        bearer_token=bearer,
+        body=dict(body),
+    )
     result = await proxy.create_vm(agent_id, project.organization_id, body)
     await desired_state.upsert_desired_state(
         session,

@@ -1273,6 +1273,31 @@ export const api = {
       `/api/v1/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}/vms/${encodeURIComponent(vmName)}/ssh-trust/setup`,
       { method: "POST", body: JSON.stringify(body) },
     ),
+
+  getVmGuestOnboard: (
+    projectId: string,
+    agentId: string,
+    vmName: string,
+    linuxUsername?: string,
+  ) => {
+    const q = linuxUsername
+      ? `?linux_username=${encodeURIComponent(linuxUsername)}`
+      : "";
+    return request<GuestOnboardBundle>(
+      `/api/v1/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}/vms/${encodeURIComponent(vmName)}/guest-onboard${q}`,
+    );
+  },
+};
+
+export type GuestOnboardBundle = {
+  organization_id: string;
+  vm_name?: string | null;
+  project_name?: string | null;
+  linux_username: string;
+  ca_public_key_openssh: string;
+  filename: string;
+  script: string;
+  instructions: string;
 };
 
 export type SshSession = {

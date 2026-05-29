@@ -14,6 +14,7 @@ type Session struct {
 	GuestIP        string     `json:"guest_ip"`
 	RelayHost      string     `json:"relay_host"`
 	RelayPort      int        `json:"relay_port"`
+	RelayWSURL     string     `json:"relay_ws_url"`
 	LinuxUser      string     `json:"linux_user"`
 	UserID         string     `json:"user_id"`
 	UserEmail      string     `json:"user_email"`

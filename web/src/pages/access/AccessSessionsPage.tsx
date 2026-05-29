@@ -69,8 +69,9 @@ export function AccessSessionsPage() {
         SSH sessions
       </h1>
       <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
-        Audited VM access via ssh-gateway. Recordings are stored for playback and indexed in
-        Elasticsearch (<code className="text-xs">huy-sessions-*</code>).
+        Audited VM access via ssh-gateway. Use <strong>Play</strong> for in-browser replay or{" "}
+        <strong>Download</strong> for the raw asciicast file. Indexed in Elasticsearch (
+        <code className="text-xs">huy-sessions-*</code>).
       </p>
       {error && (
         <p className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
@@ -117,14 +118,21 @@ export function AccessSessionsPage() {
                     <span className="text-slate-400">—</span>
                   )}
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-4 py-2 space-x-3">
+                  <Link
+                    to="/access/recording/$sessionId"
+                    params={{ sessionId: s.id }}
+                    className="text-emerald-600 hover:underline dark:text-emerald-400"
+                  >
+                    Play
+                  </Link>
                   <button
                     type="button"
-                    className="text-emerald-600 hover:underline disabled:opacity-50 dark:text-emerald-400"
+                    className="text-slate-600 hover:underline disabled:opacity-50 dark:text-slate-400"
                     disabled={downloadingId === s.id}
                     onClick={() => void handleDownload(s.id)}
                   >
-                    {downloadingId === s.id ? "Downloading…" : "asciicast"}
+                    {downloadingId === s.id ? "Downloading…" : "Download"}
                   </button>
                 </td>
                 <td className="px-4 py-2">

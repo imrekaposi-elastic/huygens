@@ -6,6 +6,7 @@ import { canAccessCompliance, canConnectSsh } from "@/auth/permissions";
 import { getAccessToken, isPlatformAdmin } from "@/auth/token";
 import { api, createSshSession } from "@/api/client";
 import { isSshReachable } from "@/lib/vmStatus";
+import { explainSshSessionError } from "@/lib/sshErrors";
 import { PlacementRationaleDialog } from "@/components/compliance/PlacementRationaleDialog";
 import { ResourceCriticalityDialog } from "@/components/compliance/ResourceCriticalityDialog";
 import { VmIcon } from "@/components/icons/NavIcons";
@@ -30,7 +31,6 @@ export function ProjectVmsTab({ projectId }: Props) {
   const [criticalityVm, setCriticalityVm] = useState<string | null>(null);
   const [sshError, setSshError] = useState<string | null>(null);
   const [connectingVm, setConnectingVm] = useState<string | null>(null);
-  const [trustVm, setTrustVm] = useState<string | null>(null);
 
   const project = useQuery({
     queryKey: ["project", projectId],
@@ -60,20 +60,26 @@ export function ProjectVmsTab({ projectId }: Props) {
     onSuccess: invalidate,
   });
 
-  const applyTrust = useMutation({
-    mutationFn: async (vmName: string) => {
-      if (!user) throw new Error("Missing user");
-      const linuxUser =
-        window.prompt("Linux username for SSH on guest:", user.username) ?? user.username;
-      if (!linuxUser.trim()) throw new Error("Linux username is required");
-      return api.setupVmSshTrust(projectId, agentId, vmName, {
-        linux_username: linuxUser.trim(),
-        sudoers_lines: [],
-      });
-    },
-    onSuccess: () => setTrustVm(null),
-    onError: (e: Error) => setSshError(e.message),
-  });
+  const [downloadingOnboard, setDownloadingOnboard] = useState<string | null>(null);
+
+  const downloadOnboard = async (vmName: string) => {
+    setSshError(null);
+    setDownloadingOnboard(vmName);
+    try {
+      const bundle = await api.getVmGuestOnboard(projectId, agentId, vmName);
+      const blob = new Blob([bundle.script], { type: "application/x-sh" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = bundle.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setSshError(e instanceof Error ? e.message : "Onboard script download failed");
+    } finally {
+      setDownloadingOnboard(null);
+    }
+  };
 
   async function connectSsh(vmName: string) {
     if (!organizationId) return;
@@ -90,7 +96,8 @@ export function ProjectVmsTab({ projectId }: Props) {
         params: { sessionId: session.id },
       });
     } catch (e) {
-      setSshError(e instanceof Error ? e.message : "SSH connect failed");
+      const msg = e instanceof Error ? e.message : "SSH connect failed";
+      setSshError(explainSshSessionError(msg));
     } finally {
       setConnectingVm(null);
     }
@@ -161,14 +168,12 @@ export function ProjectVmsTab({ projectId }: Props) {
                       </button>
                       <button
                         type="button"
-                        disabled={applyTrust.isPending && trustVm === name}
-                        onClick={() => {
-                          setTrustVm(name);
-                          applyTrust.mutate(name);
-                        }}
+                        disabled={downloadingOnboard === name}
+                        title="Download script to run on guest as root (any hypervisor)"
+                        onClick={() => void downloadOnboard(name)}
                         className="rounded border border-slate-400/50 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                       >
-                        {applyTrust.isPending && trustVm === name ? "Applying…" : "SSH trust"}
+                        {downloadingOnboard === name ? "Preparing…" : "Onboard script"}
                       </button>
                     </>
                   )}

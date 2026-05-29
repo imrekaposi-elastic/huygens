@@ -5,10 +5,28 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import jwt
+import respx
+from httpx import Response
 
 SECRET = "test-jwt-secret-key-minimum-32-bytes!"
 ISSUER = "huy-iam"
 ORG_ID = "11111111-1111-1111-1111-111111111111"
+
+
+def mock_iam_ssh_trust(org_id: str) -> None:
+    """Stub IAM SSH CA + account mappings for VM create (ssh_trust injection)."""
+    respx.get(f"http://iam.test/api/v1/organizations/{org_id}/ssh/account-mappings").mock(
+        return_value=Response(200, json=[])
+    )
+    respx.get(f"http://iam.test/api/v1/organizations/{org_id}/ssh/ca").mock(
+        return_value=Response(
+            200,
+            json={
+                "organization_id": org_id,
+                "public_key_openssh": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAItestca huy-ssh-ca",
+            },
+        )
+    )
 
 
 def platform_token() -> str:

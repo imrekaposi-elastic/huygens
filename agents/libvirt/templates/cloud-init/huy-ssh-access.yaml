@@ -1,0 +1,8 @@
+# Optional cloud-init profile for new VMs (org SSH CA is merged automatically at create).
+# Register on the agent: POST /api/v1/cloud-init  name: huy-ssh-access
+#cloud-config
+users:
+  - name: huygens
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+ssh_pwauth: false

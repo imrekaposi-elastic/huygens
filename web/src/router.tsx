@@ -33,6 +33,7 @@ import { AdminAuthenticationTab } from "@/pages/admin/AdminAuthenticationTab";
 import { AdminRbacTab } from "@/pages/admin/AdminRbacTab";
 import { AccessSessionsPage } from "@/pages/access/AccessSessionsPage";
 import { SshTerminalPage } from "@/pages/access/SshTerminalPage";
+import { SshRecordingPage } from "@/pages/access/SshRecordingPage";
 
 const rootRoute = createRootRoute({ component: RootLayout });
 
@@ -207,6 +208,12 @@ const accessTerminalRoute = createRoute({
   component: SshTerminalPage,
 });
 
+const accessRecordingRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/access/recording/$sessionId",
+  component: SshRecordingPage,
+});
+
 const projectsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/projects",
@@ -313,6 +320,7 @@ const routeTree = rootRoute.addChildren([
     topologyRoute,
     accessRoute,
     accessTerminalRoute,
+    accessRecordingRoute,
     adminRoute.addChildren([
       adminIndexRoute,
       adminFabricRoute,

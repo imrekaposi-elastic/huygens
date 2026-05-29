@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     jwt_issuer: str = Field(default="huy-iam", alias="JWT_ISSUER")
     registry_url: str = Field(default="http://127.0.0.1:8082", alias="REGISTRY_URL")
     iam_url: str = Field(default="http://127.0.0.1:8081", alias="IAM_URL")
+    default_ssh_linux_username: str = Field(
+        default="huygens",
+        alias="DEFAULT_SSH_LINUX_USERNAME",
+        description="Linux account merged into cloud-init when no IAM account mapping exists",
+    )
     projects_service_token: str = Field(
         default="dev-projects-service-token",
         alias="PROJECTS_SERVICE_TOKEN",

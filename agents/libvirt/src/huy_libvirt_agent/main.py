@@ -14,7 +14,7 @@ from huy_telemetry import attach_fastapi_telemetry
 from huy_libvirt_agent import __version__
 from huy_libvirt_agent.api.errors import register_exception_handlers
 from huy_libvirt_agent.api.middleware.audit import AuditMiddleware
-from huy_libvirt_agent.api.routes import agent, cloud_init, dnat, health, images, networks, ssh, vms
+from huy_libvirt_agent.api.routes import agent, cloud_init, dnat, health, images, networks, ssh, ssh_relay_ws, vms
 from huy_libvirt_agent.services.ssh_relay import start_relay_server
 from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.config import get_settings
@@ -178,6 +178,7 @@ def create_app(state: AppState | None = None) -> FastAPI:
     app.include_router(cloud_init.router)
     app.include_router(vms.router)
     app.include_router(ssh.router)
+    app.include_router(ssh_relay_ws.router)
     app.include_router(networks.router)
     app.include_router(dnat.router)
 

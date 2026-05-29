@@ -40,7 +40,7 @@ Client → ssh-gateway → agent:9122 (relay) → VM:22
 
 - One Ed25519 **org SSH CA** per organization (private key encrypted at rest in IAM).
 - New VMs: cloud-init `#cloud-config` `ssh_ca` / `TrustedUserCAKeys` + users + sudoers from policy snapshot.
-- Existing VMs: agent `PUT /api/v1/vms/{name}/ssh-trust` (internal token) merges trust config.
+- Existing VMs: run the **guest onboard script** (`shared/huy_ssh_onboard`, API `.../ssh/guest-onboard`) on the workload — hypervisor-agnostic. Agent `PUT .../ssh-trust` stores a libvirt-local snippet only.
 - Gateway signs short-lived user certificates (≤15 min) via IAM internal `sign-cert` API.
 
 ### Session pipeline

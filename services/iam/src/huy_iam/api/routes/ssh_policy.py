@@ -44,6 +44,42 @@ async def get_ssh_ca(
     return SshCaPublicOut(organization_id=organization_id, public_key_openssh=ca.public_key_openssh)
 
 
+@router.get("/{organization_id}/ssh/guest-onboard")
+async def get_guest_onboard_bundle(
+    organization_id: str,
+    user: CurrentUserDep,
+    session: SessionDep,
+    linux_username: str | None = None,
+    vm_name: str | None = None,
+) -> dict:
+    """Hypervisor-agnostic script to run on an existing Linux guest (any platform)."""
+    from huy_iam.config import get_settings
+    from huy_ssh_onboard import build_guest_onboard_bundle
+
+    if not user.can_access_org(organization_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    settings = get_settings()
+    ca = await ssh_ca_service.ensure_org_ca(session, settings, organization_id)
+    resolved = linux_username
+    if not resolved:
+        mapping = await ssh_policy_service.resolve_linux_username(
+            session,
+            organization_id=organization_id,
+            user_id=user.user_id,
+            project_id=None,
+        )
+        resolved = mapping.linux_username if mapping else None
+    if not resolved:
+        resolved = "huygens"
+    await session.commit()
+    return build_guest_onboard_bundle(
+        ca_public_key_openssh=ca.public_key_openssh,
+        linux_username=resolved,
+        organization_id=organization_id,
+        vm_name=vm_name,
+    )
+
+
 @router.get("/{organization_id}/ssh/account-mappings", response_model=list[SshAccountMappingOut])
 async def list_mappings(
     organization_id: str,

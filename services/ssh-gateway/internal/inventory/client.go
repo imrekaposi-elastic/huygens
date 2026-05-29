@@ -26,6 +26,7 @@ type SSHTarget struct {
 	GuestIP        string   `json:"guest_ip"`
 	RelayHost      string   `json:"relay_host"`
 	RelayPort      int      `json:"relay_port"`
+	RelayWSURL     string   `json:"relay_ws_url"`
 	SSHReady       bool     `json:"ssh_ready"`
 	IPs            []string `json:"ips"`
 }

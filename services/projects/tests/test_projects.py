@@ -6,7 +6,7 @@ import pytest
 import respx
 from httpx import AsyncClient, Response
 
-from helpers import auditor_token, operator_token, org_admin_token, platform_token
+from helpers import auditor_token, mock_iam_ssh_trust, operator_token, org_admin_token, platform_token
 
 ORG_ID = "11111111-1111-1111-1111-111111111111"
 
@@ -142,6 +142,7 @@ async def test_operator_can_proxy_list_vms(client: AsyncClient) -> None:
     respx.get("https://agent.test/api/v1/vms").mock(
         return_value=Response(200, json=[{"name": "web-01", "status": "on"}])
     )
+    mock_iam_ssh_trust(ORG_ID)
     respx.post("https://agent.test/api/v1/vms").mock(
         return_value=Response(201, json={"name": "web-01", "status": "on"})
     )
@@ -283,6 +284,7 @@ async def test_internal_resource_assignments(client: AsyncClient) -> None:
             },
         )
     )
+    mock_iam_ssh_trust(ORG_ID)
     respx.post("https://agent.test/api/v1/vms").mock(
         return_value=Response(201, json={"name": "web-01", "status": "on"})
     )
@@ -407,6 +409,7 @@ async def test_vm_not_visible_in_other_project(client: AsyncClient) -> None:
     respx.get("https://agent.test/api/v1/vms").mock(
         return_value=Response(200, json=[{"name": "shared-vm", "status": "on"}])
     )
+    mock_iam_ssh_trust(ORG_ID)
     respx.post("https://agent.test/api/v1/vms").mock(
         return_value=Response(201, json={"name": "shared-vm", "status": "on"})
     )

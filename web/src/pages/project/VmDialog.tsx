@@ -25,6 +25,7 @@ export function VmDialog({ open, mode, projectId, agentId, initial, onClose, onS
   const [memoryMib, setMemoryMib] = useState("2048");
   const [autostart, setAutostart] = useState(false);
   const [start, setStart] = useState(true);
+  const [mergeAuditedSsh, setMergeAuditedSsh] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
   const profiles = useQuery({
@@ -89,6 +90,7 @@ export function VmDialog({ open, mode, projectId, agentId, initial, onClose, onS
       setMemoryMib("2048");
       setAutostart(false);
       setStart(true);
+      setMergeAuditedSsh(true);
     }
   }, [open, mode, initial]);
 
@@ -110,6 +112,7 @@ export function VmDialog({ open, mode, projectId, agentId, initial, onClose, onS
           vcpu: parseInt(vcpu, 10) || 2,
           memory_mib: parseInt(memoryMib, 10) || 2048,
           start,
+          skip_ssh_trust: !mergeAuditedSsh,
         });
       }
       return api.patchVm(projectId, agentId, name, {
@@ -239,6 +242,10 @@ export function VmDialog({ open, mode, projectId, agentId, initial, onClose, onS
                   </option>
                 ))}
               </select>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
+                Tip: use profile <code className="font-mono">huy-ssh-access</code> (see agent template) for
+                the audited linux user. Org SSH CA is merged into cloud-init automatically on create.
+              </p>
             </label>
             <label className="block text-sm">
               Network
@@ -279,6 +286,14 @@ export function VmDialog({ open, mode, projectId, agentId, initial, onClose, onS
                 />
               </label>
             </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={mergeAuditedSsh}
+                onChange={(e) => setMergeAuditedSsh(e.target.checked)}
+              />
+              Merge org SSH CA for audited Connect (IAM-signed certs; no passwords)
+            </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={start} onChange={(e) => setStart(e.target.checked)} />
               Start after create

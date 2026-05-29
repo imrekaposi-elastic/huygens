@@ -20,6 +20,14 @@ def _relay_host_from_agent_url(base_url: str) -> str:
     return "127.0.0.1"
 
 
+def _relay_ws_url_from_agent_url(base_url: str) -> str:
+    parsed = urlparse(base_url)
+    if not parsed.scheme or not parsed.netloc:
+        return ""
+    scheme = "wss" if parsed.scheme == "https" else "ws"
+    return f"{scheme}://{parsed.netloc}/api/v1/ssh/relay/ws"
+
+
 async def resolve_ssh_target(
     session: AsyncSession,
     settings: Settings,
@@ -63,6 +71,7 @@ async def resolve_ssh_target(
         raise HTTPException(status_code=404, detail="Agent not registered")
 
     relay_host = _relay_host_from_agent_url(agent_meta.get("base_url", ""))
+    relay_ws_url = _relay_ws_url_from_agent_url(agent_meta.get("base_url", ""))
     ssh_ready = vm.guest_status in ("running", "ready", None) and bool(guest_ip)
 
     return {
@@ -73,6 +82,7 @@ async def resolve_ssh_target(
         "guest_ip": guest_ip,
         "relay_host": relay_host,
         "relay_port": 9122,
+        "relay_ws_url": relay_ws_url,
         "ssh_ready": ssh_ready,
         "ips": vm.ips,
     }

@@ -21,6 +21,7 @@ type SessionTarget struct {
 	GuestIP        string
 	RelayHost      string
 	RelayPort      int
+	RelayWSURL     string
 	LinuxUser      string
 }
 
@@ -36,6 +37,7 @@ func BridgeWebSocket(
 	relayConn, err := relay.DialRelaySSH(
 		target.RelayHost,
 		target.RelayPort,
+		target.RelayWSURL,
 		relaySecret,
 		target.SessionID,
 		target.AgentID,

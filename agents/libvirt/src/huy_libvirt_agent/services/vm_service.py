@@ -22,6 +22,7 @@ from huy_libvirt_agent.services.image_store import ImageStore
 from huy_libvirt_agent.services.libvirt_client import LibvirtError
 from huy_libvirt_agent.services.metadata import read_metadata, write_metadata
 from huy_libvirt_agent.services.path_safety import safe_child_dir
+from huy_libvirt_agent.services.ssh_trust import build_ssh_trust_cloud_config, merge_cloud_config_user_data
 
 
 class VMService:
@@ -88,6 +89,22 @@ class VMService:
             last_checked_at=st.get("last_checked_at"),
         )
 
+    def _trust_user_data(self, body: VMCreateRequest) -> str | None:
+        if body.skip_ssh_trust or body.ssh_trust is None:
+            return None
+        trust = body.ssh_trust
+        return build_ssh_trust_cloud_config(
+            ca_public_key_openssh=trust.ca_public_key_openssh,
+            linux_username=trust.linux_username,
+            sudoers_lines=trust.sudoers_lines,
+            default_shell=trust.default_shell,
+        )
+
+    def _persist_ssh_trust_snippet(self, vm_name: str, snippet: str) -> None:
+        trust_dir = self._state.settings.data_dir / "ssh-trust" / vm_name
+        trust_dir.mkdir(parents=True, exist_ok=True)
+        (trust_dir / "cloud-config.yaml").write_text(snippet, encoding="utf-8")
+
     def create_vm(self, body: VMCreateRequest, correlation_id: str | None = None) -> VMResponse:
         inst = self._instance_dir(body.name)
         if inst.exists():
@@ -99,39 +116,54 @@ class VMService:
             base = self._images.resolve_base_image(body.image)  # type: ignore[arg-type]
         disk = self._images.create_overlay(base, inst / "disk.qcow2")
         iso_path = inst / "cidata.iso"
+        trust_user_data = self._trust_user_data(body)
         if body.cloud_init_profile:
             profile = self._cloudinit_profiles.get_profile(body.cloud_init_profile)
             merged_keys = list(profile.ssh_keys) + list(body.ssh_keys)
+            user_data = profile.user_data
+            meta_data = profile.meta_data
+            network_config = profile.network_config
+            if trust_user_data:
+                user_data = merge_cloud_config_user_data(user_data, trust_user_data)
             self._cloudinit_profiles.validate_payload(
-                profile.user_data,
-                profile.meta_data,
-                profile.network_config,
+                user_data,
+                meta_data,
+                network_config,
+                merged_keys,
+            )
+            meta_data_final = meta_data
+            if "instance-id:" not in meta_data_final:
+                meta_data_final = f"instance-id: {body.name}\nlocal-hostname: {body.name}\n"
+            iso = CloudInitBuilder().build(
+                iso_path,
+                user_data,
+                meta_data_final,
+                network_config,
                 merged_keys,
             )
         elif body.cloud_init:
             ci = body.cloud_init
+            user_data = ci.user_data
+            if trust_user_data:
+                user_data = merge_cloud_config_user_data(user_data, trust_user_data)
             self._cloudinit_profiles.validate_payload(
-                ci.user_data,
+                user_data,
                 ci.meta_data,
                 ci.network_config,
                 body.ssh_keys,
             )
-        if body.cloud_init_profile:
-            iso = self._cloudinit_profiles.build_iso(
-                body.cloud_init_profile,
-                iso_path,
-                instance_id=body.name,
-                extra_ssh_keys=body.ssh_keys or None,
-            )
-        else:
-            ci = body.cloud_init
             iso = CloudInitBuilder().build(
                 iso_path,
-                ci.user_data,  # type: ignore[union-attr]
-                ci.meta_data,  # type: ignore[union-attr]
-                ci.network_config,  # type: ignore[union-attr]
+                user_data,
+                ci.meta_data,
+                ci.network_config,
                 body.ssh_keys,
             )
+        else:
+            raise LibvirtError("cloud_init or cloud_init_profile required", "INVALID_ARGUMENT")
+        if trust_user_data:
+            self._persist_ssh_trust_snippet(body.name, trust_user_data)
+
         xml = render_domain_xml(
             body.name,
             labels,

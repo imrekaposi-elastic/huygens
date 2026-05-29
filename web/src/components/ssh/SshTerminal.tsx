@@ -3,6 +3,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { getAccessToken } from "@/auth/token";
+import { explainSshSessionError } from "@/lib/sshErrors";
 
 type Props = {
   sessionId: string;
@@ -51,7 +52,7 @@ export function SshTerminal({ sessionId, onClose, onError }: Props) {
     ws.onmessage = (ev) => {
       if (typeof ev.data === "string") {
         if (ev.data.startsWith("session failed:") || ev.data.startsWith("relay")) {
-          onError?.(ev.data);
+          onError?.(explainSshSessionError(ev.data));
         }
         term.write(ev.data);
         return;

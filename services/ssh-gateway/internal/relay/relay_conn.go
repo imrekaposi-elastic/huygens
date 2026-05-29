@@ -17,8 +17,13 @@ func (c *relayConn) Read(b []byte) (int, error) {
 	return c.br.Read(b)
 }
 
-// DialRelaySSH connects to the agent relay and returns a net.Conn ready for SSH wire protocol.
-func DialRelaySSH(host string, port int, secret, sessionID, agentID, guestIP, linuxUser string) (net.Conn, error) {
+// DialRelaySSH connects to the agent relay (WebSocket on :8765 or TCP :9122).
+func DialRelaySSH(host string, port int, wsURL, secret, sessionID, agentID, guestIP, linuxUser string) (net.Conn, error) {
+	if wsURL != "" {
+		if conn, err := dialRelayWS(wsURL, secret, sessionID, agentID, guestIP, linuxUser); err == nil {
+			return conn, nil
+		}
+	}
 	conn, err := DialRelay(host, port, secret, sessionID, agentID, guestIP, linuxUser)
 	if err != nil {
 		return nil, err
