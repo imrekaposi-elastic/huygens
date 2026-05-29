@@ -54,6 +54,14 @@ class AgentProxy:
             response = await client.request(method, path, json=json, params=params)
         if response.status_code >= 400:
             detail = response.text[:500] if response.text else response.reason_phrase
+            if response.status_code == 404 and "ssh-trust" in path:
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        "Libvirt agent missing "
+                        f"{method} {path} — upgrade huy-libvirt-agent (Phase 9)"
+                    ),
+                )
             raise HTTPException(status_code=response.status_code, detail=detail)
         return response
 
@@ -84,6 +92,19 @@ class AgentProxy:
     async def delete_vm(self, agent_id: str, organization_id: str, name: str) -> None:
         info = await self._connect(agent_id, organization_id)
         await self._request(info, "DELETE", f"/api/v1/vms/{name}")
+
+    async def apply_vm_ssh_trust(
+        self,
+        agent_id: str,
+        organization_id: str,
+        name: str,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        info = await self._connect(agent_id, organization_id)
+        response = await self._request(
+            info, "PUT", f"/api/v1/vms/{name}/ssh-trust", json=body
+        )
+        return response.json()
 
     async def get_agent(self, agent_id: str, organization_id: str) -> dict[str, Any]:
         info = await self._connect(agent_id, organization_id)

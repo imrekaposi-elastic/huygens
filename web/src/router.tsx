@@ -32,6 +32,7 @@ import { AdminIdpMappingsTab } from "@/pages/admin/AdminIdpMappingsTab";
 import { AdminAuthenticationTab } from "@/pages/admin/AdminAuthenticationTab";
 import { AdminRbacTab } from "@/pages/admin/AdminRbacTab";
 import { AccessSessionsPage } from "@/pages/access/AccessSessionsPage";
+import { SshTerminalPage } from "@/pages/access/SshTerminalPage";
 
 const rootRoute = createRootRoute({ component: RootLayout });
 
@@ -200,6 +201,12 @@ const accessRoute = createRoute({
   component: AccessSessionsPage,
 });
 
+const accessTerminalRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/access/terminal/$sessionId",
+  component: SshTerminalPage,
+});
+
 const projectsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/projects",
@@ -305,6 +312,7 @@ const routeTree = rootRoute.addChildren([
     ]),
     topologyRoute,
     accessRoute,
+    accessTerminalRoute,
     adminRoute.addChildren([
       adminIndexRoute,
       adminFabricRoute,

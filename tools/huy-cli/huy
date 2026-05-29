@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Huygens CLI — Phase 9 SSH (`huy ssh`)."""
+"""Huygens CLI — Phase 9 SSH (`huy ssh`, `huy login`)."""
 
 from __future__ import annotations
 
@@ -14,17 +14,29 @@ import urllib.error
 import urllib.request
 
 
+def _iam_url() -> str:
+    return os.environ.get("HUY_IAM_URL", "http://127.0.0.1:8081").rstrip("/")
+
+
+def _gateway_url() -> str:
+    return os.environ.get("HUY_SSH_GATEWAY_URL", "http://127.0.0.1:5173").rstrip("/")
+
+
 def _token() -> str:
     token = os.environ.get("HUY_ACCESS_TOKEN", "")
     if not token:
-        print("Set HUY_ACCESS_TOKEN or run: export HUY_ACCESS_TOKEN=$(huy login ...)", file=sys.stderr)
+        print("Set HUY_ACCESS_TOKEN or run: eval $(huy login -q USER PASS)", file=sys.stderr)
         sys.exit(1)
     return token
 
 
-def _api(base: str, path: str, *, method: str = "GET", body: dict | None = None) -> dict:
+def _api(base: str, path: str, *, method: str = "GET", body: dict | None = None, token: str | None = None) -> dict:
     data = None
-    headers = {"Authorization": f"Bearer {_token()}"}
+    headers: dict[str, str] = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    elif path.startswith("/api/v1/ssh"):
+        headers["Authorization"] = f"Bearer {_token()}"
     if body is not None:
         data = json.dumps(body).encode()
         headers["Content-Type"] = "application/json"
@@ -43,13 +55,17 @@ def _api(base: str, path: str, *, method: str = "GET", body: dict | None = None)
         sys.exit(1)
 
 
-def _gateway_ws_url(gateway: str, session_id: str) -> str:
+def _gateway_ws_url(gateway: str, session_id: str, token: str) -> str:
+    from urllib.parse import urlencode
+
     base = gateway.rstrip("/")
+    q = urlencode({"access_token": token})
+    path = f"/api/v1/ssh/sessions/{session_id}/ws?{q}"
     if base.startswith("https://"):
-        return "wss://" + base[len("https://") :] + f"/api/v1/ssh/sessions/{session_id}/ws"
+        return "wss://" + base[len("https://") :] + path
     if base.startswith("http://"):
-        return "ws://" + base[len("http://") :] + f"/api/v1/ssh/sessions/{session_id}/ws"
-    return f"ws://{base}/api/v1/ssh/sessions/{session_id}/ws"
+        return "ws://" + base[len("http://") :] + path
+    return f"ws://{base}{path}"
 
 
 def _attach_session_ws(gateway: str, session_id: str) -> None:
@@ -62,9 +78,8 @@ def _attach_session_ws(gateway: str, session_id: str) -> None:
         )
         sys.exit(1)
 
-    url = _gateway_ws_url(gateway, session_id)
-    headers = [f"Authorization: Bearer {_token()}"]
-    ws = websocket.create_connection(url, header=headers, suppress_origin=True)
+    url = _gateway_ws_url(gateway, session_id, _token())
+    ws = websocket.create_connection(url, suppress_origin=True)
 
     old_tty = termios.tcgetattr(sys.stdin.fileno())
     try:
@@ -87,8 +102,29 @@ def _attach_session_ws(gateway: str, session_id: str) -> None:
         ws.close()
 
 
+def cmd_login(args: argparse.Namespace) -> None:
+    result = _api(
+        _iam_url(),
+        "/api/v1/auth/login",
+        method="POST",
+        body={"username": args.username, "password": args.password},
+    )
+    token = result["access_token"]
+    if args.quiet:
+        print(f"export HUY_ACCESS_TOKEN={token!r}")
+        if args.org:
+            print(f"export HUY_ORG_ID={args.org!r}")
+        return
+    print("Logged in. Run:")
+    print(f"  export HUY_ACCESS_TOKEN={token!r}")
+    if args.org:
+        print(f"  export HUY_ORG_ID={args.org!r}")
+    print(f"  export HUY_SSH_GATEWAY_URL={_gateway_url()!r}")
+    print("  ./tools/huy-cli/huy ssh VM --project PROJECT_ID")
+
+
 def cmd_ssh(args: argparse.Namespace) -> None:
-    gateway = os.environ.get("HUY_SSH_GATEWAY_URL", "http://127.0.0.1:8087")
+    gateway = _gateway_url()
     org = args.org or os.environ.get("HUY_ORG_ID", "")
     if not org:
         print("--org or HUY_ORG_ID required", file=sys.stderr)
@@ -105,7 +141,7 @@ def cmd_ssh(args: argparse.Namespace) -> None:
     )
     if args.json or not sys.stdin.isatty() or not sys.stdout.isatty():
         print(json.dumps(session, indent=2))
-        print(f"\nWebSocket: {_gateway_ws_url(gateway, session['id'])}")
+        print(f"\nWebSocket: {_gateway_ws_url(gateway, session['id'], _token())}")
         return
     print(f"Connecting to {session['vm_name']} as {session['linux_user']}…", file=sys.stderr)
     try:
@@ -122,7 +158,7 @@ def cmd_ssh_proxy(args: argparse.Namespace) -> None:
         print("pip install -r tools/huy-cli/requirements.txt", file=sys.stderr)
         sys.exit(1)
 
-    gateway = os.environ.get("HUY_SSH_GATEWAY_URL", "http://127.0.0.1:8087")
+    gateway = _gateway_url()
     org = os.environ.get("HUY_ORG_ID", "")
     project = os.environ.get("HUY_PROJECT_ID", "")
     vm = args.host.split(".")[0]
@@ -132,9 +168,8 @@ def cmd_ssh_proxy(args: argparse.Namespace) -> None:
         method="POST",
         body={"organization_id": org, "project_id": project, "vm_name": vm},
     )
-    url = _gateway_ws_url(gateway, session["id"])
-    headers = [f"Authorization: Bearer {_token()}"]
-    ws = websocket.create_connection(url, header=headers, suppress_origin=True)
+    url = _gateway_ws_url(gateway, session["id"], _token())
+    ws = websocket.create_connection(url, suppress_origin=True)
     try:
         while True:
             rlist, _, _ = select.select([sys.stdin, ws.sock], [], [])
@@ -156,6 +191,12 @@ def cmd_ssh_proxy(args: argparse.Namespace) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(prog="huy")
     sub = parser.add_subparsers(dest="command", required=True)
+    login_p = sub.add_parser("login", help="Obtain Huygens JWT from IAM")
+    login_p.add_argument("username")
+    login_p.add_argument("password")
+    login_p.add_argument("--org", default=None, help="Also print HUY_ORG_ID export")
+    login_p.add_argument("-q", "--quiet", action="store_true", help="Print export lines only")
+    login_p.set_defaults(func=cmd_login)
     ssh_p = sub.add_parser("ssh", help="Create audited SSH session")
     ssh_p.add_argument("vm", help="VM name")
     ssh_p.add_argument("--project", required=True)

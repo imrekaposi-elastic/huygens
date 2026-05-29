@@ -475,7 +475,7 @@ Under [architecture/diagrams/](architecture/diagrams/). Regenerate with `python3
 
 ### Phase 9 — Audited SSH access (VMs)
 
-**Status:** MVP shipped (architecture + core services).
+**Status:** In progress — GUI terminal + `huy ssh` E2E (backend + console connect shipped; sign-off after manual test).
 
 Hybrid **ssh-gateway** (Go) + **libvirt agent ssh-relay**; IAM policy (account mappings, access groups, sudo rules, org SSH CA); sessions → Kafka `huy.session.events` → ES `huy-sessions-*`.
 

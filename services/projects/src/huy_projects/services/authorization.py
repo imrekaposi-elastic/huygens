@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import HTTPException
 
 from huy_auth.auth_context import AuthContext
-from huy_auth.roles import PERM_PROJECT_MANAGE
+from huy_auth.roles import PERM_PROJECT_MANAGE, PERM_SSH_POLICY_MANAGE
 from huy_projects.models import Project
 
 
@@ -58,6 +58,23 @@ def require_topology_read(user: AuthContext, organization_id: str) -> None:
         return
     if not user.can_access_org(organization_id):
         raise HTTPException(status_code=403, detail="Organization access denied")
+
+
+def require_ssh_trust_setup(user: AuthContext, project: Project) -> None:
+    """Apply SSH trust on a VM (org admin, project operate, or ssh policy admin)."""
+    if user.is_platform_admin():
+        return
+    org_id = project.organization_id
+    if "admin" in user.org_roles(org_id):
+        return
+    if user.has_permission(PERM_SSH_POLICY_MANAGE, org_id):
+        return
+    if user.can_operate_project(org_id, project.id):
+        return
+    raise HTTPException(
+        status_code=403,
+        detail="SSH trust setup requires org admin, project operator, or ssh:policy_manage",
+    )
 
 
 def require_project_create(user: AuthContext, organization_id: str) -> None:

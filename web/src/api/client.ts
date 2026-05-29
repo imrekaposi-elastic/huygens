@@ -1246,6 +1246,33 @@ export const api = {
       `/api/v1/organizations/${encodeURIComponent(organizationId)}/regions/${encodeURIComponent(regionId)}/characteristics`,
       { method: "PUT", body: JSON.stringify({ characteristic_ids }) },
     ),
+
+  getSshCa: (organizationId: string) =>
+    request<{ organization_id: string; public_key_openssh: string }>(
+      `/api/v1/organizations/${encodeURIComponent(organizationId)}/ssh/ca`,
+    ),
+
+  applyVmSshTrust: (
+    projectId: string,
+    agentId: string,
+    vmName: string,
+    body: { ca_public_key_openssh: string; linux_username: string; sudoers_lines?: string[] },
+  ) =>
+    request<{ vm_name: string; cloud_config_snippet: string }>(
+      `/api/v1/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}/vms/${encodeURIComponent(vmName)}/ssh-trust`,
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
+
+  setupVmSshTrust: (
+    projectId: string,
+    agentId: string,
+    vmName: string,
+    body: { linux_username: string; sudoers_lines?: string[] },
+  ) =>
+    request<{ vm_name: string; cloud_config_snippet: string }>(
+      `/api/v1/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}/vms/${encodeURIComponent(vmName)}/ssh-trust/setup`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
 };
 
 export type SshSession = {

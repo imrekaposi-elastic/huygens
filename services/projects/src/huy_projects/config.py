@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(default="change-me-in-production", alias="JWT_SECRET")
     jwt_issuer: str = Field(default="huy-iam", alias="JWT_ISSUER")
     registry_url: str = Field(default="http://127.0.0.1:8082", alias="REGISTRY_URL")
+    iam_url: str = Field(default="http://127.0.0.1:8081", alias="IAM_URL")
     projects_service_token: str = Field(
         default="dev-projects-service-token",
         alias="PROJECTS_SERVICE_TOKEN",

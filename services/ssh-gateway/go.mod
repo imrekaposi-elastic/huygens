@@ -8,6 +8,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/segmentio/kafka-go v0.4.47
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0
+	golang.org/x/crypto v0.51.0
 )
 
 require (

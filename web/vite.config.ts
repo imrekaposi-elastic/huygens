@@ -42,6 +42,11 @@ export default defineConfig({
       "/api/v1/projects": cp(8084),
       "/api/v1/agents": cp(8082),
       "/api/v1/providers": cp(8082),
+      "/api/v1/ssh": {
+        target: "http://127.0.0.1:8087",
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
 });

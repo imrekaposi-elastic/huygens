@@ -6,18 +6,80 @@ from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Query
 
-from huy_projects.api.deps import AgentProxyDep, CurrentUserDep, ReadableProjectDep, SessionDep, SettingsDep
+from huy_projects.api.deps import (
+    AgentProxyDep,
+    BearerTokenDep,
+    CurrentUserDep,
+    ReadableProjectDep,
+    SessionDep,
+    SettingsDep,
+)
 from huy_projects.schemas import ResourceAssignRequest, ResourceAssignmentOut
 from huy_projects.libvirt_system import is_system_network
+from pydantic import BaseModel, Field
+
 from huy_projects.services import (
     authorization,
     desired_state,
     ipam_service,
     project_scope,
     resource_assignment_service,
+    ssh_trust_service,
 )
 
 router = APIRouter(prefix="/api/v1/projects/{project_id}/agents/{agent_id}", tags=["agent-proxy"])
+
+
+class SshTrustSetupBody(BaseModel):
+    linux_username: str = Field(min_length=1, max_length=64)
+    sudoers_lines: list[str] = Field(default_factory=list)
+
+
+@router.post("/vms/{name}/ssh-trust/setup", response_model=dict[str, Any])
+async def setup_vm_ssh_trust(
+    project: ReadableProjectDep,
+    agent_id: str,
+    name: str,
+    user: CurrentUserDep,
+    proxy: AgentProxyDep,
+    session: SessionDep,
+    settings: SettingsDep,
+    bearer: BearerTokenDep,
+    body: SshTrustSetupBody,
+) -> dict[str, Any]:
+    authorization.require_ssh_trust_setup(user, project)
+    await project_scope.require_resource_in_project(
+        session, project, agent_id=agent_id, resource_type="vm", name=name
+    )
+    return await ssh_trust_service.apply_vm_ssh_trust_setup(
+        proxy,
+        settings,
+        organization_id=project.organization_id,
+        agent_id=agent_id,
+        vm_name=name,
+        linux_username=body.linux_username,
+        bearer_token=bearer,
+        sudoers_lines=body.sudoers_lines,
+    )
+
+
+@router.put("/vms/{name}/ssh-trust", response_model=dict[str, Any])
+async def apply_vm_ssh_trust(
+    project: ReadableProjectDep,
+    agent_id: str,
+    name: str,
+    user: CurrentUserDep,
+    proxy: AgentProxyDep,
+    session: SessionDep,
+    body: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
+    authorization.require_ssh_trust_setup(user, project)
+    await project_scope.require_resource_in_project(
+        session, project, agent_id=agent_id, resource_type="vm", name=name
+    )
+    return await proxy.apply_vm_ssh_trust(
+        agent_id, project.organization_id, name, body
+    )
 
 
 @router.get("/vms", response_model=list[dict[str, Any]])

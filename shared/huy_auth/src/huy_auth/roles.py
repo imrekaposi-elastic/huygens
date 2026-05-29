@@ -16,6 +16,9 @@ PERM_PROJECT_OPERATE = "project:operate"
 PERM_COMPLIANCE_READ = "compliance:read"
 PERM_COMPLIANCE_CATALOG_MANAGE = "compliance:catalog_manage"
 PERM_COMPLIANCE_ASSIGN = "compliance:assign"
+PERM_SSH_CONNECT = "ssh:connect"
+PERM_SSH_SESSION_READ = "ssh:session_read"
+PERM_SSH_POLICY_MANAGE = "ssh:policy_manage"
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "platform_admin": frozenset(
@@ -34,6 +37,9 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_COMPLIANCE_READ,
             PERM_COMPLIANCE_CATALOG_MANAGE,
             PERM_COMPLIANCE_ASSIGN,
+            PERM_SSH_CONNECT,
+            PERM_SSH_SESSION_READ,
+            PERM_SSH_POLICY_MANAGE,
         }
     ),
     "admin": frozenset(
@@ -47,6 +53,9 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_COMPLIANCE_READ,
             PERM_COMPLIANCE_CATALOG_MANAGE,
             PERM_COMPLIANCE_ASSIGN,
+            PERM_SSH_CONNECT,
+            PERM_SSH_SESSION_READ,
+            PERM_SSH_POLICY_MANAGE,
         }
     ),
     "project_admin": frozenset(
@@ -55,6 +64,9 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_PROJECT_READ,
             PERM_PROJECT_MANAGE,
             PERM_PROJECT_OPERATE,
+            PERM_SSH_CONNECT,
+            PERM_SSH_SESSION_READ,
+            PERM_SSH_POLICY_MANAGE,
         }
     ),
     "operator": frozenset(
@@ -88,9 +100,18 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         }
     ),
     "auditor": frozenset(
-        {PERM_ORG_READ, PERM_INVENTORY_READ, PERM_COMPLIANCE_READ}
+        {PERM_ORG_READ, PERM_INVENTORY_READ, PERM_COMPLIANCE_READ, PERM_SSH_SESSION_READ}
     ),
     "compliance_reader": frozenset(
         {PERM_ORG_READ, PERM_INVENTORY_READ, PERM_COMPLIANCE_READ}
+    ),
+    "ssh_access": frozenset({PERM_ORG_READ, PERM_PROJECT_READ, PERM_SSH_CONNECT}),
+    "security_engineer": frozenset(
+        {
+            PERM_ORG_READ,
+            PERM_PROJECT_READ,
+            PERM_SSH_CONNECT,
+            PERM_SSH_POLICY_MANAGE,
+        }
     ),
 }

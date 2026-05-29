@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/auth/AuthContext";
+import { canConnectSsh } from "@/auth/permissions";
+import { getAccessToken, isPlatformAdmin } from "@/auth/token";
 import {
   deleteSshSession,
   downloadSshRecording,
@@ -8,7 +11,9 @@ import {
 } from "@/api/client";
 
 export function AccessSessionsPage() {
-  const { selectedOrgId } = useAuth();
+  const { user, selectedOrgId } = useAuth();
+  const platformAdmin = isPlatformAdmin(getAccessToken());
+  const showConnect = canConnectSsh(user, selectedOrgId, platformAdmin);
   const [sessions, setSessions] = useState<SshSession[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -86,6 +91,7 @@ export function AccessSessionsPage() {
               <th className="px-4 py-2">Linux</th>
               <th className="px-4 py-2">Status</th>
               <th className="px-4 py-2">Started</th>
+              <th className="px-4 py-2">Terminal</th>
               <th className="px-4 py-2">Replay</th>
               <th className="px-4 py-2">Delete</th>
             </tr>
@@ -98,6 +104,19 @@ export function AccessSessionsPage() {
                 <td className="px-4 py-2 font-mono">{s.linux_user}</td>
                 <td className="px-4 py-2">{s.status}</td>
                 <td className="px-4 py-2">{new Date(s.started_at).toLocaleString()}</td>
+                <td className="px-4 py-2">
+                  {showConnect && s.status === "active" ? (
+                    <Link
+                      to="/access/terminal/$sessionId"
+                      params={{ sessionId: s.id }}
+                      className="text-emerald-600 hover:underline dark:text-emerald-400"
+                    >
+                      Open
+                    </Link>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
+                </td>
                 <td className="px-4 py-2">
                   <button
                     type="button"
@@ -122,9 +141,9 @@ export function AccessSessionsPage() {
             ))}
             {!sessions.length && !error && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
-                  No sessions yet. Use <code className="text-xs">huy ssh VM --project ID</code> or
-                  the project VM connect flow.
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                  No sessions yet. Open a VM from <strong>Projects → Connect</strong> or run{" "}
+                  <code className="text-xs">huy ssh VM --project ID</code>.
                 </td>
               </tr>
             )}

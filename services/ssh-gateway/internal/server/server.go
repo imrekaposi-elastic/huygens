@@ -19,8 +19,8 @@ import (
 	"github.com/imrekaposi-elastic/huygens/services/ssh-gateway/internal/inventory"
 	jwtutil "github.com/imrekaposi-elastic/huygens/services/ssh-gateway/internal/jwt"
 	"github.com/imrekaposi-elastic/huygens/services/ssh-gateway/internal/recording"
-	"github.com/imrekaposi-elastic/huygens/services/ssh-gateway/internal/relay"
 	"github.com/imrekaposi-elastic/huygens/services/ssh-gateway/internal/session"
+	"github.com/imrekaposi-elastic/huygens/services/ssh-gateway/internal/sshbridge"
 )
 
 type Server struct {
@@ -85,10 +85,15 @@ type createSessionRequest struct {
 
 func (s *Server) parseClaims(r *http.Request) (*jwtutil.Claims, error) {
 	auth := r.Header.Get("Authorization")
-	if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
+	var token string
+	if strings.HasPrefix(auth, "Bearer ") {
+		token = strings.TrimPrefix(auth, "Bearer ")
+	} else if q := r.URL.Query().Get("access_token"); q != "" {
+		// Browser WebSocket cannot set Authorization; console/CLI may pass token in query.
+		token = q
+	} else {
 		return nil, http.ErrNoCookie
 	}
-	token := strings.TrimPrefix(auth, "Bearer ")
 	return jwtutil.Parse(token, s.cfg.JWTSecret, s.cfg.JWTIssuer)
 }
 
@@ -337,47 +342,25 @@ func (s *Server) handleSessionWS(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	relayConn, err := relay.DialRelay(
-		sess.RelayHost, sess.RelayPort, s.cfg.SessionTokenSecret,
-		sess.ID, sess.AgentID, sess.GuestIP, sess.LinuxUser,
+	err = sshbridge.BridgeWebSocket(
+		r.Context(),
+		ws,
+		s.iam,
+		s.cfg.SessionTokenSecret,
+		sshbridge.SessionTarget{
+			OrganizationID: sess.OrganizationID,
+			SessionID:      sess.ID,
+			AgentID:        sess.AgentID,
+			GuestIP:        sess.GuestIP,
+			RelayHost:      sess.RelayHost,
+			RelayPort:      sess.RelayPort,
+			LinuxUser:      sess.LinuxUser,
+		},
+		rec.WriteInput,
+		rec.WriteOutput,
 	)
 	if err != nil {
-		_ = ws.WriteMessage(websocket.TextMessage, []byte("relay connect failed: "+err.Error()))
-		return
-	}
-	defer relayConn.Close()
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for {
-			_, msg, err := ws.ReadMessage()
-			if err != nil {
-				return
-			}
-			_ = rec.WriteInput(msg)
-			if _, err := relayConn.Write(msg); err != nil {
-				return
-			}
-		}
-	}()
-	buf := make([]byte, 32*1024)
-	for {
-		select {
-		case <-done:
-			return
-		default:
-			n, err := relayConn.Read(buf)
-			if n > 0 {
-				_ = rec.WriteOutput(buf[:n])
-				if werr := ws.WriteMessage(websocket.BinaryMessage, buf[:n]); werr != nil {
-					return
-				}
-			}
-			if err != nil {
-				return
-			}
-		}
+		_ = ws.WriteMessage(websocket.TextMessage, []byte("session failed: "+err.Error()))
 	}
 }
 
