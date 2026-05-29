@@ -8,6 +8,18 @@ from http_client import ControlPlaneClient
 
 
 @pytest.mark.integration
+def test_protected_routes_require_bearer(cp: ControlPlaneClient) -> None:
+    response = cp.get(f"{cp.stack.projects_url}/api/v1/projects", auth=False)
+    assert response.status_code == 401
+
+
+@pytest.mark.integration
+def test_jwt_lists_projects(cp: ControlPlaneClient, target_org_id: str) -> None:
+    projects = cp.projects("GET", f"/api/v1/projects?organization_id={target_org_id}")
+    assert projects.status_code == 200, projects.text
+
+
+@pytest.mark.integration
 def test_ephemeral_org_project_and_ipam_wizard(
     cp: ControlPlaneClient,
     ephemeral_org: dict,
@@ -43,7 +55,6 @@ def test_ephemeral_org_project_and_ipam_wizard(
     assert len(subnets) == 2
     assert all("cidr" in row for row in subnets)
 
-    # Project remains readable through projects API (JWT + org scope).
     fetched = cp.projects("GET", f"/api/v1/projects/{project_id}")
     assert fetched.status_code == 200
     assert fetched.json()["slug"] == ephemeral_project["slug"]

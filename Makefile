@@ -1,11 +1,15 @@
 .PHONY: compose-up compose-down compose-logs compose-ps test test-unit test-integration test-ci test-deps venv \
 	test-huy-auth test-huy-events test-huy-telemetry test-iam test-registry test-inventory test-projects test-compliance \
-	test-agent-libvirt test-breakout-controller test-web wait-stack
+	test-agent-libvirt test-breakout-controller test-ssh-gateway test-web wait-stack \
+	test-integration-stack test-integration-iam test-integration-registry test-integration-inventory \
+	test-integration-projects test-integration-web
 
 VENV ?= $(CURDIR)/.venv
 PYTHON ?= $(VENV)/bin/python
 PIP ?= $(PYTHON) -m pip
 PYTEST ?= $(PYTHON) -m pytest
+INTEGRATION_DIR := tests/integration
+PYTEST_INTEGRATION = HUY_E2E=1 PYTHONPATH=$(INTEGRATION_DIR) $(PYTEST) -q $(INTEGRATION_DIR)
 
 compose-up:
 	docker compose up -d --build
@@ -30,7 +34,7 @@ test: test-unit
 # Matches default GitHub Actions CI (unit + integration).
 test-ci: test-unit test-integration
 
-test-unit: venv test-deps test-huy-auth test-huy-events test-huy-telemetry test-iam test-registry test-inventory test-projects test-compliance test-agent-libvirt test-breakout-controller test-web
+test-unit: venv test-deps test-huy-auth test-huy-events test-huy-telemetry test-iam test-registry test-inventory test-projects test-compliance test-agent-libvirt test-breakout-controller test-ssh-gateway test-web
 
 wait-stack:
 	bash scripts/wait-for-stack.sh
@@ -79,10 +83,34 @@ test-agent-libvirt: venv test-deps
 test-breakout-controller:
 	docker run --rm -v "$(CURDIR)/services/breakout-controller:/src" -w /src golang:1.25-bookworm go test ./...
 
+test-ssh-gateway:
+	docker run --rm -v "$(CURDIR)/services/ssh-gateway:/src" -w /src golang:1.25-bookworm go test ./...
+
 test-web:
 	cd web && npm install && npm test
 
 # Cross-service tests against docker compose (not part of default `make test`).
-test-integration: venv test-deps
+test-integration: venv test-deps test-integration-deps \
+	test-integration-stack test-integration-iam test-integration-registry \
+	test-integration-inventory test-integration-projects test-integration-web
+
+test-integration-deps: venv
 	$(PIP) install -q httpx pytest pytest-asyncio
-	HUY_E2E=1 PYTHONPATH=tests/integration $(PYTEST) -q tests/integration
+
+test-integration-stack: venv test-integration-deps
+	$(PYTEST_INTEGRATION)/stack
+
+test-integration-iam: venv test-integration-deps
+	$(PYTEST_INTEGRATION)/iam
+
+test-integration-registry: venv test-integration-deps
+	$(PYTEST_INTEGRATION)/registry
+
+test-integration-inventory: venv test-integration-deps
+	$(PYTEST_INTEGRATION)/inventory
+
+test-integration-projects: venv test-integration-deps
+	$(PYTEST_INTEGRATION)/projects
+
+test-integration-web: venv test-integration-deps
+	$(PYTEST_INTEGRATION)/web

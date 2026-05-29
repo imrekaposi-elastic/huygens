@@ -2,20 +2,22 @@
 
 ## Continuous integration (default)
 
-GitHub Actions workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on every push to `main` and on pull requests:
+GitHub Actions workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on every push to `main` and on pull requests. Each microservice has its own job (matrix), so failures are scoped to a single package.
 
 | Job | Command | Notes |
 |-----|---------|--------|
-| **unit** | `make test` | Python services + console (`npm test`); no Docker |
-| **integration** | `docker compose up -d --build` → `scripts/wait-for-stack.sh` → `make test-integration` | Full Compose stack on `ubuntu-latest` |
+| **unit** (`Unit (test-*)`) | `make test-<target>` | One job per shared lib, Python service, Go service, and console |
+| **integration** (`Integration (<service>)`) | `make test-integration-<service>` | Compose stack per job; `stack`, `iam`, `registry`, `inventory`, `projects`, `web` |
 
 Reproduce CI locally:
 
 ```bash
-make test
+make test-iam                    # single unit target
+make test                        # all unit targets
 cp compose.env.example .env && docker compose up -d --build
 bash scripts/wait-for-stack.sh
-make test-integration
+make test-integration-projects   # single integration target
+make test-integration            # all integration targets
 # or: make test-ci   # unit then integration (stack must already be up for the second step)
 ```
 
@@ -41,6 +43,7 @@ This executes pytest in each service:
 | Projects | `services/projects` |
 | Compliance | `services/compliance` |
 | Breakout controller | `services/breakout-controller` (`go test ./...`) |
+| SSH gateway | `services/ssh-gateway` (`go test ./...`) |
 | Console | `web` (`npm test`) |
 
 Shared packages `huy_auth`, `huy_events`, and `huy_telemetry` are installed once via `make test-deps` before services that depend on them (`[tool.uv.sources]` path deps are not resolved by plain `pip` alone).
@@ -51,15 +54,16 @@ Agent unit tests: `make -C agents/libvirt test`.
 
 ## Integration tests (compose stack)
 
-Cross-service tests live under `tests/integration/`. They are **not** part of `make test` alone; they **are** part of default CI and `make test-ci`.
+Cross-service tests live under `tests/integration/<service>/`. They are **not** part of `make test` alone; they **are** part of default CI and `make test-ci`.
 
 ```bash
 docker compose up -d --build
 bash scripts/wait-for-stack.sh   # optional locally; CI runs this automatically
-make test-integration
+make test-integration-iam      # or test-integration-projects, etc.
+make test-integration          # all service directories
 ```
 
-See [tests/integration/README.md](../tests/integration/README.md) for environment variables and module layout.
+See [tests/integration/README.md](../tests/integration/README.md) for environment variables and per-service layout.
 
 **Phase 6 scope:** `test_network_links.py` covers link API and validation; `test_link_reconcile.py` exercises **create → reconcile → `connected`** for local and WireGuard links with mocked agent/breakout-controller HTTP. Cross-host **data-plane** traffic still requires [manual runbooks](../tests/integration/README.md#manual-two-agent-wireguard-link-test-phase-6).
 
@@ -94,4 +98,4 @@ See [operations/observability-stack.md](operations/observability-stack.md) and [
 
 1. Add service unit tests under `services/<name>/tests/`.
 2. Extend the root `Makefile` `test-unit` target if a new package is added.
-3. When the phase needs multiple running services, extend `tests/integration/` and document any new env vars in `tests/integration/README.md`.
+3. When the phase needs multiple running services, add tests under `tests/integration/<service>/`, add a `test-integration-<service>` Makefile target, and extend the CI integration matrix in `.github/workflows/ci.yml`.

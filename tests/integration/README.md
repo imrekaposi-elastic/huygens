@@ -3,6 +3,8 @@
 Black-box tests against a **running** Docker Compose stack. They validate JWT propagation,
 org/project/IPAM workflows, inventory SSE, and (optionally) the projects agent proxy.
 
+Tests are grouped **per microservice** under subdirectories. CI runs each group in a separate job.
+
 ## Prerequisites
 
 ```bash
@@ -14,8 +16,18 @@ Default credentials match `compose.env.example`: `platform-admin` / `platform-ad
 
 ## Run
 
+All integration tests (stack must be up):
+
 ```bash
 make test-integration
+```
+
+One microservice only:
+
+```bash
+make test-integration-iam
+make test-integration-projects
+# stack | iam | registry | inventory | projects | web
 ```
 
 Or manually:
@@ -23,10 +35,10 @@ Or manually:
 ```bash
 cd tests/integration
 python3 -m pip install -e ".[dev]"
-HUY_E2E=1 python3 -m pytest -q
+HUY_E2E=1 PYTHONPATH=. python3 -m pytest -q iam
 ```
 
-Unit tests (`make test`) **do not** run these. Default **GitHub Actions CI** runs them in a separate job after `docker compose up` (see [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)).
+Unit tests (`make test`) **do not** run these. Default **GitHub Actions CI** runs them in parallel jobs after `docker compose up` (see [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)).
 
 ## Environment
 
@@ -44,14 +56,14 @@ Unit tests (`make test`) **do not** run these. Default **GitHub Actions CI** run
 
 ## Test layout
 
-| Module | Scope |
-|--------|--------|
-| `test_stack_health.py` | `/health` on all services + console → IAM login proxy |
-| `test_auth_cross_service.py` | Login, `/me`, 401 without JWT, JWT on registry/inventory/projects |
-| `test_operator_workflow.py` | Ephemeral org → project → IPAM pool → wizard (cleanup after test) |
-| `test_inventory_live.py` | Dashboard, SSE Bearer-only contract, nginx SSE proxy |
-| `test_agent_proxy.py` | `@pytest.mark.requires_agent` — list VMs/networks via projects proxy |
-| `test_network_links.py` | Overlay pool + topology + link list API smoke (**no** POST link, **no** reconciler, **no** agent) |
+| Directory | Scope |
+|-----------|--------|
+| `stack/` | `/health` on all services |
+| `iam/` | Login, `/me`, IAM 401 without JWT |
+| `registry/` | Agent technologies list, registry 401 |
+| `inventory/` | Dashboard, agents list, SSE Bearer-only contract |
+| `projects/` | IPAM wizard, topology/links smoke, agent proxy (`requires_agent`) |
+| `web/` | Console nginx → IAM login, inventory SSE proxy |
 
 Tests marked `requires_agent` skip automatically when no agent is `connected` for the target org.
 
@@ -91,4 +103,4 @@ Requires **one connected agent** with two vnets on **different projects** (or sa
 
 ## CI
 
-Every PR and push to `main` runs `make test-integration` after the Compose stack is healthy (`scripts/wait-for-stack.sh`). See [docs/testing.md](../docs/testing.md).
+Every PR and push to `main` runs one integration job per service (`make test-integration-<service>`) after the Compose stack is healthy (`scripts/wait-for-stack.sh`). See [docs/testing.md](../docs/testing.md).

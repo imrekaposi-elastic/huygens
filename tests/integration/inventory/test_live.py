@@ -9,6 +9,18 @@ from http_client import ControlPlaneClient
 
 
 @pytest.mark.integration
+def test_protected_routes_require_bearer(cp: ControlPlaneClient) -> None:
+    response = cp.get(f"{cp.stack.inventory_url}/api/v1/inventory/agents", auth=False)
+    assert response.status_code == 401
+
+
+@pytest.mark.integration
+def test_inventory_agents_list(cp: ControlPlaneClient) -> None:
+    agents = cp.inventory("GET", "/api/v1/inventory/agents")
+    assert agents.status_code == 200, agents.text
+
+
+@pytest.mark.integration
 def test_inventory_dashboard_shape(cp: ControlPlaneClient, target_org_id: str) -> None:
     response = cp.inventory(
         "GET",
@@ -59,15 +71,3 @@ def test_sse_accepts_bearer_and_emits_connected(
             if "connected" in first_chunk.lower():
                 break
         assert "connected" in first_chunk.lower()
-
-
-@pytest.mark.integration
-def test_sse_via_console_nginx(cp: ControlPlaneClient, http_client: httpx.Client) -> None:
-    with http_client.stream(
-        "GET",
-        f"{cp.stack.web_url}/api/v1/inventory/events/stream",
-        headers={"Authorization": f"Bearer {cp.token}", "Accept": "text/event-stream"},
-        timeout=10.0,
-    ) as response:
-        assert response.status_code == 200, response.text
-        assert "text/event-stream" in response.headers.get("content-type", "")

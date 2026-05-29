@@ -1,4 +1,4 @@
-# Default CI: unit tests + integration tests against Docker Compose.
+# Default CI: unit tests and integration tests per microservice.
 name: CI
 
 on:
@@ -15,9 +15,25 @@ permissions:
 
 jobs:
   unit:
-    name: Unit tests
+    name: Unit (${{ matrix.target }})
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - test-huy-auth
+          - test-huy-events
+          - test-huy-telemetry
+          - test-iam
+          - test-registry
+          - test-inventory
+          - test-projects
+          - test-compliance
+          - test-agent-libvirt
+          - test-breakout-controller
+          - test-ssh-gateway
+          - test-web
     steps:
       - uses: actions/checkout@v4
 
@@ -26,22 +42,34 @@ jobs:
           python-version: "3.12"
 
       - uses: actions/setup-node@v4
+        if: matrix.target == 'test-web'
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: web/package-lock.json
 
       - uses: actions/setup-go@v5
+        if: matrix.target == 'test-breakout-controller' || matrix.target == 'test-ssh-gateway'
         with:
           go-version: "1.25"
 
       - name: Run unit tests
-        run: make test
+        run: make ${{ matrix.target }}
 
   integration:
-    name: Integration tests (Compose)
+    name: Integration (${{ matrix.service }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - stack
+          - iam
+          - registry
+          - inventory
+          - projects
+          - web
     steps:
       - uses: actions/checkout@v4
 
@@ -59,7 +87,7 @@ jobs:
         run: bash scripts/wait-for-stack.sh
 
       - name: Run integration tests
-        run: make test-integration
+        run: make test-integration-${{ matrix.service }}
 
       - name: Compose logs on failure
         if: failure()
