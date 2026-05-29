@@ -45,7 +45,7 @@ test-deps: venv
 	$(PIP) install -q -e "shared/huy_telemetry[dev]"
 
 test-huy-auth: venv
-	$(PIP) install -q -e "shared/huy_auth[dev]" 2>/dev/null || $(PIP) install -q -e shared/huy_auth pytest
+	$(PIP) install -q -e "shared/huy_auth[dev]"
 	cd shared/huy_auth && $(PYTEST) -q
 
 test-huy-events: venv
