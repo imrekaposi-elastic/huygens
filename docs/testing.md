@@ -7,9 +7,9 @@ GitHub Actions workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml
 | Job | Command | Notes |
 |-----|---------|--------|
 | **unit** (`Unit (test-*)`) | `make test-<target>` | One job per shared lib, Python service, Go service, and console |
-| **integration** | `make test-integration-<service>` | One Compose stack per workflow run; separate CI steps per service (`stack`, `iam`, `registry`, `inventory`, `projects`, `web`) |
+| **integration** (`Integration (<service>)`) | `make test-integration-<service>` | One job per service (`stack`, `iam`, `registry`, `inventory`, `projects`, `web`); each starts Compose on its runner |
 
-Optional: set repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` for authenticated pulls (`apache/kafka`, `chrislusf/seaweedfs` still use Docker Hub).
+Optional: set repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` for higher Docker Hub pull limits (`apache/kafka`, `chrislusf/seaweedfs`). `postgres` and `aws-cli` use AWS public ECR mirrors in `docker-compose.yml`.
 
 Reproduce CI locally:
 
@@ -100,4 +100,4 @@ See [operations/observability-stack.md](operations/observability-stack.md) and [
 
 1. Add service unit tests under `services/<name>/tests/`.
 2. Extend the root `Makefile` `test-unit` target if a new package is added.
-3. When the phase needs multiple running services, add tests under `tests/integration/<service>/`, add a `test-integration-<service>` Makefile target, and extend the CI integration matrix in `.github/workflows/ci.yml`.
+3. When the phase needs multiple running services, add tests under `tests/integration/<service>/`, add a `test-integration-<service>` Makefile target, and add the service to the `integration` job matrix in `.github/workflows/ci.yml`.
