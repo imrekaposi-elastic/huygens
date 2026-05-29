@@ -49,6 +49,13 @@ func (c *Client) ResolveTarget(
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
+		var errBody struct {
+			Detail string `json:"detail"`
+		}
+		_ = json.NewDecoder(resp.Body).Decode(&errBody)
+		if errBody.Detail != "" {
+			return nil, fmt.Errorf("%s", errBody.Detail)
+		}
 		return nil, fmt.Errorf("target not found")
 	}
 	if resp.StatusCode >= 300 {

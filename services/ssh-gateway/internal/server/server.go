@@ -111,7 +111,7 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	target, err := s.inventory.ResolveTarget(ctx, body.OrganizationID, body.ProjectID, body.VMName)
 	if err != nil {
-		writeJSON(w, http.StatusNotFound, map[string]string{"detail": "vm target not found"})
+		writeJSON(w, http.StatusNotFound, map[string]string{"detail": err.Error()})
 		return
 	}
 	authz, err := s.iam.Authorize(ctx, iam.AuthorizeRequest{

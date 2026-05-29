@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import socket
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import structlog
 
 if TYPE_CHECKING:
     from huy_libvirt_agent.app_state import AppState
+    from huy_libvirt_agent.services.libvirt_client import LibvirtClient
 
 logger = structlog.get_logger(__name__)
 
@@ -27,6 +29,41 @@ class StatusMonitor:
             "guest_ip": guest_ip_hint,
             "last_checked_at": None,
         }
+
+    def ensure_registered(self, name: str, guest_ip_hint: str | None = None) -> None:
+        if name not in self._status_cache:
+            self.register_vm(name, guest_ip_hint)
+
+    def bootstrap_known_vms(self, libvirt: LibvirtClient | None, data_dir: Path) -> int:
+        """Register VMs after restart so polling resolves guest IPs for inventory/SSH."""
+        from huy_libvirt_agent.services.metadata import read_metadata
+        from huy_libvirt_agent.services.path_safety import safe_child_dir
+
+        names: set[str] = set()
+        if libvirt is not None and libvirt.connected:
+            try:
+                names.update(libvirt.list_domains())
+            except Exception:
+                logger.warning("status_monitor_bootstrap_list_domains_failed")
+        inst_root = data_dir / "instances"
+        if inst_root.is_dir():
+            for path in inst_root.iterdir():
+                if path.is_dir():
+                    names.add(path.name)
+        added = 0
+        for name in sorted(names):
+            if name in self._status_cache:
+                continue
+            hint = None
+            try:
+                meta_path = safe_child_dir(inst_root, name) / "metadata.json"
+                meta = read_metadata(meta_path)
+                hint = meta.get("guest_ip")
+            except Exception:
+                logger.warning("status_monitor_bootstrap_metadata_failed", vm=name)
+            self.register_vm(name, hint)
+            added += 1
+        return added
 
     def unregister_vm(self, name: str) -> None:
         self._status_cache.pop(name, None)

@@ -47,6 +47,7 @@ class VMService:
     def get_vm(self, name: str) -> VMResponse:
         meta_path = self._instance_dir(name) / "metadata.json"
         meta = read_metadata(meta_path)
+        self._state.monitor.ensure_registered(name, meta.get("guest_ip"))
         labels = AgentLabels(**meta.get("labels", self._state.settings.agent_labels))
         st = self._state.monitor.get_status(name)
         libvirt_state = st.get("libvirt_state", "SHUTOFF")

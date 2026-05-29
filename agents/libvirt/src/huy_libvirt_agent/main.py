@@ -90,6 +90,12 @@ def create_app(state: AppState | None = None) -> FastAPI:
                 )
         except Exception as e:
             logger.warning("libvirt_connect_failed", error=str(e))
+        bootstrapped = app_state.monitor.bootstrap_known_vms(
+            app_state.libvirt,
+            app_state.settings.data_dir,
+        )
+        if bootstrapped:
+            logger.info("status_monitor_bootstrapped", vm_count=bootstrapped)
         await app_state.monitor.start()
         if otel_export_enabled and settings.metrics_enabled:
             sync_hypervisor_metrics_to_otel(app_state)
