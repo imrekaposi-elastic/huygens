@@ -1,4 +1,4 @@
-.PHONY: compose-up compose-down compose-logs compose-ps test test-unit test-integration test-ci test-deps venv \
+.PHONY: compose-up compose-down compose-logs compose-ps compose-pull-ci compose-up-ci test test-unit test-integration test-ci test-deps venv \
 	test-huy-auth test-huy-events test-huy-telemetry test-iam test-registry test-inventory test-projects test-compliance \
 	test-agent-libvirt test-breakout-controller test-ssh-gateway test-web wait-stack \
 	test-integration-stack test-integration-iam test-integration-registry test-integration-inventory \
@@ -12,6 +12,19 @@ INTEGRATION_DIR := tests/integration
 PYTEST_INTEGRATION = HUY_E2E=1 PYTHONPATH=$(INTEGRATION_DIR) $(PYTEST) -q $(INTEGRATION_DIR)
 
 compose-up:
+	docker compose up -d --build
+
+# CI: pull Hub images once with backoff (avoids toomanyrequests on parallel matrix jobs).
+compose-pull-ci:
+	@set -e; \
+	for attempt in 1 2 3 4 5; do \
+	  if docker compose pull; then exit 0; fi; \
+	  echo "docker compose pull failed (attempt $$attempt), retrying..."; \
+	  sleep $$((attempt * 20)); \
+	done; \
+	exit 1
+
+compose-up-ci: compose-pull-ci
 	docker compose up -d --build
 
 compose-down:

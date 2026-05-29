@@ -56,22 +56,12 @@ jobs:
       - name: Run unit tests
         run: make ${{ matrix.target }}
 
+  # One Compose stack per workflow run. A matrix of integration jobs each pulls
+  # kafka + seaweedfs from Docker Hub and hits anonymous rate limits (toomanyrequests).
   integration:
-    name: Integration (${{ matrix.service }})
+    name: Integration tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      # Limit parallel Hub pulls (postgres/aws-cli use ECR public mirrors).
-      max-parallel: 3
-      matrix:
-        service:
-          - stack
-          - iam
-          - registry
-          - inventory
-          - projects
-          - web
     steps:
       - uses: actions/checkout@v4
 
@@ -86,19 +76,39 @@ jobs:
         run: |
           if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
             echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+          else
+            echo "No DOCKERHUB_* secrets; relying on ECR mirrors and a single compose pull."
           fi
 
       - name: Prepare Compose env
         run: cp compose.env.example .env
 
-      - name: Start stack
-        run: docker compose up -d --build
+      - name: Pull and start stack
+        run: make compose-up-ci
 
       - name: Wait for healthy services
         run: bash scripts/wait-for-stack.sh
 
-      - name: Run integration tests
-        run: make test-integration-${{ matrix.service }}
+      - name: Install integration test dependencies
+        run: make test-integration-deps
+
+      - name: Integration (stack)
+        run: make test-integration-stack
+
+      - name: Integration (iam)
+        run: make test-integration-iam
+
+      - name: Integration (registry)
+        run: make test-integration-registry
+
+      - name: Integration (inventory)
+        run: make test-integration-inventory
+
+      - name: Integration (projects)
+        run: make test-integration-projects
+
+      - name: Integration (web)
+        run: make test-integration-web
 
       - name: Compose logs on failure
         if: failure()

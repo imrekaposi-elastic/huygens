@@ -103,4 +103,4 @@ Requires **one connected agent** with two vnets on **different projects** (or sa
 
 ## CI
 
-Every PR and push to `main` runs one CI job per service (`Integration (iam)`, etc.), each with its own Compose stack. See [docs/testing.md](../docs/testing.md) for Docker Hub / ECR notes.
+Every PR and push to `main` runs one **Integration tests** CI job (one Compose stack), with a named step per service (`Integration (iam)`, etc.). See [docs/testing.md](../docs/testing.md) for Docker Hub / ECR notes.
