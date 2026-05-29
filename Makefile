@@ -55,6 +55,7 @@ wait-stack:
 test-deps: venv
 	$(PIP) install -q -e shared/huy_auth
 	$(PIP) install -q -e "shared/huy_events[dev]"
+	$(PIP) install -q -e shared/huy_ssh_onboard
 	$(PIP) install -q -e "shared/huy_telemetry[dev]"
 
 test-huy-auth: venv
