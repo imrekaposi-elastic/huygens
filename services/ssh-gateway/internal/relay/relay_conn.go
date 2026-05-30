@@ -19,13 +19,19 @@ func (c *relayConn) Read(b []byte) (int, error) {
 
 // DialRelaySSH connects to the agent relay (WebSocket on :8765 or TCP :9122).
 func DialRelaySSH(host string, port int, wsURL, secret, sessionID, agentID, guestIP, linuxUser string) (net.Conn, error) {
+	var wsErr error
 	if wsURL != "" {
-		if conn, err := dialRelayWS(wsURL, secret, sessionID, agentID, guestIP, linuxUser); err == nil {
+		conn, err := dialRelayWS(wsURL, secret, sessionID, agentID, guestIP, linuxUser)
+		if err == nil {
 			return conn, nil
 		}
+		wsErr = err
 	}
 	conn, err := DialRelay(host, port, secret, sessionID, agentID, guestIP, linuxUser)
 	if err != nil {
+		if wsErr != nil {
+			return nil, fmt.Errorf("ws relay failed (%v); tcp relay failed (%w)", wsErr, err)
+		}
 		return nil, err
 	}
 	br := bufio.NewReader(conn)

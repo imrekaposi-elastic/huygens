@@ -27,7 +27,12 @@ def _parse_resource(path: str) -> tuple[str | None, str | None]:
 class AuditMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         state: AppState = request.app.state.app_state
-        if not state.audit_store or request.url.path in ("/healthz", "/readyz", "/metrics"):
+        if (
+            not state.audit_store
+            or request.url.path in ("/healthz", "/readyz", "/metrics")
+            or request.url.path.startswith("/api/v1/ssh/")
+            or request.headers.get("upgrade", "").lower() == "websocket"
+        ):
             return await call_next(request)
 
         start = time.perf_counter()
