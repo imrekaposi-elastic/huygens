@@ -108,12 +108,21 @@ def create_app(state: AppState | None = None) -> FastAPI:
             {"version": __version__, "labels": settings.agent_labels},
         )
         if settings.ssh_relay_enabled and settings.ssh_gateway_service_token:
-            _ssh_relay_server = await start_relay_server(
-                host=settings.ssh_relay_bind,
-                port=settings.ssh_relay_port,
-                secret=settings.ssh_gateway_service_token,
-                agent_id=settings.agent_id,
-            )
+            try:
+                _ssh_relay_server = await start_relay_server(
+                    host=settings.ssh_relay_bind,
+                    port=settings.ssh_relay_port,
+                    secret=settings.ssh_gateway_service_token,
+                    agent_id=settings.agent_id,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "ssh_relay_tcp_start_failed",
+                    host=settings.ssh_relay_bind,
+                    port=settings.ssh_relay_port,
+                    error=str(exc),
+                    hint="WebSocket relay on HTTPS still works; fix port/bind or disable SSH_RELAY_ENABLED",
+                )
         yield
         if _ssh_relay_server is not None:
             _ssh_relay_server.close()

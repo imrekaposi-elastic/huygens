@@ -79,17 +79,20 @@ async def sign_cert(
 ) -> SshSignCertResponse:
     ca = await ssh_ca_service.ensure_org_ca(session, settings, body.organization_id)
     private_pem = ssh_ca_service.decrypt_ca_private_key(settings, ca)
-    ttl = settings.ssh_cert_ttl_seconds
+    ttl = max(60, settings.ssh_cert_ttl_seconds)
     now = int(time.time())
     valid_before = now + ttl
+    # OpenSSH expects relative or YYYYMMDDHHMMSS, not unix epoch in -V.
+    validity = f"+0s:+{ttl}s"
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         ca_path = tmp_path / "ca"
         pub_path = tmp_path / "user.pub"
         cert_path = tmp_path / "user-cert.pub"
         ca_path.write_text(private_pem)
+        ca_path.chmod(0o600)
         pub_path.write_text(body.public_key_openssh.strip() + "\n")
-        subprocess.run(
+        proc = subprocess.run(
             [
                 "ssh-keygen",
                 "-s",
@@ -99,12 +102,18 @@ async def sign_cert(
                 "-n",
                 body.linux_username,
                 "-V",
-                f"{now}:{valid_before}",
+                validity,
                 str(pub_path),
             ],
             check=True,
             capture_output=True,
+            text=True,
         )
+        if proc.returncode != 0:
+            raise HTTPException(
+                status_code=500,
+                detail=proc.stderr.strip() or "ssh-keygen sign failed",
+            )
         cert_line = cert_path.read_text().strip()
     return SshSignCertResponse(
         certificate_openssh=cert_line,

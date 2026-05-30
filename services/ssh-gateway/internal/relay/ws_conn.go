@@ -14,21 +14,30 @@ import (
 )
 
 type wsNetConn struct {
-	conn *websocket.Conn
-	mu   sync.Mutex
+	conn    *websocket.Conn
+	readMu  sync.Mutex
+	writeMu sync.Mutex
+	readBuf []byte
 }
 
 func (c *wsNetConn) Read(b []byte) (int, error) {
-	_, msg, err := c.conn.ReadMessage()
-	if err != nil {
-		return 0, err
+	c.readMu.Lock()
+	defer c.readMu.Unlock()
+	if len(c.readBuf) == 0 {
+		_, msg, err := c.conn.ReadMessage()
+		if err != nil {
+			return 0, err
+		}
+		c.readBuf = msg
 	}
-	return copy(b, msg), nil
+	n := copy(b, c.readBuf)
+	c.readBuf = c.readBuf[n:]
+	return n, nil
 }
 
 func (c *wsNetConn) Write(b []byte) (int, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
 	if err := c.conn.WriteMessage(websocket.BinaryMessage, b); err != nil {
 		return 0, err
 	}

@@ -18,7 +18,19 @@ export function explainSshSessionError(raw: string): string {
       "Create a new VM with org SSH CA merged into cloud-init, or download the guest onboard script and run it on the VM as root."
     );
   }
-  if (/relay|9122|connection refused|dial tcp/i.test(msg)) {
+  if (/relay disabled/i.test(msg)) {
+    return (
+      `${msg} — set SSH_GATEWAY_SERVICE_TOKEN on the libvirt agent (must match compose .env) ` +
+      "and HUY_AGENT_ID to the registry agent UUID, then restart huy-libvirt-agent."
+    );
+  }
+  if (/ws dial|connection refused|connect: connection refused/i.test(msg)) {
+    return (
+      `${msg} — libvirt agent API is down or unreachable on the hypervisor. ` +
+      "On dommel: sudo systemctl status huy-libvirt-agent && sudo journalctl -u huy-libvirt-agent -n 30"
+    );
+  }
+  if (/relay|9122|dial tcp/i.test(msg)) {
     return (
       `${msg} — ssh-gateway could not reach the hypervisor relay. ` +
       "Upgrade the libvirt agent (WebSocket relay on :8765) or set SSH_RELAY_BIND=0.0.0.0 on the hypervisor."

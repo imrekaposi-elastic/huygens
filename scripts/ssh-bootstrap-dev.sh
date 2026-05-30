@@ -12,6 +12,9 @@ LINUX_USER="${HUY_LINUX_USER:-}"
 USERNAME="${HUY_USERNAME:-platform-admin}"
 PASSWORD="${HUY_PASSWORD:-platform-admin-secret-12}"
 USER_ID="${HUY_USER_ID:-}"
+# Set HUY_AGENT_TLS_INSECURE=1 (or --insecure) for agents with private/self-signed HTTPS certs.
+AGENT_TLS_INSECURE="${HUY_AGENT_TLS_INSECURE:-0}"
+CURL_AGENT=(curl -fsS)
 
 usage() {
   cat <<'EOF'
@@ -30,14 +33,20 @@ Optional:
   HUY_USERNAME        IAM login user (default platform-admin)
   HUY_PASSWORD        IAM login password
   HUY_USER_ID         Huygens user UUID for account mapping (fetched from /me if unset)
+  HUY_AGENT_TLS_INSECURE  Set to 1 to skip TLS verify on agent HTTPS (self-signed CA)
 
 Steps: login → org SSH CA → account mapping → project ssh_access grant → agent ssh-trust
 EOF
 }
 
+agent_curl() {
+  "${CURL_AGENT[@]}" "$@"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
+    --insecure) AGENT_TLS_INSECURE=1; shift ;;
     --org) ORG_ID="$2"; shift 2 ;;
     --project) PROJECT_ID="$2"; shift 2 ;;
     --agent) AGENT_ID="$2"; shift 2 ;;
@@ -47,6 +56,11 @@ while [[ $# -gt 0 ]]; do
     *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
   esac
 done
+
+if [[ "$AGENT_TLS_INSECURE" == "1" || "$AGENT_TLS_INSECURE" == "true" || "$AGENT_TLS_INSECURE" == "yes" ]]; then
+  CURL_AGENT=(curl -fsSk)
+  echo "    agent TLS verify: disabled (HUY_AGENT_TLS_INSECURE)"
+fi
 
 for var in ORG_ID PROJECT_ID AGENT_ID VM_NAME LINUX_USER AGENT_URL; do
   if [[ -z "${!var}" ]]; then
@@ -99,11 +113,11 @@ if [[ -z "$AGENT_TOKEN" || "$AGENT_TOKEN" == "null" ]]; then
 fi
 
 echo "==> Agent ssh-trust on $VM_NAME"
-curl -fsS -X PUT "$AGENT_URL/api/v1/vms/$VM_NAME/ssh-trust" \
+agent_curl -X PUT "$AGENT_URL/api/v1/vms/$VM_NAME/ssh-trust" \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{\"ca_public_key_openssh\":$(jq -Rs . <<<"$CA"),\"linux_username\":\"$LINUX_USER\",\"sudoers_lines\":[]}"
 
-echo "Done. New VMs need cloud-init with this trust; existing guests may need recreate/reboot with updated ISO."
+echo "Done. Existing guests: run the onboard script on the VM (console → Onboard script)."
 echo "Connect: eval \$(huy login -q $USERNAME '$PASSWORD' --org $ORG_ID)"
 echo "         huy ssh $VM_NAME --project $PROJECT_ID"
