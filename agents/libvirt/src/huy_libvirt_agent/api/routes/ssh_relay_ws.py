@@ -7,7 +7,7 @@ import json
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from huy_libvirt_agent.api.deps import StateDep
+from huy_libvirt_agent.app_state import AppState
 from huy_libvirt_agent.services.ssh_relay import RelayRequest, verify_session_token
 
 router = APIRouter(prefix="/api/v1/ssh", tags=["ssh"])
@@ -49,8 +49,9 @@ async def _bridge_ws_to_tcp(
 
 
 @router.websocket("/relay/ws")
-async def ssh_relay_websocket(websocket: WebSocket, state: StateDep) -> None:
+async def ssh_relay_websocket(websocket: WebSocket) -> None:
     """Bidirectional relay to guest :22 after session-token validation."""
+    state: AppState = websocket.app.state.app_state
     await websocket.accept()
     secret = state.settings.ssh_gateway_service_token
     agent_id = state.settings.agent_id

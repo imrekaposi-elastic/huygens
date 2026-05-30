@@ -14,6 +14,8 @@ from starlette.responses import Response
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Any) -> Response:
+        if request.headers.get("upgrade", "").lower() == "websocket":
+            return await call_next(request)
         request_id = request.headers.get("X-Request-Id") or str(uuid.uuid4())
         request.state.request_id = request_id
         structlog.contextvars.clear_contextvars()
