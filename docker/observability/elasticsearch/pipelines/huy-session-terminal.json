@@ -1,0 +1,136 @@
+{
+  "description": "SSH session terminal I/O (line-batched, human-readable plaintext)",
+  "processors": [
+    {
+      "script": {
+        "lang": "painless",
+        "source": "if (ctx.cast_timestamp != null) { long millis = (long)(ctx.cast_timestamp * 1000.0); ctx['@timestamp'] = Instant.ofEpochMilli(millis).toString(); } if (ctx.stream != null) { if (ctx.terminal == null) { ctx.terminal = new HashMap(); } ctx.terminal.stream = ctx.stream; String text = ctx.terminal_plaintext; if (text == null || text.isEmpty()) { text = ctx.terminal_data; } if (text != null) { ctx.terminal.plaintext = text; if (ctx.stream == 'i') { ctx.terminal.input = text; } else if (ctx.stream == 'o') { ctx.terminal.output = text; } } if (ctx.terminal_data != null && ctx.terminal_data != text) { ctx.terminal.raw = ctx.terminal_data; } }"
+      }
+    },
+    {
+      "set": {
+        "field": "event.kind",
+        "value": "event"
+      }
+    },
+    {
+      "set": {
+        "field": "event.category",
+        "value": ["session"]
+      }
+    },
+    {
+      "set": {
+        "field": "event.type",
+        "value": ["info"]
+      }
+    },
+    {
+      "set": {
+        "field": "event.action",
+        "value": "session.terminal"
+      }
+    },
+    {
+      "set": {
+        "field": "event.dataset",
+        "value": "huy.session.terminal"
+      }
+    },
+    {
+      "set": {
+        "field": "service.name",
+        "value": "huy-ssh-gateway"
+      }
+    },
+    {
+      "set": {
+        "field": "process.interactive",
+        "value": true
+      }
+    },
+    {
+      "rename": {
+        "field": "session_id",
+        "target_field": "session.id",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "organization_id",
+        "target_field": "organization.id",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "project_id",
+        "target_field": "huy.project.id",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "vm_name",
+        "target_field": "host.name",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "guest_ip",
+        "target_field": "host.ip",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "user_id",
+        "target_field": "user.id",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "user_email",
+        "target_field": "user.email",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "user_username",
+        "target_field": "user.name",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "linux_user",
+        "target_field": "process.user.name",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "agent_id",
+        "target_field": "agent.id",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "recording_uri",
+        "target_field": "huy.recording.uri",
+        "ignore_missing": true
+      }
+    },
+    {
+      "remove": {
+        "field": ["cast_timestamp", "stream", "terminal_data", "terminal_plaintext", "data", "specversion", "dataschema", "datacontenttype", "time", "type", "source", "event.original"],
+        "ignore_missing": true
+      }
+    }
+  ]
+}

@@ -482,8 +482,9 @@ services:
     mem_limit: 2g
     environment:
       discovery.type: single-node
-      xpack.security.enabled: "false"
+      xpack.security.enabled: "true"
       xpack.security.http.ssl.enabled: "false"
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-changeme-dev-only}
       ES_JAVA_OPTS: -Xms1g -Xmx1g
     ports:
       - "9200:9200"
@@ -493,7 +494,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl -sf http://127.0.0.1:9200/_cluster/health?wait_for_status=yellow&timeout=60s >/dev/null",
+          "curl -sf -u elastic:${ELASTIC_PASSWORD:-changeme-dev-only} http://127.0.0.1:9200/_cluster/health?wait_for_status=yellow&timeout=60s >/dev/null",
         ]
       interval: 15s
       timeout: 10s
@@ -506,8 +507,13 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
+      elasticsearch-setup:
+        condition: service_completed_successfully
     environment:
-      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: kibana_system
+      ELASTICSEARCH_PASSWORD: ${ELASTIC_PASSWORD:-changeme-dev-only}
+    volumes:
+      - ./docker/observability/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
     ports:
       - "5601:5601"
     healthcheck:
@@ -516,6 +522,20 @@ services:
       timeout: 10s
       retries: 20
       start_period: 90s
+
+  kibana-setup:
+    image: curlimages/curl:8.12.1
+    profiles: [observability]
+    depends_on:
+      kibana:
+        condition: service_healthy
+    volumes:
+      - ./docker/observability/kibana:/setup:ro
+    entrypoint: ["/bin/sh", "/setup/setup.sh"]
+    environment:
+      KIBANA_URL: http://kibana:5601
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-changeme-dev-only}
+    restart: "no"
 
   otel-collector:
     image: docker.elastic.co/elastic-agent/elastic-otel-collector:${EDOT_COLLECTOR_VERSION:-9.4.1}
@@ -526,13 +546,28 @@ services:
         condition: service_healthy
     environment:
       ELASTIC_ENDPOINT: http://elasticsearch:9200
-      # Set when Elasticsearch security is enabled (production / Elastic Cloud).
+      ELASTIC_USER: elastic
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-changeme-dev-only}
       ELASTIC_API_KEY: ${ELASTIC_API_KEY:-}
     volumes:
       - ./docker/observability/edot-collector-gateway.yaml:/etc/otelcol/config.yaml:ro
     ports:
       - "4317:4317"
       - "4318:4318"
+
+  elasticsearch-setup:
+    image: curlimages/curl:8.12.1
+    profiles: [observability]
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./docker/observability/elasticsearch:/setup:ro
+    entrypoint: ["/bin/sh", "/setup/setup.sh"]
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-changeme-dev-only}
+    restart: "no"
 
   logstash:
     image: docker.elastic.co/logstash/logstash:${ELASTIC_STACK_VERSION:-9.4.1}
@@ -542,12 +577,16 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
+      elasticsearch-setup:
+        condition: service_completed_successfully
     volumes:
       - ./docker/observability/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
       - ./docker/observability/logstash-sessions.conf:/usr/share/logstash/pipeline/logstash-sessions.conf:ro
+      - ./docker/observability/logstash-session-recordings.conf:/usr/share/logstash/pipeline/logstash-session-recordings.conf:ro
       - ./docker/observability/logstash-pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
     environment:
       LS_JAVA_OPTS: -Xms256m -Xmx256m
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-changeme-dev-only}
 
 volumes:
   huygens-pgdata:

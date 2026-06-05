@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Huygens CLI — Phase 9 SSH (`huy ssh`, `huy login`)."""
+"""Huygens CLI — login, context selection, audited SSH (`huy ssh`)."""
 
 from __future__ import annotations
 
@@ -7,36 +7,81 @@ import argparse
 import json
 import os
 import select
+import shutil
+import signal
 import sys
 import termios
 import tty
 import urllib.error
+import urllib.parse
 import urllib.request
+from pathlib import Path
+from typing import Any
+
+CONTEXT_KEYS = (
+    "HUY_ORG_ID",
+    "HUY_ORG_NAME",
+    "HUY_PROJECT_ID",
+    "HUY_PROJECT_NAME",
+    "HUY_AGENT_ID",
+    "HUY_AGENT_NAME",
+    "HUY_VM_NAME",
+    "HUY_CONSOLE_URL",
+    "HUY_SSH_GATEWAY_URL",
+)
 
 
-def _iam_url() -> str:
-    return os.environ.get("HUY_IAM_URL", "http://127.0.0.1:8081").rstrip("/")
+def _config_dir() -> Path:
+    d = Path.home() / ".config" / "huy"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _context_path() -> Path:
+    return _config_dir() / "context.env"
+
+
+def _console_url() -> str:
+    return os.environ.get(
+        "HUY_CONSOLE_URL",
+        os.environ.get("HUY_SSH_GATEWAY_URL", "http://127.0.0.1:5173"),
+    ).rstrip("/")
 
 
 def _gateway_url() -> str:
-    return os.environ.get("HUY_SSH_GATEWAY_URL", "http://127.0.0.1:5173").rstrip("/")
+    return os.environ.get("HUY_SSH_GATEWAY_URL", _console_url()).rstrip("/")
+
+
+def _iam_url() -> str:
+    return os.environ.get("HUY_IAM_URL", _console_url()).rstrip("/")
 
 
 def _token() -> str:
     token = os.environ.get("HUY_ACCESS_TOKEN", "")
     if not token:
-        print("Set HUY_ACCESS_TOKEN or run: eval $(huy login -q USER PASS)", file=sys.stderr)
+        print(
+            "Not logged in. Run:\n"
+            "  eval $(huy login -q USER PASS)\n"
+            "  huy use",
+            file=sys.stderr,
+        )
         sys.exit(1)
     return token
 
 
-def _api(base: str, path: str, *, method: str = "GET", body: dict | None = None, token: str | None = None) -> dict:
+def _api(
+    base: str,
+    path: str,
+    *,
+    method: str = "GET",
+    body: dict | None = None,
+    token: str | None = None,
+    auth: bool = True,
+) -> Any:
     data = None
     headers: dict[str, str] = {}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    elif path.startswith("/api/v1/ssh"):
-        headers["Authorization"] = f"Bearer {_token()}"
+    if auth:
+        headers["Authorization"] = f"Bearer {token or _token()}"
     if body is not None:
         data = json.dumps(body).encode()
         headers["Content-Type"] = "application/json"
@@ -48,11 +93,114 @@ def _api(base: str, path: str, *, method: str = "GET", body: dict | None = None,
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read().decode())
+            if resp.status == 204:
+                return None
+            raw = resp.read().decode()
+            return json.loads(raw) if raw else None
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode()
         print(f"API error {exc.code}: {detail}", file=sys.stderr)
         sys.exit(1)
+
+
+def _load_context_file() -> dict[str, str]:
+    path = _context_path()
+    if not path.is_file():
+        return {}
+    out: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or not line.startswith("export "):
+            continue
+        rest = line[len("export ") :]
+        if "=" not in rest:
+            continue
+        key, val = rest.split("=", 1)
+        if val.startswith("'") and val.endswith("'"):
+            val = val[1:-1]
+        elif val.startswith('"') and val.endswith('"'):
+            val = val[1:-1]
+        out[key] = val
+    return out
+
+
+def _context_value(key: str) -> str:
+    return os.environ.get(key, "") or _load_context_file().get(key, "")
+
+
+def _save_context(values: dict[str, str]) -> None:
+    lines = ["# Huygens CLI context — source with: eval $(huy env -q)", ""]
+    console = values.get("HUY_CONSOLE_URL") or _console_url()
+    gateway = values.get("HUY_SSH_GATEWAY_URL") or _gateway_url()
+    merged = {
+        **values,
+        "HUY_CONSOLE_URL": console,
+        "HUY_SSH_GATEWAY_URL": gateway,
+    }
+    for key in CONTEXT_KEYS:
+        if key in merged and merged[key]:
+            lines.append(f"export {key}={merged[key]!r}")
+    _context_path().write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _print_exports(values: dict[str, str], *, quiet: bool) -> None:
+    console = values.get("HUY_CONSOLE_URL") or _console_url()
+    gateway = values.get("HUY_SSH_GATEWAY_URL") or _gateway_url()
+    merged = {**values, "HUY_CONSOLE_URL": console, "HUY_SSH_GATEWAY_URL": gateway}
+    if quiet:
+        for key in CONTEXT_KEYS:
+            if key in merged and merged[key]:
+                print(f"export {key}={merged[key]!r}")
+        return
+    print("Context loaded. Run in your shell:")
+    print(f"  eval $(huy env -q)")
+    print("")
+    print("Then connect with:")
+    print("  huy ssh              # uses HUY_VM_NAME")
+    print("  huy ssh <vm-name>")
+
+
+def _pick(label: str, items: list[dict], fmt) -> dict | None:
+    if not items:
+        print(f"No {label} available.", file=sys.stderr)
+        return None
+    print(f"\n{label}:")
+    for i, item in enumerate(items, 1):
+        print(f"  {i}. {fmt(item)}")
+    print("  q. Quit / skip")
+    while True:
+        choice = input(f"Select {label.lower()} [1-{len(items)}]: ").strip()
+        if choice.lower() in ("q", ""):
+            return None
+        try:
+            idx = int(choice)
+            if 1 <= idx <= len(items):
+                return items[idx - 1]
+        except ValueError:
+            pass
+        print("Invalid choice — enter a number or q.")
+
+
+def _list_orgs() -> list[dict]:
+    return _api(_console_url(), "/api/v1/organizations")
+
+
+def _list_projects(org_id: str) -> list[dict]:
+    return _api(
+        _console_url(),
+        f"/api/v1/projects?organization_id={urllib.parse.quote(org_id)}",
+    )
+
+
+def _list_agents(project_id: str) -> list[dict]:
+    return _api(_console_url(), f"/api/v1/projects/{project_id}/agents")
+
+
+def _list_vms(project_id: str, agent_id: str) -> list[dict]:
+    return _api(
+        _console_url(),
+        f"/api/v1/projects/{project_id}/agents/{agent_id}/vms",
+    )
 
 
 def _gateway_ws_url(gateway: str, session_id: str, token: str) -> str:
@@ -68,6 +216,85 @@ def _gateway_ws_url(gateway: str, session_id: str, token: str) -> str:
     return f"ws://{base}{path}"
 
 
+def _terminal_size() -> tuple[int, int]:
+    try:
+        size = shutil.get_terminal_size()
+        return max(size.columns, 1), max(size.lines, 1)
+    except OSError:
+        return 120, 32
+
+
+def _resize_payload(cols: int, rows: int) -> bytes:
+    return b"\x00" + json.dumps({"type": "resize", "cols": cols, "rows": rows}).encode()
+
+
+def _send_terminal_resize(ws: Any) -> None:
+    cols, rows = _terminal_size()
+    ws.send_binary(_resize_payload(cols, rows))
+
+
+def _run_interactive_ws(ws: Any) -> None:
+    """Attach local TTY to gateway WebSocket (PTY resize + raw mode)."""
+    try:
+        import websocket  # type: ignore
+        from websocket._exceptions import WebSocketConnectionClosedException
+    except ImportError:
+        print(
+            "Interactive SSH needs websocket-client: pip install -r tools/huy-cli/requirements.txt",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    old_tty = termios.tcgetattr(sys.stdin.fileno())
+    old_winch = signal.getsignal(signal.SIGWINCH)
+
+    def on_winch(_signum: int, _frame: Any) -> None:
+        try:
+            _send_terminal_resize(ws)
+        except Exception:
+            pass
+
+    try:
+        tty.setraw(sys.stdin.fileno())
+        signal.signal(signal.SIGWINCH, on_winch)
+        _send_terminal_resize(ws)
+
+        while True:
+            rlist, _, _ = select.select([sys.stdin, ws.sock], [], [])
+            if sys.stdin in rlist:
+                data = os.read(sys.stdin.fileno(), 4096)
+                if not data:
+                    break
+                try:
+                    ws.send_binary(data)
+                except WebSocketConnectionClosedException:
+                    break
+            if ws.sock in rlist:
+                try:
+                    opcode, frame = ws.recv_data()
+                except WebSocketConnectionClosedException:
+                    break
+                if opcode == websocket.ABNF.OPCODE_CLOSE:
+                    break
+                if not frame:
+                    continue
+                if opcode == websocket.ABNF.OPCODE_TEXT:
+                    text = frame.decode("utf-8", errors="replace")
+                    if text.startswith("huy:ready"):
+                        _send_terminal_resize(ws)
+                        continue
+                    os.write(sys.stdout.fileno(), frame)
+                    continue
+                os.write(sys.stdout.fileno(), frame)
+    finally:
+        signal.signal(signal.SIGWINCH, old_winch)
+        termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, old_tty)
+        try:
+            ws.close()
+        except Exception:
+            pass
+
+
 def _attach_session_ws(gateway: str, session_id: str) -> None:
     try:
         import websocket  # type: ignore
@@ -80,66 +307,22 @@ def _attach_session_ws(gateway: str, session_id: str) -> None:
 
     url = _gateway_ws_url(gateway, session_id, _token())
     ws = websocket.create_connection(url, suppress_origin=True)
-
-    old_tty = termios.tcgetattr(sys.stdin.fileno())
-    try:
-        tty.setraw(sys.stdin.fileno())
-        while True:
-            rlist, _, _ = select.select([sys.stdin, ws.sock], [], [])
-            if sys.stdin in rlist:
-                data = os.read(sys.stdin.fileno(), 4096)
-                if not data:
-                    break
-                ws.send_binary(data)
-            if ws.sock in rlist:
-                opcode, frame = ws.recv_data()
-                if opcode in (websocket.ABNF.OPCODE_CLOSE, websocket.ABNF.OPCODE_NONE):
-                    break
-                if frame:
-                    os.write(sys.stdout.fileno(), frame)
-    finally:
-        termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, old_tty)
-        ws.close()
+    _run_interactive_ws(ws)
 
 
-def cmd_login(args: argparse.Namespace) -> None:
-    result = _api(
-        _iam_url(),
-        "/api/v1/auth/login",
-        method="POST",
-        body={"username": args.username, "password": args.password},
-    )
-    token = result["access_token"]
-    if args.quiet:
-        print(f"export HUY_ACCESS_TOKEN={token!r}")
-        if args.org:
-            print(f"export HUY_ORG_ID={args.org!r}")
-        return
-    print("Logged in. Run:")
-    print(f"  export HUY_ACCESS_TOKEN={token!r}")
-    if args.org:
-        print(f"  export HUY_ORG_ID={args.org!r}")
-    print(f"  export HUY_SSH_GATEWAY_URL={_gateway_url()!r}")
-    print("  ./tools/huy-cli/huy ssh VM --project PROJECT_ID")
-
-
-def cmd_ssh(args: argparse.Namespace) -> None:
+def _connect_vm(*, org_id: str, project_id: str, vm_name: str, json_only: bool = False) -> None:
     gateway = _gateway_url()
-    org = args.org or os.environ.get("HUY_ORG_ID", "")
-    if not org:
-        print("--org or HUY_ORG_ID required", file=sys.stderr)
-        sys.exit(1)
     session = _api(
         gateway,
         "/api/v1/ssh/sessions",
         method="POST",
         body={
-            "organization_id": org,
-            "project_id": args.project,
-            "vm_name": args.vm,
+            "organization_id": org_id,
+            "project_id": project_id,
+            "vm_name": vm_name,
         },
     )
-    if args.json or not sys.stdin.isatty() or not sys.stdout.isatty():
+    if json_only or not sys.stdin.isatty() or not sys.stdout.isatty():
         print(json.dumps(session, indent=2))
         print(f"\nWebSocket: {_gateway_ws_url(gateway, session['id'], _token())}")
         return
@@ -150,8 +333,266 @@ def cmd_ssh(args: argparse.Namespace) -> None:
         pass
 
 
+def cmd_login(args: argparse.Namespace) -> None:
+    result = _api(
+        _iam_url(),
+        "/api/v1/auth/login",
+        method="POST",
+        body={"username": args.username, "password": args.password},
+        auth=False,
+    )
+    token = result["access_token"]
+    if args.quiet:
+        print(f"export HUY_ACCESS_TOKEN={token!r}")
+        print(f"export HUY_CONSOLE_URL={_console_url()!r}")
+        print(f"export HUY_SSH_GATEWAY_URL={_gateway_url()!r}")
+        return
+    print("Logged in. Load session into your shell:")
+    print(f"  eval $(huy login -q {args.username!r} '<password>')")
+    print("  huy use          # pick org → project → VM")
+    print("  huy ssh VM --project ID   # or after huy use: huy ssh")
+
+
+def cmd_env(args: argparse.Namespace) -> None:
+    ctx = _load_context_file()
+    if not ctx and not any(_context_value(k) for k in CONTEXT_KEYS):
+        print("No saved context. Run: huy use", file=sys.stderr)
+        sys.exit(1)
+    merged = {**ctx}
+    for key in CONTEXT_KEYS:
+        if os.environ.get(key):
+            merged[key] = os.environ[key]
+    _print_exports(merged, quiet=args.quiet)
+
+
+def cmd_status(_args: argparse.Namespace) -> None:
+    ctx = _load_context_file()
+    print(f"Context file: {_context_path()}")
+    print(f"Console:      {_console_url()}")
+    print(f"SSH gateway:  {_gateway_url()}")
+    token = os.environ.get("HUY_ACCESS_TOKEN", "")
+    print(f"Logged in:    {'yes' if token else 'no (run huy login)'}")
+    for key in CONTEXT_KEYS:
+        val = os.environ.get(key) or ctx.get(key, "")
+        label = key.removeprefix("HUY_").replace("_", " ").title()
+        print(f"{label + ':':14} {val or '—'}")
+
+
+def cmd_orgs(_args: argparse.Namespace) -> None:
+    orgs = _list_orgs()
+    if not orgs:
+        print("No organizations.")
+        return
+    for i, org in enumerate(orgs, 1):
+        print(f"{i:3}. {org.get('name', '?')}  ({org.get('slug', '')})  {org['id']}")
+
+
+def cmd_org_select(args: argparse.Namespace) -> None:
+    orgs = _list_orgs()
+    org = None
+    if args.target:
+        if args.target.isdigit():
+            idx = int(args.target)
+            if 1 <= idx <= len(orgs):
+                org = orgs[idx - 1]
+        else:
+            org = next((o for o in orgs if o["id"] == args.target or o.get("slug") == args.target), None)
+    else:
+        org = _pick("Organizations", orgs, lambda o: f"{o.get('name')} ({o.get('slug')})")
+    if not org:
+        sys.exit(1)
+    ctx = _load_context_file()
+    ctx.update(
+        {
+            "HUY_ORG_ID": org["id"],
+            "HUY_ORG_NAME": org.get("name", ""),
+        }
+    )
+    _save_context(ctx)
+    _print_exports(ctx, quiet=args.quiet)
+
+
+def cmd_projects(_args: argparse.Namespace) -> None:
+    org_id = _context_value("HUY_ORG_ID")
+    if not org_id:
+        print("No organization selected. Run: huy org select", file=sys.stderr)
+        sys.exit(1)
+    projects = _list_projects(org_id)
+    if not projects:
+        print("No projects in this organization.")
+        return
+    for i, p in enumerate(projects, 1):
+        print(f"{i:3}. {p.get('name', '?')}  ({p.get('slug', '')})  {p['id']}")
+
+
+def cmd_project_select(args: argparse.Namespace) -> None:
+    org_id = _context_value("HUY_ORG_ID")
+    if not org_id:
+        print("No organization selected. Run: huy org select", file=sys.stderr)
+        sys.exit(1)
+    projects = _list_projects(org_id)
+    project = None
+    if args.target:
+        if args.target.isdigit():
+            idx = int(args.target)
+            if 1 <= idx <= len(projects):
+                project = projects[idx - 1]
+        else:
+            project = next(
+                (p for p in projects if p["id"] == args.target or p.get("slug") == args.target),
+                None,
+            )
+    else:
+        project = _pick("Projects", projects, lambda p: f"{p.get('name')} ({p.get('slug')})")
+    if not project:
+        sys.exit(1)
+    ctx = _load_context_file()
+    ctx.update(
+        {
+            "HUY_ORG_ID": org_id,
+            "HUY_PROJECT_ID": project["id"],
+            "HUY_PROJECT_NAME": project.get("name", ""),
+            "HUY_AGENT_ID": "",
+            "HUY_AGENT_NAME": "",
+            "HUY_VM_NAME": "",
+        }
+    )
+    _save_context(ctx)
+    _print_exports(ctx, quiet=args.quiet)
+
+
+def _ensure_agent(project_id: str, agent_id: str | None) -> dict:
+    agents = _list_agents(project_id)
+    if not agents:
+        print("No agents on this project.", file=sys.stderr)
+        sys.exit(1)
+    if agent_id:
+        agent = next((a for a in agents if a["id"] == agent_id), None)
+        if not agent:
+            print(f"Agent {agent_id} not found on project.", file=sys.stderr)
+            sys.exit(1)
+        return agent
+    if len(agents) == 1:
+        return agents[0]
+    connected = [a for a in agents if a.get("connection_status") == "connected"]
+    pool = connected or agents
+    if len(pool) == 1:
+        return pool[0]
+    picked = _pick(
+        "Agents",
+        pool,
+        lambda a: f"{a.get('name')} ({a.get('connection_status', '?')})",
+    )
+    if not picked:
+        sys.exit(1)
+    return picked
+
+
+def cmd_vms(_args: argparse.Namespace) -> None:
+    project_id = _context_value("HUY_PROJECT_ID")
+    if not project_id:
+        print("No project selected. Run: huy project select", file=sys.stderr)
+        sys.exit(1)
+    agent_id = _context_value("HUY_AGENT_ID") or None
+    agent = _ensure_agent(project_id, agent_id)
+    vms = _list_vms(project_id, agent["id"])
+    if not vms:
+        print("No VMs on this project/agent.")
+        return
+    for i, vm in enumerate(vms, 1):
+        name = vm.get("name") or "?"
+        state = vm.get("status") or vm.get("libvirt_state") or "?"
+        print(f"{i:3}. {name}  ({state})")
+
+
+def cmd_use(args: argparse.Namespace) -> None:
+    if not sys.stdin.isatty():
+        print("huy use requires an interactive terminal.", file=sys.stderr)
+        sys.exit(1)
+
+    org = None
+    org_id = _context_value("HUY_ORG_ID")
+    orgs = _list_orgs()
+    if org_id:
+        org = next((o for o in orgs if o["id"] == org_id), None)
+        if org:
+            print(f"Organization: {org.get('name')} ({org.get('slug')})")
+            reuse = input("Keep this org? [Y/n]: ").strip().lower()
+            if reuse in ("n", "no"):
+                org = None
+    if not org:
+        org = _pick("Organizations", orgs, lambda o: f"{o.get('name')} ({o.get('slug')})")
+        if not org:
+            sys.exit(0)
+
+    projects = _list_projects(org["id"])
+    project = _pick("Projects", projects, lambda p: f"{p.get('name')} ({p.get('slug')})")
+    if not project:
+        sys.exit(0)
+
+    agent = _ensure_agent(project["id"], None)
+    vms = _list_vms(project["id"], agent["id"])
+    vm = _pick(
+        "VMs",
+        vms,
+        lambda v: f"{v.get('name')} ({v.get('status') or v.get('libvirt_state') or '?'})",
+    )
+    if not vm:
+        sys.exit(0)
+
+    vm_name = str(vm.get("name") or "")
+    ctx = {
+        "HUY_ORG_ID": org["id"],
+        "HUY_ORG_NAME": org.get("name", ""),
+        "HUY_PROJECT_ID": project["id"],
+        "HUY_PROJECT_NAME": project.get("name", ""),
+        "HUY_AGENT_ID": agent["id"],
+        "HUY_AGENT_NAME": agent.get("name", ""),
+        "HUY_VM_NAME": vm_name,
+    }
+    _save_context(ctx)
+
+    print("")
+    print(f"  org:     {org.get('name')}")
+    print(f"  project: {project.get('name')}")
+    print(f"  agent:   {agent.get('name')}")
+    print(f"  vm:      {vm_name}")
+    print("")
+    print(f"Saved context → {_context_path()}")
+    print("")
+    print("Connect anytime (reads saved context):")
+    print("  huy ssh")
+    print("")
+    print("Optional — load into your shell for other tools:")
+    print("  eval $(huy env -q)")
+
+    if args.no_connect:
+        return
+
+    connect = input("\nConnect now? [Y/n]: ").strip().lower()
+    if connect in ("n", "no"):
+        return
+
+    _connect_vm(org_id=org["id"], project_id=project["id"], vm_name=vm_name)
+
+
+def cmd_ssh(args: argparse.Namespace) -> None:
+    org = args.org or _context_value("HUY_ORG_ID")
+    project = args.project or _context_value("HUY_PROJECT_ID")
+    vm = args.vm or _context_value("HUY_VM_NAME")
+    if not org:
+        print("--org or HUY_ORG_ID required (run: huy use)", file=sys.stderr)
+        sys.exit(1)
+    if not project:
+        print("--project or HUY_PROJECT_ID required (run: huy use)", file=sys.stderr)
+        sys.exit(1)
+    if not vm:
+        print("VM name required (run: huy use, or: huy ssh <vm-name>)", file=sys.stderr)
+        sys.exit(1)
+    _connect_vm(org_id=org, project_id=project, vm_name=vm, json_only=args.json)
+
+
 def cmd_ssh_proxy(args: argparse.Namespace) -> None:
-    """OpenSSH ProxyCommand helper — opens gateway WebSocket tunnel on stdio."""
     try:
         import websocket  # type: ignore
     except ImportError:
@@ -159,8 +600,8 @@ def cmd_ssh_proxy(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     gateway = _gateway_url()
-    org = os.environ.get("HUY_ORG_ID", "")
-    project = os.environ.get("HUY_PROJECT_ID", "")
+    org = _context_value("HUY_ORG_ID")
+    project = _context_value("HUY_PROJECT_ID")
     vm = args.host.split(".")[0]
     session = _api(
         gateway,
@@ -171,42 +612,72 @@ def cmd_ssh_proxy(args: argparse.Namespace) -> None:
     url = _gateway_ws_url(gateway, session["id"], _token())
     ws = websocket.create_connection(url, suppress_origin=True)
     try:
-        while True:
-            rlist, _, _ = select.select([sys.stdin, ws.sock], [], [])
-            if sys.stdin in rlist:
-                data = os.read(sys.stdin.fileno(), 4096)
-                if not data:
-                    break
-                ws.send_binary(data)
-            if ws.sock in rlist:
-                opcode, frame = ws.recv_data()
-                if opcode in (websocket.ABNF.OPCODE_CLOSE, websocket.ABNF.OPCODE_NONE):
-                    break
-                if frame:
-                    os.write(sys.stdout.fileno(), frame)
-    finally:
-        ws.close()
+        _run_interactive_ws(ws)
+    except KeyboardInterrupt:
+        pass
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="huy")
+    parser = argparse.ArgumentParser(
+        prog="huy",
+        description="Huygens CLI — audited SSH via ssh-gateway",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
-    login_p = sub.add_parser("login", help="Obtain Huygens JWT from IAM")
+
+    login_p = sub.add_parser("login", help="Obtain JWT from IAM")
     login_p.add_argument("username")
     login_p.add_argument("password")
-    login_p.add_argument("--org", default=None, help="Also print HUY_ORG_ID export")
     login_p.add_argument("-q", "--quiet", action="store_true", help="Print export lines only")
     login_p.set_defaults(func=cmd_login)
-    ssh_p = sub.add_parser("ssh", help="Create audited SSH session")
-    ssh_p.add_argument("vm", help="VM name")
-    ssh_p.add_argument("--project", required=True)
+
+    env_p = sub.add_parser("env", help="Print saved org/project/VM context")
+    env_p.add_argument("-q", "--quiet", action="store_true")
+    env_p.set_defaults(func=cmd_env)
+
+    status_p = sub.add_parser("status", help="Show login and saved context")
+    status_p.set_defaults(func=cmd_status)
+
+    use_p = sub.add_parser("use", help="Interactive: org → project → VM → connect")
+    use_p.add_argument(
+        "--no-connect",
+        action="store_true",
+        help="Save context only; do not open SSH session",
+    )
+    use_p.set_defaults(func=cmd_use)
+
+    orgs_p = sub.add_parser("orgs", help="List organizations")
+    orgs_p.set_defaults(func=cmd_orgs)
+
+    org_sel_p = sub.add_parser("org", help="Select organization")
+    org_sel_p.add_argument("action", choices=["select"])
+    org_sel_p.add_argument("target", nargs="?", help="Index, id, or slug")
+    org_sel_p.add_argument("-q", "--quiet", action="store_true")
+    org_sel_p.set_defaults(func=cmd_org_select)
+
+    proj_p = sub.add_parser("projects", help="List projects in selected org")
+    proj_p.set_defaults(func=cmd_projects)
+
+    proj_sel_p = sub.add_parser("project", help="Select project")
+    proj_sel_p.add_argument("action", choices=["select"])
+    proj_sel_p.add_argument("target", nargs="?", help="Index, id, or slug")
+    proj_sel_p.add_argument("-q", "--quiet", action="store_true")
+    proj_sel_p.set_defaults(func=cmd_project_select)
+
+    vms_p = sub.add_parser("vms", help="List VMs in selected project")
+    vms_p.set_defaults(func=cmd_vms)
+
+    ssh_p = sub.add_parser("ssh", help="Audited SSH session")
+    ssh_p.add_argument("vm", nargs="?", help="VM name (default: HUY_VM_NAME from context)")
+    ssh_p.add_argument("--project", default=None)
     ssh_p.add_argument("--org", default=None)
-    ssh_p.add_argument("--json", action="store_true", help="Print session JSON only; do not connect")
+    ssh_p.add_argument("--json", action="store_true")
     ssh_p.set_defaults(func=cmd_ssh)
+
     proxy_p = sub.add_parser("ssh-proxy", help="OpenSSH ProxyCommand helper")
     proxy_p.add_argument("host")
     proxy_p.add_argument("port")
     proxy_p.set_defaults(func=cmd_ssh_proxy)
+
     args = parser.parse_args()
     args.func(args)
 

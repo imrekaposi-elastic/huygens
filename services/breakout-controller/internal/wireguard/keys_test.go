@@ -43,3 +43,10 @@ func TestGenerateKeyPair(t *testing.T) {
 		t.Fatal("expected distinct keypairs from random generation")
 	}
 }
+
+func TestMustGenerateKeyPair(t *testing.T) {
+	priv, pub := MustGenerateKeyPair()
+	if priv == "" || pub == "" {
+		t.Fatal("expected non-empty keys from MustGenerateKeyPair")
+	}
+}

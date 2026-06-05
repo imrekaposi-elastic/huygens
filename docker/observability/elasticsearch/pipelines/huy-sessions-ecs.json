@@ -1,0 +1,65 @@
+{
+  "description": "Finalize ECS SSH session lifecycle events",
+  "processors": [
+    {
+      "set": {
+        "field": "event.kind",
+        "value": "event"
+      }
+    },
+    {
+      "set": {
+        "field": "event.dataset",
+        "value": "huy.session"
+      }
+    },
+    {
+      "set": {
+        "field": "service.name",
+        "value": "huy-ssh-gateway"
+      }
+    },
+    {
+      "set": {
+        "field": "process.interactive",
+        "value": true
+      }
+    },
+    {
+      "script": {
+        "lang": "painless",
+        "source": "if (ctx.event != null && ctx.event.action != null) { if (ctx.event.action == 'session.open') { ctx.event.type = ['start']; ctx.event.category = ['session']; } else if (ctx.event.action == 'session.close') { ctx.event.type = ['end']; ctx.event.category = ['session']; } }"
+      }
+    },
+    {
+      "date": {
+        "field": "@timestamp",
+        "formats": ["ISO8601", "strict_date_optional_time_nanos"],
+        "target_field": "@timestamp",
+        "ignore_failure": true
+      }
+    },
+    {
+      "date": {
+        "field": "huy.session.started_at",
+        "target_field": "huy.session.started_at",
+        "formats": ["ISO8601", "strict_date_optional_time_nanos"],
+        "ignore_failure": true
+      }
+    },
+    {
+      "date": {
+        "field": "huy.session.ended_at",
+        "target_field": "huy.session.ended_at",
+        "formats": ["ISO8601", "strict_date_optional_time_nanos"],
+        "ignore_failure": true
+      }
+    },
+    {
+      "remove": {
+        "field": ["data", "specversion", "dataschema", "datacontenttype", "time", "type", "source"],
+        "ignore_missing": true
+      }
+    }
+  ]
+}

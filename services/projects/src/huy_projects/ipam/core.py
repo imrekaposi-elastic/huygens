@@ -66,6 +66,17 @@ def _overlaps(candidate: ipaddress.IPv4Network, occupied: Iterable[ipaddress.IPv
     return False
 
 
+def find_overlapping_pool(
+    candidate: ipaddress.IPv4Network,
+    existing: Iterable[tuple[str, str, str]],
+) -> tuple[str, str, str] | None:
+    """Return the first existing pool (name, cidr, organization_id) that overlaps candidate."""
+    for name, cidr, organization_id in existing:
+        if candidate.overlaps(parse_network(cidr)):
+            return name, cidr, organization_id
+    return None
+
+
 def next_subnet(
     pool: ipaddress.IPv4Network,
     prefixlen: int,

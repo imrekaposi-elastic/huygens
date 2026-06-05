@@ -1,0 +1,86 @@
+{
+  "description": "ECS-normalized audit events from huy.audit.events",
+  "processors": [
+    {
+      "set": {
+        "field": "event.kind",
+        "value": "event"
+      }
+    },
+    {
+      "set": {
+        "field": "event.dataset",
+        "value": "huy.audit"
+      }
+    },
+    {
+      "set": {
+        "field": "event.category",
+        "value": ["configuration"]
+      }
+    },
+    {
+      "rename": {
+        "field": "audit_action",
+        "target_field": "event.action",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "audit_outcome",
+        "target_field": "event.outcome",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "organization_id",
+        "target_field": "organization.id",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "actor_user_id",
+        "target_field": "user.id",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "resource_type",
+        "target_field": "huy.resource.type",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "resource_id",
+        "target_field": "huy.resource.id",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "trace_id",
+        "target_field": "trace.id",
+        "ignore_missing": true
+      }
+    },
+    {
+      "date": {
+        "field": "audit_timestamp",
+        "target_field": "@timestamp",
+        "formats": ["ISO8601", "strict_date_optional_time_nanos"],
+        "ignore_failure": true
+      }
+    },
+    {
+      "remove": {
+        "field": ["data", "specversion", "dataschema", "datacontenttype", "time", "type", "source", "audit_timestamp"],
+        "ignore_missing": true
+      }
+    }
+  ]
+}

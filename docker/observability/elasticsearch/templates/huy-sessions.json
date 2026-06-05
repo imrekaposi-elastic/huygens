@@ -1,0 +1,133 @@
+{
+  "index_patterns": ["huy-sessions"],
+  "data_stream": {},
+  "priority": 500,
+  "version": 4,
+  "template": {
+    "settings": {
+      "index.lifecycle.name": "huy-sessions-ilm",
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "mappings": {
+      "dynamic": true,
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "event": {
+          "properties": {
+            "action": { "type": "keyword" },
+            "category": { "type": "keyword" },
+            "dataset": { "type": "keyword" },
+            "id": { "type": "keyword" },
+            "kind": { "type": "keyword" },
+            "type": { "type": "keyword" }
+          }
+        },
+        "session": {
+          "properties": {
+            "id": { "type": "keyword" }
+          }
+        },
+        "sequence": { "type": "integer" },
+        "terminal": {
+          "properties": {
+            "stream": { "type": "keyword" },
+            "plaintext": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 8192
+                }
+              }
+            },
+            "raw": {
+              "type": "text",
+              "index": false
+            },
+            "input": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 8192
+                }
+              }
+            },
+            "output": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 8192
+                }
+              }
+            }
+          }
+        },
+        "organization": {
+          "properties": {
+            "id": { "type": "keyword" }
+          }
+        },
+        "user": {
+          "properties": {
+            "id": { "type": "keyword" },
+            "email": { "type": "keyword" },
+            "name": { "type": "keyword" }
+          }
+        },
+        "host": {
+          "properties": {
+            "name": { "type": "keyword" },
+            "ip": { "type": "ip" }
+          }
+        },
+        "process": {
+          "properties": {
+            "interactive": { "type": "boolean" },
+            "user": {
+              "properties": {
+                "name": { "type": "keyword" }
+              }
+            }
+          }
+        },
+        "agent": {
+          "properties": {
+            "id": { "type": "keyword" }
+          }
+        },
+        "service": {
+          "properties": {
+            "name": { "type": "keyword" }
+          }
+        },
+        "huy": {
+          "properties": {
+            "project": {
+              "properties": {
+                "id": { "type": "keyword" }
+              }
+            },
+            "recording": {
+              "properties": {
+                "uri": { "type": "keyword" }
+              }
+            },
+            "session": {
+              "properties": {
+                "started_at": { "type": "date" },
+                "ended_at": { "type": "date" },
+                "status": { "type": "keyword" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "_meta": {
+    "description": "SSH session metadata and terminal I/O (data stream)"
+  }
+}

@@ -1,0 +1,16 @@
+# Dev-only Kibana config (observability profile). Not for production.
+server.host: "0.0.0.0"
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+
+# Credentials for Kibana → Elasticsearch (kibana_system; password set by elasticsearch-setup).
+# Log in to the Kibana UI as user elastic / ELASTIC_PASSWORD (see compose.env.example).
+# Do not set server.publicBaseUrl for direct :5601 access — mismatched host causes redirect loops.
+# Do not set xpack.security.enabled — Kibana 9.4 derives it from Elasticsearch.
+
+# Self-managed dev stack — skip Elastic Cloud onboarding.
+xpack.cloud_connect.enabled: false
+
+# Required for Streams, alerting, and encrypted saved objects (min 32 chars each).
+xpack.encryptedSavedObjects.encryptionKey: "dev-kibana-encrypted-saved-objects-key-32"
+xpack.security.encryptionKey: "dev-kibana-security-encryption-key-32chars"
+xpack.reporting.encryptionKey: "dev-kibana-reporting-encryption-key-32c"

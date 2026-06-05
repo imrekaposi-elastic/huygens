@@ -14,6 +14,8 @@ os.environ.setdefault("BOOTSTRAP_ADMIN_USERNAME", "platform-admin")
 os.environ.setdefault("BOOTSTRAP_ADMIN_PASSWORD", "platform-admin-secret-12")
 os.environ.setdefault("OTEL_SDK_DISABLED", "true")
 os.environ.setdefault("KAFKA_PUBLISH_ENABLED", "false")
+os.environ.setdefault("IAM_SERVICE_TOKEN", "test-iam-service-token")
+os.environ.setdefault("SSH_GATEWAY_SERVICE_TOKEN", "test-ssh-gateway-service-token")
 
 from huy_iam.config import get_settings  # noqa: E402
 from huy_iam.main import create_app  # noqa: E402

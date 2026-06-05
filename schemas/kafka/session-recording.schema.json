@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://huygens.dev/schemas/kafka/session-recording.schema.json",
+  "title": "HuygensSessionRecordingEventData",
+  "description": "CloudEvents data payload for huy.session.recording (asciicast terminal I/O)",
+  "type": "object",
+  "required": [
+    "version",
+    "session_id",
+    "organization_id",
+    "cast_timestamp",
+    "stream",
+    "terminal_data",
+    "timestamp"
+  ],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "session_id": { "type": "string" },
+    "organization_id": { "type": "string", "format": "uuid" },
+    "project_id": { "type": "string" },
+    "vm_name": { "type": "string" },
+    "agent_id": { "type": "string" },
+    "guest_ip": { "type": "string" },
+    "user_id": { "type": "string" },
+    "user_email": { "type": "string" },
+    "user_username": { "type": "string" },
+    "linux_user": { "type": "string" },
+    "recording_uri": { "type": "string" },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "cast_timestamp": { "type": "number" },
+    "stream": { "type": "string", "enum": ["i", "o"] },
+    "terminal_data": { "type": "string" },
+    "terminal_plaintext": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}

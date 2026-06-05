@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from huy_projects.ipam.core import (
     IpamError,
+    find_overlapping_pool,
     hosts_to_prefixlen,
     next_subnet,
     parse_network,
@@ -75,6 +76,18 @@ async def create_pool(session: AsyncSession, organization_id: str, body: IpPoolC
                 raise IpamError(f"Exception {exc} is not within pool {body.cidr}")
     except IpamError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+    all_pools = await session.execute(select(IpPool.name, IpPool.cidr, IpPool.organization_id))
+    overlap = find_overlapping_pool(pool_net, all_pools.all())
+    if overlap is not None:
+        name, cidr, _owner_org_id = overlap
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Pool CIDR {body.cidr} overlaps existing pool '{name}' ({cidr}). "
+                "Address pools must not overlap, even across organizations."
+            ),
+        )
 
     existing = await session.execute(
         select(IpPool).where(IpPool.organization_id == organization_id, IpPool.name == body.name)

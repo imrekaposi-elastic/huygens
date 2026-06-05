@@ -10,7 +10,7 @@ Operational guide for Phase 9 **audited VM SSH**. Architecture: [ADR 0014](../ar
 | IAM SSH policy | 8081 | Account mappings, access groups, sudo rules, org SSH CA |
 | libvirt agent relay | 9122 | Hypervisor-local TCP relay to guest `:22` |
 | Inventory | 8083 | Internal `/internal/v1/ssh/target` resolution |
-| Logstash (observability profile) | — | `huy.session.events` → `huy-sessions-*` |
+| Logstash (observability profile) | — | Kafka → data stream `huy-sessions` |
 
 ## Local stack
 
@@ -54,10 +54,12 @@ export HUY_AGENT_URL=http://<hypervisor>:9100
 
 ```bash
 pip install -r tools/huy-cli/requirements.txt
-eval $(./tools/huy-cli/huy login -q platform-admin 'platform-admin-secret-12' --org "$HUY_ORG_ID")
-export HUY_SSH_GATEWAY_URL=http://127.0.0.1:5173   # Vite dev, or :8087 direct
-./tools/huy-cli/huy ssh web-01 --project "$HUY_PROJECT_ID"
+eval $(./tools/huy-cli/huy login -q platform-admin 'platform-admin-dev')
+./tools/huy-cli/huy use
+./tools/huy-cli/huy ssh
 ```
+
+Or step by step: `huy orgs` → `huy org select` → `huy projects` → `huy project select` → `huy vms` → `huy ssh <vm>`.
 
 ### Console
 
@@ -68,9 +70,10 @@ export HUY_SSH_GATEWAY_URL=http://127.0.0.1:5173   # Vite dev, or :8087 direct
 
 ## Session pipeline
 
-- Metadata: Kafka topic `huy.session.events` (CloudEvents `com.huygens.session.v1`).
-- Recordings: asciicast v2 on gateway volume (`SSH_RECORDING_DIR`) + `recording_uri` in events.
-- Search: Kibana Discover on `huy-sessions-*`, filter `event_kind:session`.
+- **Metadata:** Kafka `huy.session.events` → Logstash → data stream `huy-sessions` (pipeline `huy-sessions-ecs`).
+- **Terminal I/O:** On disconnect, gateway publishes line-batched events to `huy.session.recording` → same data stream `huy-sessions` (pipeline `huy-session-terminal`). Search `terminal.plaintext`.
+- **Recordings (replay):** asciicast v2 on gateway volume (`SSH_RECORDING_DIR`) + `huy.recording.uri` in events.
+- **Search:** Kibana Discover → data view **Huy SSH Sessions** (`huy-sessions`), filter `session.id`.
 
 ## Security notes
 
@@ -86,7 +89,7 @@ export HUY_SSH_GATEWAY_URL=http://127.0.0.1:5173   # Vite dev, or :8087 direct
 2. Run `scripts/ssh-bootstrap-dev.sh` (or console **SSH trust** + IAM mapping manually).
 3. **Console:** Projects → VM → **Connect** → shell works; session on `/access` with recording after disconnect.
 4. **CLI:** `huy login` → `huy ssh VM --project ID` → interactive shell.
-5. Optional: `docker compose --profile observability` and confirm `huy-sessions-*` in Kibana.
+5. Optional: `docker compose --profile observability` and confirm data stream `huy-sessions` in Kibana (filter `session.id:<uuid>`).
 
 ## Work packages (P9-0 … P9-9)
 

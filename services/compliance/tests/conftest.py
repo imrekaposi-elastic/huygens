@@ -13,6 +13,8 @@ os.environ.setdefault("JWT_ISSUER", "huy-iam")
 os.environ.setdefault("CHECK_ALERT_ENABLED", "false")
 os.environ.setdefault("OTEL_SDK_DISABLED", "true")
 os.environ.setdefault("KAFKA_PUBLISH_ENABLED", "false")
+os.environ.setdefault("PROJECTS_SERVICE_TOKEN", "test-projects-service-token")
+os.environ.setdefault("OBJECT_STORE_KIND", "local")
 
 
 @pytest.fixture

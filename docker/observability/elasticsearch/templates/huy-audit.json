@@ -1,0 +1,59 @@
+{
+  "index_patterns": ["huy-audit"],
+  "data_stream": {},
+  "priority": 500,
+  "version": 2,
+  "template": {
+    "settings": {
+      "index.lifecycle.name": "huy-audit-ilm",
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "mappings": {
+      "dynamic": true,
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "event": {
+          "properties": {
+            "action": { "type": "keyword" },
+            "category": { "type": "keyword" },
+            "dataset": { "type": "keyword" },
+            "id": { "type": "keyword" },
+            "kind": { "type": "keyword" },
+            "outcome": { "type": "keyword" },
+            "type": { "type": "keyword" }
+          }
+        },
+        "organization": {
+          "properties": {
+            "id": { "type": "keyword" }
+          }
+        },
+        "user": {
+          "properties": {
+            "id": { "type": "keyword" }
+          }
+        },
+        "trace": {
+          "properties": {
+            "id": { "type": "keyword" }
+          }
+        },
+        "message": { "type": "text" },
+        "huy": {
+          "properties": {
+            "resource": {
+              "properties": {
+                "type": { "type": "keyword" },
+                "id": { "type": "keyword" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "_meta": {
+    "description": "Compliance audit events (data stream)"
+  }
+}

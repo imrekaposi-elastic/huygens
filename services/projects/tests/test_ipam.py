@@ -11,6 +11,46 @@ from httpx import AsyncClient, Response
 from helpers import org_admin_token, platform_token
 
 ORG_ID = "11111111-1111-1111-1111-111111111111"
+ORG_ID_B = "22222222-2222-2222-2222-222222222222"
+
+
+@pytest.mark.asyncio
+async def test_reject_overlapping_pool_same_org(client: AsyncClient) -> None:
+    headers = {"Authorization": f"Bearer {org_admin_token(ORG_ID)}"}
+    first = await client.post(
+        f"/api/v1/organizations/{ORG_ID}/ipam/pools",
+        headers=headers,
+        json={"name": "pool-a", "cidr": "10.50.0.0/20"},
+    )
+    assert first.status_code == 201, first.text
+
+    denied = await client.post(
+        f"/api/v1/organizations/{ORG_ID}/ipam/pools",
+        headers=headers,
+        json={"name": "pool-b", "cidr": "10.50.0.0/24"},
+    )
+    assert denied.status_code == 409
+    assert "overlap" in denied.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_reject_overlapping_pool_across_orgs(client: AsyncClient) -> None:
+    headers_a = {"Authorization": f"Bearer {org_admin_token(ORG_ID)}"}
+    headers_b = {"Authorization": f"Bearer {org_admin_token(ORG_ID_B)}"}
+    first = await client.post(
+        f"/api/v1/organizations/{ORG_ID}/ipam/pools",
+        headers=headers_a,
+        json={"name": "org-a-pool", "cidr": "10.80.0.0/16"},
+    )
+    assert first.status_code == 201, first.text
+
+    denied = await client.post(
+        f"/api/v1/organizations/{ORG_ID_B}/ipam/pools",
+        headers=headers_b,
+        json={"name": "org-b-pool", "cidr": "10.80.128.0/17"},
+    )
+    assert denied.status_code == 409
+    assert "across organizations" in denied.json()["detail"].lower()
 
 
 @pytest.mark.asyncio

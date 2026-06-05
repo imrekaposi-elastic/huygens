@@ -28,7 +28,8 @@ exporters:
   elasticsearch/otel:
     endpoints:
       - ${env:ELASTIC_ENDPOINT}
-    # Dev stack has xpack.security.enabled=false; omit api_key. Production: set ELASTIC_API_KEY.
+    user: ${env:ELASTIC_USER}
+    password: ${env:ELASTIC_PASSWORD}
     mapping:
       mode: otel
 

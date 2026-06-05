@@ -2,3 +2,5 @@
   path.config: "/usr/share/logstash/pipeline/logstash.conf"
 - pipeline.id: sessions
   path.config: "/usr/share/logstash/pipeline/logstash-sessions.conf"
+- pipeline.id: session-recordings
+  path.config: "/usr/share/logstash/pipeline/logstash-session-recordings.conf"

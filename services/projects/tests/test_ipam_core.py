@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from huy_projects.ipam.core import IpamError, hosts_to_prefixlen, plan_subnets, validate_pool_cidr
+from huy_projects.ipam.core import (
+    IpamError,
+    find_overlapping_pool,
+    hosts_to_prefixlen,
+    parse_network,
+    plan_subnets,
+    validate_pool_cidr,
+)
 
 
 def test_validate_rfc1918_pool() -> None:
@@ -20,6 +27,18 @@ def test_reject_public_pool() -> None:
 def test_hosts_to_prefixlen() -> None:
     assert hosts_to_prefixlen(30) == 27
     assert hosts_to_prefixlen(250) == 24
+
+
+def test_find_overlapping_pool_detects_nested_cidr() -> None:
+    candidate = parse_network("10.50.0.0/20")
+    existing = [("lab", "10.50.0.0/24", "org-a")]
+    assert find_overlapping_pool(candidate, existing) == ("lab", "10.50.0.0/24", "org-a")
+
+
+def test_find_overlapping_pool_allows_disjoint() -> None:
+    candidate = parse_network("10.60.0.0/20")
+    existing = [("lab", "10.50.0.0/24", "org-a")]
+    assert find_overlapping_pool(candidate, existing) is None
 
 
 def test_plan_subnets_respects_exceptions() -> None:

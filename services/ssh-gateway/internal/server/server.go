@@ -23,6 +23,63 @@ import (
 	"github.com/imrekaposi-elastic/huygens/services/ssh-gateway/internal/sshbridge"
 )
 
+func sessionEventPayload(sess *session.Session, action string) events.SessionEventData {
+	payload := events.SessionEventData{
+		SessionID:      sess.ID,
+		OrganizationID: sess.OrganizationID,
+		ProjectID:      sess.ProjectID,
+		VMName:         sess.VMName,
+		AgentID:        sess.AgentID,
+		GuestIP:        sess.GuestIP,
+		UserID:         sess.UserID,
+		UserEmail:      sess.UserEmail,
+		UserUsername:   sess.UserUsername,
+		LinuxUser:      sess.LinuxUser,
+		Status:         sess.Status,
+		Action:         action,
+		RecordingURI:   sess.RecordingURI,
+	}
+	if !sess.StartedAt.IsZero() {
+		payload.StartedAt = sess.StartedAt.UTC().Format(time.RFC3339Nano)
+	}
+	if sess.EndedAt != nil {
+		payload.EndedAt = sess.EndedAt.UTC().Format(time.RFC3339Nano)
+	}
+	return payload
+}
+
+func (s *Server) publishRecordingEvents(ctx context.Context, sess *session.Session) {
+	if sess.RecordingPath == "" {
+		return
+	}
+	castLines, err := recording.ReadCastLines(sess.RecordingPath)
+	if err != nil || len(castLines) == 0 {
+		return
+	}
+	out := make([]events.RecordingEventData, 0, len(castLines))
+	for _, line := range castLines {
+		out = append(out, events.RecordingEventData{
+			SessionID:         sess.ID,
+			OrganizationID:    sess.OrganizationID,
+			ProjectID:         sess.ProjectID,
+			VMName:            sess.VMName,
+			AgentID:           sess.AgentID,
+			GuestIP:           sess.GuestIP,
+			UserID:            sess.UserID,
+			UserEmail:         sess.UserEmail,
+			UserUsername:      sess.UserUsername,
+			LinuxUser:         sess.LinuxUser,
+			RecordingURI:      sess.RecordingURI,
+			Sequence:          line.Sequence,
+			CastTimestamp:     line.Timestamp,
+			Stream:            line.Stream,
+			TerminalData:      line.Raw,
+			TerminalPlaintext: line.Plaintext,
+		})
+	}
+	_ = s.events.PublishRecordingEvents(ctx, out)
+}
+
 type Server struct {
 	cfg       config.Config
 	sessions  *session.Store
@@ -162,18 +219,7 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	}
 	s.sessions.Put(sess)
 	_ = session.Save(s.cfg.RecordingDir, sess)
-	_ = s.events.PublishSessionEvent(ctx, events.SessionEventData{
-		SessionID:      sessionID,
-		OrganizationID: body.OrganizationID,
-		ProjectID:      body.ProjectID,
-		VMName:         body.VMName,
-		AgentID:        target.AgentID,
-		UserID:         claims.Sub,
-		UserEmail:      claims.Email,
-		LinuxUser:      *authz.LinuxUsername,
-		Action:         "session.open",
-		RecordingURI:   sess.RecordingURI,
-	})
+	_ = s.events.PublishSessionEvent(ctx, sessionEventPayload(sess, "session.open"))
 	writeJSON(w, http.StatusCreated, sess)
 }
 
@@ -328,18 +374,11 @@ func (s *Server) handleSessionWS(w http.ResponseWriter, r *http.Request) {
 		sess.RecordingURI = "file://" + path
 		if closed, ok := s.sessions.Close(id); ok {
 			_ = session.Save(s.cfg.RecordingDir, closed)
-			_ = s.events.PublishSessionEvent(context.Background(), events.SessionEventData{
-				SessionID:      closed.ID,
-				OrganizationID: closed.OrganizationID,
-				ProjectID:      closed.ProjectID,
-				VMName:         closed.VMName,
-				AgentID:        closed.AgentID,
-				UserID:         closed.UserID,
-				UserEmail:      closed.UserEmail,
-				LinuxUser:      closed.LinuxUser,
-				Action:         "session.close",
-				RecordingURI:   closed.RecordingURI,
-			})
+			closedCopy := *closed
+			go func() {
+				_ = s.events.PublishSessionEvent(context.Background(), sessionEventPayload(&closedCopy, "session.close"))
+				s.publishRecordingEvents(context.Background(), &closedCopy)
+			}()
 		}
 	}()
 
